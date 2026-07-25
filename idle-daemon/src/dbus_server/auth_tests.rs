@@ -31,6 +31,7 @@ fn trusted_peer_names_are_fixed() {
     assert!(TRUSTED_CONTROL_PEERS.contains(&"idle-cli"));
     assert!(TRUSTED_CONTROL_PEERS.contains(&"idle-tui"));
     assert!(TRUSTED_CONTROL_PEERS.contains(&"idle-applet"));
+    assert!(TRUSTED_CONTROL_PEERS.contains(&"idlescreen-applet"));
     assert!(TRUSTED_CONTROL_PEERS.contains(&"idlescreen"));
     assert!(!TRUSTED_CONTROL_PEERS.contains(&"bash"));
     assert!(!TRUSTED_CONTROL_PEERS.contains(&"python3"));
@@ -39,14 +40,20 @@ fn trusted_peer_names_are_fixed() {
 
 #[test]
 fn trusted_peer_names_fit_linux_comm() {
-    // Kernel task comm is 15 visible chars; list must stay matchable without truncation bugs.
+    // Kernel task comm is 15 visible chars; long basenames match via prefix truncation.
     for name in TRUSTED_CONTROL_PEERS {
-        assert!(
-            name.len() <= 15,
-            "{name:?} exceeds COMM_MAX; update comm_matches_trusted"
-        );
-        assert!(comm_matches_trusted(name));
+        assert!(comm_matches_trusted(name), "{name:?} should match full name");
+        if name.len() > 15 {
+            let trunc = &name[..15];
+            assert!(
+                comm_matches_trusted(trunc),
+                "{name:?} truncated as {trunc:?} must match"
+            );
+        }
     }
+    // Primary COSMIC applet binary (desktop Exec) is longer than COMM_MAX.
+    assert!(TRUSTED_CONTROL_PEERS.contains(&"idlescreen-applet"));
+    assert!(comm_matches_trusted("idlescreen-appl")); // 15-char kernel truncation
 }
 
 #[test]

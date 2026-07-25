@@ -131,21 +131,25 @@ fn package_hint_from_command(
 }
 
 fn package_version_hint() -> Option<String> {
-    if let Some(s) = package_hint_from_command(
-        "rpm",
-        &[
-            "-q",
-            "trance",
-            "--qf",
-            "%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}",
-        ],
-        Some("is not installed"),
-    ) {
-        return Some(s);
+    for pkg in [
+        "idle-cli",
+        "idle-daemon",
+        "idlescreen",
+        "idle",
+        "trance",
+    ] {
+        if let Some(s) = package_hint_from_command(
+            "rpm",
+            &["-q", pkg, "--qf", "%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}"],
+            Some("is not installed"),
+        ) {
+            return Some(s);
+        }
+        if let Some(s) =
+            package_hint_from_command("dpkg-query", &["-W", "-f=${Package} ${Version}", pkg], None)
+        {
+            return Some(s);
+        }
     }
-    package_hint_from_command(
-        "dpkg-query",
-        &["-W", "-f=${Package} ${Version}", "trance"],
-        None,
-    )
+    None
 }

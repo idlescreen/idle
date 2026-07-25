@@ -8,10 +8,14 @@ pub(super) const TRUSTED_CONTROL_PEERS: &[&str] = &[
     "idle-cli",
     "idle-tui",
     "idle-applet",
+    // COSMIC panel applet primary binary (desktop Exec=idlescreen-applet)
+    "idlescreen-applet",
     "trance",
     "trance-applet",
     "trance-tui",
     "idlescreen",
+    "idlescreen-tui",
+    "app-tui",
 ];
 
 /// Linux `TASK_COMM_LEN` is 16 bytes including NUL → 15 visible chars in `/proc/pid/comm`.

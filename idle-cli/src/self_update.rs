@@ -5,9 +5,9 @@
 use anyhow::Result;
 use std::process::Command;
 
-use super::self_update_backend::{Backend, detect_backend, stdout_trim};
-
-const PKG: &str = "trance";
+use super::self_update_backend::{
+    Backend, PKG_CANDIDATES, detect_backend, stdout_trim,
+};
 
 fn rpm_installed_version(pkg: &str) -> Option<String> {
     stdout_trim("rpm", &["-q", pkg, "--qf", "%{VERSION}-%{RELEASE}"])
@@ -48,11 +48,10 @@ fn parse_dnf_list_version(text: &str, want_available: bool) -> Option<String> {
             section = "available";
             continue;
         }
-        if !(line.starts_with("idle.")
-            || line.starts_with("idle ")
-            || line.starts_with("trance.")
-            || line.starts_with("trance "))
-        {
+        let looks_like_pkg = PKG_CANDIDATES.iter().any(|p| {
+            line.starts_with(&format!("{p}.")) || line.starts_with(&format!("{p} "))
+        });
+        if !looks_like_pkg {
             continue;
         }
         let parts: Vec<&str> = line.split_whitespace().collect();
@@ -69,39 +68,39 @@ fn parse_dnf_list_version(text: &str, want_available: bool) -> Option<String> {
     last
 }
 
+fn first_installed_rpm() -> Option<(String, String)> {
+    for pkg in PKG_CANDIDATES {
+        if let Some(ver) = rpm_installed_version(pkg) {
+            return Some((pkg.to_string(), ver));
+        }
+    }
+    None
+}
+
 fn handle_dnf_update() -> Result<()> {
     println!("Checking for updates with DNF/RPM...");
 
-    let installed = rpm_installed_version(PKG);
-    let available = dnf_available_version(PKG);
+    let Some((pkg, installed)) = first_installed_rpm() else {
+        println!(" [!] No IdleScreen RPM packages detected (idle-cli / idle-daemon).");
+        println!("     -> curl -fsSL https://idlescreen.github.io/packages/install.sh | sh");
+        return Ok(());
+    };
+    let available = dnf_available_version(&pkg);
 
-    match (installed, available) {
-        (Some(inst), Some(cand)) => {
-            if versions_equalish(&inst, &cand) {
-                println!(" [✔] Trance is already up to date (version {inst}).");
-                println!("     -> Upgrade anytime with: sudo dnf update");
-            } else {
-                println!(" [!] A new version is available: {inst} → {cand}");
-                println!("     -> Run: sudo dnf update");
-            }
+    match available {
+        Some(cand) if versions_equalish(&installed, &cand) => {
+            println!(" [✔] {pkg} is up to date (version {installed}).");
+            println!("     -> Upgrade anytime with: sudo dnf upgrade");
         }
-        (Some(inst), None) => {
-            println!(" [✔] Installed version: {inst}");
+        Some(cand) => {
+            println!(" [!] A new version is available: {pkg} {installed} → {cand}");
+            println!("     -> Run: sudo dnf upgrade {pkg}");
+        }
+        None => {
+            println!(" [✔] Installed: {pkg}-{installed}");
             println!(" [!] Could not query the latest package from the repo.");
-            println!("     -> Try: sudo dnf clean all && sudo dnf update");
+            println!("     -> Try: sudo dnf clean all && sudo dnf upgrade");
             println!("     -> Confirm the idlescreen repo is in /etc/yum.repos.d/");
-        }
-        (None, Some(cand)) => {
-            println!(" [!] IdleScreen is not installed as an RPM (latest in repo: {cand}).");
-            println!("     -> Install with: sudo dnf install idlescreen");
-        }
-        (None, None) => {
-            println!(" [!] Could not find the 'idlescreen' package via RPM/DNF.");
-            println!("     -> Register the repo, then: sudo dnf install idlescreen");
-            println!(
-                "     -> curl -fsSL https://idlescreen.github.io/packages/rpm/idlescreen.repo \\"
-            );
-            println!("          | sudo tee /etc/yum.repos.d/idlescreen.repo");
         }
     }
     Ok(())
@@ -127,34 +126,44 @@ fn apt_policy_versions(pkg: &str) -> Option<(String, String)> {
 }
 
 fn handle_apt_update() -> Result<()> {
-    println!(" Checking APT package status for '{PKG}'...");
-    match apt_policy_versions(PKG) {
+    let pkg = PKG_CANDIDATES
+        .iter()
+        .find(|p| {
+            stdout_trim("dpkg-query", &["-W", "-f=${Version}", p]).is_some()
+                || apt_policy_versions(p).is_some()
+        })
+        .copied()
+        .unwrap_or("idle-cli");
+
+    println!(" Checking APT package status for '{pkg}'...");
+    match apt_policy_versions(pkg) {
         Some((inst, cand)) => {
             println!(" [✔] Installed version: {inst}");
             println!(" [✔] Repository version: {cand}");
 
             if inst == "(none)" {
                 println!(" [!] Package is not currently installed.");
-                println!("     -> Run: sudo apt update && sudo apt install idlescreen");
+                println!(
+                    "     -> curl -fsSL https://idlescreen.github.io/packages/install.sh | sh"
+                );
             } else if !versions_equalish(&inst, &cand) {
                 println!(" [!] Upgrade available: {inst} -> {cand}");
-                println!(
-                    "     -> Run: sudo apt update && sudo apt install --only-upgrade idlescreen"
-                );
+                println!("     -> Run: sudo apt update && sudo apt install --only-upgrade {pkg}");
             } else {
                 println!(" [✔] IdleScreen is up to date.");
                 println!("     -> Upgrade anytime with: sudo apt update && sudo apt upgrade");
             }
         }
         None => {
-            if let Some(inst) = stdout_trim("dpkg-query", &["-W", "-f=${Version}", PKG]) {
+            if let Some(inst) = stdout_trim("dpkg-query", &["-W", "-f=${Version}", pkg]) {
                 println!(" [✔] Installed version: {inst}");
                 println!(" [!] Could not read APT candidate (is the idlescreen repo configured?).");
                 println!("     -> sudo apt update && sudo apt upgrade");
             } else {
-                println!(" [!] Could not determine package status for 'idlescreen'.");
-                println!("     -> Ensure the idlescreen APT repo is registered, then:");
-                println!("     -> sudo apt update && sudo apt install idlescreen");
+                println!(" [!] Could not determine package status.");
+                println!(
+                    "     -> curl -fsSL https://idlescreen.github.io/packages/install.sh | sh"
+                );
             }
         }
     }

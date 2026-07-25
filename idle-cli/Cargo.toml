@@ -1,6 +1,6 @@
 [package]
 name = "idle-cli"
-version = "2.3.4"
+version = "2.3.5"
 edition = "2024"
 description = "Command-line interface for the IdleScreen daemon"
 license = "Apache-2.0"

@@ -2,7 +2,14 @@
 
 use std::process::Command;
 
-const PKG: &str = "trance";
+/// Product/engine package names for update detection (NEVRA order preferred).
+pub const PKG_CANDIDATES: &[&str] = &[
+    "idle-cli",
+    "idle-daemon",
+    "idlescreen",
+    "idle",
+    "trance",
+];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Backend {
@@ -28,16 +35,22 @@ pub fn stdout_trim(cmd: &str, args: &[&str]) -> Option<String> {
 }
 
 pub fn detect_backend() -> Option<Backend> {
-    if command_ok("rpm", &["-q", PKG]) {
-        return Some(Backend::Dnf);
+    for pkg in PKG_CANDIDATES {
+        if command_ok("rpm", &["-q", pkg]) {
+            return Some(Backend::Dnf);
+        }
     }
-    if command_ok("dpkg-query", &["-W", "-f=${Status}", PKG]) || command_ok("dpkg", &["-s", PKG]) {
-        if let Some(status) = stdout_trim("dpkg-query", &["-W", "-f=${Status}", PKG]) {
-            if status.contains("install ok installed") {
+    for pkg in PKG_CANDIDATES {
+        if command_ok("dpkg-query", &["-W", "-f=${Status}", pkg])
+            || command_ok("dpkg", &["-s", pkg])
+        {
+            if let Some(status) = stdout_trim("dpkg-query", &["-W", "-f=${Status}", pkg]) {
+                if status.contains("install ok installed") {
+                    return Some(Backend::Apt);
+                }
+            } else {
                 return Some(Backend::Apt);
             }
-        } else {
-            return Some(Backend::Apt);
         }
     }
 

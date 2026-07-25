@@ -87,29 +87,37 @@ pub fn handle_bug_report() -> Result<()> {
 }
 
 fn package_version_line() -> Option<String> {
-    if let Ok(o) = Command::new("rpm")
-        .args([
-            "-q",
-            "trance",
-            "--qf",
-            "%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}",
-        ])
-        .output()
-        && o.status.success()
-    {
-        let s = String::from_utf8_lossy(&o.stdout).trim().to_string();
-        if !s.is_empty() {
-            return Some(format!("rpm {s}"));
+    for pkg in [
+        "idle-cli",
+        "idle-daemon",
+        "idlescreen",
+        "idle",
+        "trance",
+    ] {
+        if let Ok(o) = Command::new("rpm")
+            .args([
+                "-q",
+                pkg,
+                "--qf",
+                "%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}",
+            ])
+            .output()
+            && o.status.success()
+        {
+            let s = String::from_utf8_lossy(&o.stdout).trim().to_string();
+            if !s.is_empty() {
+                return Some(format!("rpm {s}"));
+            }
         }
-    }
-    if let Ok(o) = Command::new("dpkg-query")
-        .args(["-W", "-f=${Package} ${Version}", "trance"])
-        .output()
-        && o.status.success()
-    {
-        let s = String::from_utf8_lossy(&o.stdout).trim().to_string();
-        if !s.is_empty() {
-            return Some(format!("deb {s}"));
+        if let Ok(o) = Command::new("dpkg-query")
+            .args(["-W", "-f=${Package} ${Version}", pkg])
+            .output()
+            && o.status.success()
+        {
+            let s = String::from_utf8_lossy(&o.stdout).trim().to_string();
+            if !s.is_empty() {
+                return Some(format!("deb {s}"));
+            }
         }
     }
     None

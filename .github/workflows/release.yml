@@ -88,8 +88,11 @@ jobs:
       - name: Trigger Packages Repository Update
         env:
           DISPATCH_TOKEN: ${{ secrets.IDLESCREEN_PACKAGES_DISPATCH_TOKEN }}
-        if: env.DISPATCH_TOKEN != ''
         run: |
+          if [ -z "$DISPATCH_TOKEN" ]; then
+            echo "::error::IDLESCREEN_PACKAGES_DISPATCH_TOKEN is not set — packages repo will not update"
+            exit 1
+          fi
           curl -L \
             -X POST \
             -H "Accept: application/vnd.github+json" \

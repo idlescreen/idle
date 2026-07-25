@@ -73,7 +73,7 @@ echo "deb [signed-by=/etc/apt/keyrings/idlescreen-keyring.gpg] https://idlescree
 
 # Update Index & Install Product
 sudo apt update
-sudo apt install idlescreen
+sudo apt install idle-daemon idle-cli idle-savers idle-tui
 ```
 </details>
 
@@ -88,7 +88,7 @@ sudo curl -fsSL https://idlescreen.github.io/packages/rpm/idlescreen.repo -o /et
 
 # Refresh Metadata & Install Product
 sudo dnf check-update
-sudo dnf install idlescreen
+sudo dnf install idle-daemon idle-cli idle-savers idle-tui
 ```
 </details>
 
