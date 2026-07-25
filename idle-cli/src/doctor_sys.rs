@@ -15,36 +15,131 @@ pub fn check_fonts() -> CheckResult {
     }
 }
 
+/// Probe IdleScreen product/engine packages by real package *name* (NEVRA).
+///
+/// Do **not** query `cosmic-idle`: on Fedora that is System76's COSMIC DE
+/// package, not IdleScreen. IdleScreen's wrapper binary of that name is
+/// shipped inside `idle-cli`.
 pub fn check_package_install() -> CheckResult {
-    for pkg in [
+    // Prefer engine + product packages actually published to the IdleScreen repo.
+    const CANDIDATES: &[&str] = &[
         "idle-daemon",
         "idle-cli",
-        "cosmic-idle",
+        "idle-cosmic",
+        "idle-tui",
+        "idle-savers",
         "idlescreen",
         "idle",
         "trance",
-    ] {
-        if let Ok(o) = Command::new("rpm").args(["-q", pkg]).output()
-            && o.status.success()
-        {
-            let ver = String::from_utf8_lossy(&o.stdout).trim().to_string();
-            println!(" [✔] Package (RPM): {ver}");
-            println!("     -> Upgrade with: sudo dnf update");
-            return chk("Package", true, ver);
+    ];
+
+    let mut found: Vec<String> = Vec::new();
+    for pkg in CANDIDATES {
+        if let Some(ver) = query_rpm(pkg) {
+            push_unique(&mut found, ver);
+            continue;
         }
-        if let Ok(o) = Command::new("dpkg-query")
-            .args(["-W", "-f=${Package} ${Version}", pkg])
-            .output()
-            && o.status.success()
-        {
-            let ver = String::from_utf8_lossy(&o.stdout).trim().to_string();
-            println!(" [✔] Package (DEB): {ver}");
-            println!("     -> Upgrade with: sudo apt update && sudo apt upgrade");
-            return chk("Package", true, ver);
+        if let Some(ver) = query_dpkg(pkg) {
+            push_unique(&mut found, ver);
         }
     }
-    println!(" [!] Package not detected via RPM or DEB query.");
-    chk("Package", true, "not a system package")
+
+    // Virtual Provides (e.g. idle-daemon Provides: idlescreen) — name-only
+    // rpm -q misses these.
+    for capability in ["idlescreen", "idle", "trance"] {
+        if let Some(ver) = query_rpm_whatprovides(capability) {
+            push_unique(&mut found, ver);
+        }
+    }
+
+    if found.is_empty() {
+        if binary_on_path("idle-daemon") || binary_on_path("idlescreen") || binary_on_path("idle")
+        {
+            println!(
+                " [!] Package: not tracked by RPM/DEB (binaries present; source or manual install)."
+            );
+            println!("     -> System packages: https://idlescreen.github.io/packages/");
+            return chk("Package", true, "unmanaged install (binaries present)");
+        }
+        println!(" [!] Package: no IdleScreen RPM/DEB packages detected.");
+        println!(
+            "     -> Install: curl -fsSL https://idlescreen.github.io/packages/install.sh | sh"
+        );
+        return chk("Package", true, "not a system package");
+    }
+
+    let summary = found.join(", ");
+    println!(" [✔] Package (system): {summary}");
+    println!("     -> Upgrade with: sudo dnf upgrade  OR  sudo apt update && sudo apt upgrade");
+    chk("Package", true, summary)
+}
+
+fn push_unique(found: &mut Vec<String>, ver: String) {
+    if !found.iter().any(|v| v == &ver) {
+        found.push(ver);
+    }
+}
+
+fn query_rpm(pkg: &str) -> Option<String> {
+    let o = Command::new("rpm")
+        .args(["-q", pkg, "--qf", "%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}"])
+        .output()
+        .ok()?;
+    if !o.status.success() {
+        return None;
+    }
+    let s = String::from_utf8_lossy(&o.stdout).trim().to_string();
+    if s.is_empty() || s.contains("is not installed") {
+        None
+    } else {
+        Some(s)
+    }
+}
+
+fn query_rpm_whatprovides(capability: &str) -> Option<String> {
+    let o = Command::new("rpm")
+        .args([
+            "-q",
+            "--whatprovides",
+            capability,
+            "--qf",
+            "%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}\\n",
+        ])
+        .output()
+        .ok()?;
+    if !o.status.success() {
+        return None;
+    }
+    // First line only; may list multiple providers.
+    String::from_utf8_lossy(&o.stdout)
+        .lines()
+        .map(str::trim)
+        .find(|l| !l.is_empty() && !l.contains("no package provides"))
+        .map(str::to_string)
+}
+
+fn query_dpkg(pkg: &str) -> Option<String> {
+    let o = Command::new("dpkg-query")
+        .args(["-W", "-f=${Package} ${Version}", pkg])
+        .output()
+        .ok()?;
+    if !o.status.success() {
+        return None;
+    }
+    let s = String::from_utf8_lossy(&o.stdout).trim().to_string();
+    if s.is_empty() {
+        None
+    } else {
+        Some(s)
+    }
+}
+
+fn binary_on_path(name: &str) -> bool {
+    Command::new("sh")
+        .args(["-c", &format!("command -v {name} >/dev/null 2>&1")])
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
 }
 
 fn font_check_via_fc_list() -> bool {
