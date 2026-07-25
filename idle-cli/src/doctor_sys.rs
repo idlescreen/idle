@@ -53,8 +53,7 @@ pub fn check_package_install() -> CheckResult {
     }
 
     if found.is_empty() {
-        if binary_on_path("idle-daemon") || binary_on_path("idlescreen") || binary_on_path("idle")
-        {
+        if binary_on_path("idle-daemon") || binary_on_path("idlescreen") || binary_on_path("idle") {
             println!(
                 " [!] Package: not tracked by RPM/DEB (binaries present; source or manual install)."
             );
@@ -127,11 +126,7 @@ fn query_dpkg(pkg: &str) -> Option<String> {
         return None;
     }
     let s = String::from_utf8_lossy(&o.stdout).trim().to_string();
-    if s.is_empty() {
-        None
-    } else {
-        Some(s)
-    }
+    if s.is_empty() { None } else { Some(s) }
 }
 
 fn binary_on_path(name: &str) -> bool {
