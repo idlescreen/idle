@@ -2,13 +2,14 @@
 Name=IdleScreen
 Comment=IdleScreen screensaver & ambient control panel applet
 Type=Application
-Exec=cosmic-idle
-Terminal=false
+Exec=/usr/bin/cosmic-idle
+Terminal=true
 Categories=COSMIC;
 Keywords=COSMIC;Applet;Idle;Screensaver;
 Icon=com.system76.CosmicAppletIdle-symbolic
+StartupNotify=true
 NoDisplay=true
 X-CosmicApplet=true
 X-CosmicShrinkable=true
 X-CosmicHoverPopup=Auto
-X-OverflowPriority=50
+X-OverflowPriority=10
