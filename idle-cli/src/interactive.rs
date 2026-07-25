@@ -54,7 +54,7 @@ pub fn run_interactive(client: &TranceClient) -> Result<()> {
 
 fn print_status(status: &DaemonStatus) {
     println!("\n==========================================");
-    println!("Trance Interactive Control Panel");
+    println!("IdleScreen Interactive Control Panel");
     println!("==========================================");
     println!(
         " 1. Toggle Idle Activation (Current: {})",

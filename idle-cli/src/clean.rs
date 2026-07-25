@@ -8,7 +8,7 @@ use idle_dbus::daemon_available;
 
 #[tracing::instrument]
 pub fn handle_clean() -> Result<()> {
-    println!("Cleaning Trance workspace files...");
+    println!("Cleaning IdleScreen workspace files...");
 
     // 1. PID File Cleanup
     let pid_path = if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {

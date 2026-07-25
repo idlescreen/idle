@@ -25,7 +25,7 @@ pub fn cmd_saver(client: &TranceClient, args: &[String]) -> Result<()> {
                 .context("setting active saver via d-bus")
         }
         [cmd] if cmd == "list" => cmd_list(client),
-        _ => bail!("usage: idle saver set <name|random> | trance saver list"),
+        _ => bail!("usage: idlescreen saver set <name|random> | idlescreen list"),
     }
 }
 

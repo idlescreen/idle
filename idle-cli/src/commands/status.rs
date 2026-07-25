@@ -97,9 +97,9 @@ pub fn print_version(verbose: bool) {
     if !verbose {
         return;
     }
-    println!("Trance screensaver control CLI");
+    println!("IdleScreen screensaver control CLI");
     println!("License: Apache-2.0");
-    println!("Home:    https://github.com/idlescreen/idle-core");
+    println!("Home:    https://github.com/idlescreen/idle");
     if let Some(pkg) = package_version_hint() {
         println!("Package: {pkg}");
     }

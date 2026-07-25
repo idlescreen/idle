@@ -6,12 +6,13 @@ use std::process::Command;
 
 pub fn check_fonts() -> CheckResult {
     if font_check_via_fc_list() {
-        println!(" [✔] System Fonts: Monospace font is installed.");
         chk("System Fonts", true, "monospace font found")
     } else {
-        println!(" [✗] System Fonts: Monospace font not found on system!");
-        println!("     -> Fix: Please install fonts-dejavu-core or a system monospace font.");
-        chk("System Fonts", false, "monospace font missing")
+        chk(
+            "System Fonts",
+            false,
+            "monospace font missing — install fonts-dejavu-core or another mono font",
+        )
     }
 }
 
@@ -82,24 +83,20 @@ pub fn check_package_install() -> CheckResult {
     if found.is_empty() {
         let has_bin = BINARIES.iter().any(|b| binary_on_path(b));
         if has_bin {
-            println!(
-                " [!] Package: binaries present but not owned by an RPM/DEB package (source or manual install)."
+            return chk(
+                "Package",
+                true,
+                "unmanaged install (binaries present; not owned by RPM/DEB) — see https://idlescreen.github.io/packages/",
             );
-            println!("     -> System packages: https://idlescreen.github.io/packages/");
-            return chk("Package", true, "unmanaged install (binaries present)");
         }
-        println!(
-            " [✗] Package: no IdleScreen packages detected (expected idle-daemon / idle-cli)."
+        return chk(
+            "Package",
+            false,
+            "idle-daemon / idle-cli not installed — curl -fsSL https://idlescreen.github.io/packages/install.sh | sh",
         );
-        println!(
-            "     -> Install: curl -fsSL https://idlescreen.github.io/packages/install.sh | sh"
-        );
-        return chk("Package", false, "idle-daemon / idle-cli not installed");
     }
 
     let summary = found.join(", ");
-    println!(" [✔] Package (system): {summary}");
-    println!("     -> Upgrade with: sudo dnf upgrade  OR  sudo apt update && sudo apt upgrade");
     chk("Package", true, summary)
 }
 

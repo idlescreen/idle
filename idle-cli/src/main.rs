@@ -88,7 +88,7 @@ fn run(args: Vec<String>) -> Result<()> {
             bail!("unknown option: -help (use --help or -h, or: idle help)");
         }
         "-version" => {
-            bail!("unknown option: -version (use --version or -V, or: idle version / trance v)");
+            bail!("unknown option: -version (use --version or -V, or: idlescreen version)");
         }
         _ => {}
     }

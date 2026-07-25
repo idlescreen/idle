@@ -44,7 +44,7 @@ pub fn run_doctor(fix: bool, json: bool) -> Result<()> {
         print_results(&results);
         if !results.iter().all(|r| r.passed) {
             if !fix {
-                println!("Hint: try  idle doctor --fix  to reload/enable the user service.");
+                println!("Hint: try  idlescreen doctor --fix  to reload/enable the user service.");
             }
             std::process::exit(1);
         }

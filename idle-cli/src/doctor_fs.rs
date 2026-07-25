@@ -27,7 +27,7 @@ pub fn check_config_parses() -> CheckResult {
 pub fn check_shm_permissions() -> CheckResult {
     let shm_dir = PathBuf::from("/dev/shm");
     if shm_dir.exists() {
-        let test_file = shm_dir.join(format!(".trance-doctor-test-{}", std::process::id()));
+        let test_file = shm_dir.join(format!(".idle-doctor-test-{}", std::process::id()));
         if fs::write(&test_file, b"test").is_ok() {
             let _ = fs::remove_file(&test_file);
             chk("Shared Memory", true, "/dev/shm writable")
@@ -61,18 +61,32 @@ pub fn check_yaml_syntax() -> CheckResult {
     }
 }
 
+/// Idle first, legacy `trance` second (matches idle-daemon).
 fn get_config_path() -> Option<PathBuf> {
-    if let Some(xdg_config) = std::env::var("XDG_CONFIG_HOME")
+    let mut bases = Vec::new();
+    if let Some(xdg) = std::env::var("XDG_CONFIG_HOME")
         .ok()
         .filter(|s| !s.is_empty())
     {
-        return Some(PathBuf::from(xdg_config).join("idle").join("config.yaml"));
+        bases.push(PathBuf::from(xdg));
     }
-    let home = std::env::var("HOME").ok()?;
-    Some(
-        PathBuf::from(home)
-            .join(".config")
-            .join("idle")
-            .join("config.yaml"),
-    )
+    if let Ok(home) = std::env::var("HOME") {
+        bases.push(PathBuf::from(home).join(".config"));
+    }
+    if bases.is_empty() {
+        return None;
+    }
+    for base in &bases {
+        let idle = base.join("idle").join("config.yaml");
+        if idle.is_file() {
+            return Some(idle);
+        }
+    }
+    for base in &bases {
+        let trance = base.join("trance").join("config.yaml");
+        if trance.is_file() {
+            return Some(trance);
+        }
+    }
+    Some(bases[0].join("idle").join("config.yaml"))
 }

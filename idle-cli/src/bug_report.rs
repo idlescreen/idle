@@ -11,7 +11,7 @@ pub fn handle_bug_report() -> Result<()> {
     println!("Generating sanitized diagnostic report...");
 
     let mut report = String::new();
-    report.push_str("### Trance Diagnostics & Bug Report\n\n");
+    report.push_str("### IdleScreen Diagnostics & Bug Report\n\n");
 
     // System Environment
     report.push_str("#### Environment Settings\n");

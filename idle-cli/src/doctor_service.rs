@@ -25,7 +25,7 @@ pub fn check_dbus() -> CheckResult {
         chk(
             "D-Bus Service",
             false,
-            "cannot connect to io.github.ubermetroid.trance; start idle-daemon",
+            "cannot connect to IdleScreen D-Bus service; start idle-daemon (systemctl --user start idle-daemon)",
         )
     }
 }
