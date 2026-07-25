@@ -154,8 +154,8 @@ mod tests {
     fn rejects_path_like_saver() {
         let err = run_ipc_runner(
             "../beams",
-            "/tmp/trance-uds-1-0.sock",
-            "/trance-shm-1-0",
+            "/tmp/idle-uds-1-0.sock",
+            "/idle-shm-1-0",
             80,
             24,
             false,
@@ -169,7 +169,7 @@ mod tests {
     fn rejects_bad_shm_name() {
         let err = run_ipc_runner(
             "beams",
-            "/tmp/trance-uds-1-0.sock",
+            "/tmp/idle-uds-1-0.sock",
             "/evil-shm",
             80,
             24,
@@ -185,7 +185,7 @@ mod tests {
         let err = run_ipc_runner(
             "beams",
             "relative.sock",
-            "/trance-shm-1-0",
+            "/idle-shm-1-0",
             80,
             24,
             false,
@@ -199,8 +199,8 @@ mod tests {
     fn rejects_zero_dims() {
         let err = run_ipc_runner(
             "beams",
-            "/tmp/trance-uds-1-0.sock",
-            "/trance-shm-1-0",
+            "/tmp/idle-uds-1-0.sock",
+            "/idle-shm-1-0",
             0,
             24,
             false,

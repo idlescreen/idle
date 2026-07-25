@@ -9,8 +9,8 @@ use landlock::{ABI, AccessFs, Ruleset};
 ///
 /// Skipped when `TRANCE_DISABLE_SANDBOX=1` (offline export / `render`).
 pub fn enforce_sandbox() -> Result<(), String> {
-    if std::env::var_os("TRANCE_DISABLE_SANDBOX").as_deref() == Some(std::ffi::OsStr::new("1")) {
-        tracing::info!("Landlock sandbox skipped (TRANCE_DISABLE_SANDBOX=1)");
+    if idle_api::env_truthy(&["IDLE_DISABLE_SANDBOX", "TRANCE_DISABLE_SANDBOX"]) {
+        tracing::info!("Landlock sandbox skipped (IDLE_DISABLE_SANDBOX / TRANCE_DISABLE_SANDBOX)");
         return Ok(());
     }
     // Use ABI::V1 which is the baseline Landlock version supported since 5.13.

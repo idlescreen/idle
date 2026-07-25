@@ -32,12 +32,15 @@ pub const API_VERSION: u32 = 1;
 mod callbacks;
 mod caption;
 mod color;
+mod env_dual;
 mod layout;
 mod logo_block;
 mod monitor;
 mod palette;
 mod rng;
 mod screensaver;
+
+pub use env_dual::{env_is_set, env_truthy, env_var_first, set_var_dual};
 mod system_info;
 mod terminal_cell;
 

@@ -4,8 +4,31 @@ use std::collections::HashMap;
 
 use zbus::zvariant::OwnedValue;
 
-use crate::SERVICE_NAME;
+use crate::{OBJECT_PATH, OBJECT_PATH_LEGACY, SERVICE_NAME, SERVICE_NAME_LEGACY};
 use crate::status::DaemonStatus;
+
+#[zbus::proxy(
+    interface = "io.github.ubermetroid.trance",
+    default_service = "io.github.idlescreen.Idle",
+    default_path = "/io/github/idlescreen/Idle",
+    gen_blocking = true
+)]
+trait IdlePrimary {
+    fn get_status(&self) -> zbus::Result<HashMap<String, OwnedValue>>;
+    fn enable(&self) -> zbus::Result<()>;
+    fn disable(&self) -> zbus::Result<()>;
+    fn set_timeout(&self, minutes: u32) -> zbus::Result<()>;
+    fn set_saver(&self, name: &str) -> zbus::Result<()>;
+    fn list_savers(&self) -> zbus::Result<Vec<String>>;
+    fn preview(&self, name: &str) -> zbus::Result<()>;
+    fn stop_preview(&self) -> zbus::Result<()>;
+    fn inhibit(&self, application: &str, reason: &str) -> zbus::Result<u32>;
+    fn un_inhibit(&self, cookie: u32) -> zbus::Result<()>;
+    fn list_inhibitors(&self) -> zbus::Result<Vec<(u32, String, String)>>;
+    fn set_gpu_enabled(&self, enabled: bool) -> zbus::Result<()>;
+    fn set_show_fps_overlay(&self, enabled: bool) -> zbus::Result<()>;
+    fn set_render_scale(&self, scale: f64) -> zbus::Result<()>;
+}
 
 #[zbus::proxy(
     interface = "io.github.ubermetroid.trance",
@@ -13,105 +36,197 @@ use crate::status::DaemonStatus;
     default_path = "/io/github/crateria/trance",
     gen_blocking = true
 )]
-trait Trance {
+trait TranceLegacy {
     fn get_status(&self) -> zbus::Result<HashMap<String, OwnedValue>>;
-
     fn enable(&self) -> zbus::Result<()>;
-
     fn disable(&self) -> zbus::Result<()>;
-
     fn set_timeout(&self, minutes: u32) -> zbus::Result<()>;
-
     fn set_saver(&self, name: &str) -> zbus::Result<()>;
-
     fn list_savers(&self) -> zbus::Result<Vec<String>>;
-
     fn preview(&self, name: &str) -> zbus::Result<()>;
-
     fn stop_preview(&self) -> zbus::Result<()>;
-
     fn inhibit(&self, application: &str, reason: &str) -> zbus::Result<u32>;
-
     fn un_inhibit(&self, cookie: u32) -> zbus::Result<()>;
-
     fn list_inhibitors(&self) -> zbus::Result<Vec<(u32, String, String)>>;
-
     fn set_gpu_enabled(&self, enabled: bool) -> zbus::Result<()>;
-
     fn set_show_fps_overlay(&self, enabled: bool) -> zbus::Result<()>;
-
     fn set_render_scale(&self, scale: f64) -> zbus::Result<()>;
 }
 
-/// Blocking D-Bus client for the trance daemon.
+#[derive(Clone, Copy)]
+enum EndpointKind {
+    Primary,
+    Legacy,
+}
+
+/// Blocking D-Bus client for the IdleScreen daemon (primary, then legacy).
 pub struct TranceClient {
     connection: zbus::blocking::Connection,
+    kind: EndpointKind,
 }
 
 impl TranceClient {
     pub fn connect() -> zbus::Result<Self> {
         let connection = zbus::blocking::Connection::session()?;
-        Ok(Self { connection })
+        // Prefer primary well-known name; fall back to legacy for older daemons.
+        let kind = if let Ok(proxy) = IdlePrimaryProxyBlocking::new(&connection)
+            && proxy.get_status().is_ok()
+        {
+            EndpointKind::Primary
+        } else {
+            // Validate legacy is actually up.
+            let legacy = TranceLegacyProxyBlocking::new(&connection)?;
+            legacy.get_status()?;
+            EndpointKind::Legacy
+        };
+        Ok(Self { connection, kind })
+    }
+
+    /// Which bus endpoint this client is using (`primary` or `legacy`).
+    pub fn endpoint_label(&self) -> &'static str {
+        match self.kind {
+            EndpointKind::Primary => "primary",
+            EndpointKind::Legacy => "legacy",
+        }
     }
 
     pub fn get_status(&self) -> zbus::Result<DaemonStatus> {
-        parse_status(self.proxy()?.get_status()?)
+        let map = match self.kind {
+            EndpointKind::Primary => IdlePrimaryProxyBlocking::new(&self.connection)?.get_status()?,
+            EndpointKind::Legacy => TranceLegacyProxyBlocking::new(&self.connection)?.get_status()?,
+        };
+        parse_status(map)
     }
 
     pub fn enable(&self) -> zbus::Result<()> {
-        self.proxy()?.enable()
+        match self.kind {
+            EndpointKind::Primary => IdlePrimaryProxyBlocking::new(&self.connection)?.enable(),
+            EndpointKind::Legacy => TranceLegacyProxyBlocking::new(&self.connection)?.enable(),
+        }
     }
 
     pub fn disable(&self) -> zbus::Result<()> {
-        self.proxy()?.disable()
+        match self.kind {
+            EndpointKind::Primary => IdlePrimaryProxyBlocking::new(&self.connection)?.disable(),
+            EndpointKind::Legacy => TranceLegacyProxyBlocking::new(&self.connection)?.disable(),
+        }
     }
 
     pub fn set_timeout(&self, minutes: u32) -> zbus::Result<()> {
-        self.proxy()?.set_timeout(minutes)
+        match self.kind {
+            EndpointKind::Primary => {
+                IdlePrimaryProxyBlocking::new(&self.connection)?.set_timeout(minutes)
+            }
+            EndpointKind::Legacy => {
+                TranceLegacyProxyBlocking::new(&self.connection)?.set_timeout(minutes)
+            }
+        }
     }
 
     pub fn set_saver(&self, name: &str) -> zbus::Result<()> {
-        self.proxy()?.set_saver(name)
+        match self.kind {
+            EndpointKind::Primary => {
+                IdlePrimaryProxyBlocking::new(&self.connection)?.set_saver(name)
+            }
+            EndpointKind::Legacy => {
+                TranceLegacyProxyBlocking::new(&self.connection)?.set_saver(name)
+            }
+        }
     }
 
     pub fn list_savers(&self) -> zbus::Result<Vec<String>> {
-        self.proxy()?.list_savers()
+        match self.kind {
+            EndpointKind::Primary => {
+                IdlePrimaryProxyBlocking::new(&self.connection)?.list_savers()
+            }
+            EndpointKind::Legacy => {
+                TranceLegacyProxyBlocking::new(&self.connection)?.list_savers()
+            }
+        }
     }
 
     pub fn preview(&self, name: &str) -> zbus::Result<()> {
-        self.proxy()?.preview(name)
+        match self.kind {
+            EndpointKind::Primary => {
+                IdlePrimaryProxyBlocking::new(&self.connection)?.preview(name)
+            }
+            EndpointKind::Legacy => {
+                TranceLegacyProxyBlocking::new(&self.connection)?.preview(name)
+            }
+        }
     }
 
     pub fn stop_preview(&self) -> zbus::Result<()> {
-        self.proxy()?.stop_preview()
+        match self.kind {
+            EndpointKind::Primary => {
+                IdlePrimaryProxyBlocking::new(&self.connection)?.stop_preview()
+            }
+            EndpointKind::Legacy => {
+                TranceLegacyProxyBlocking::new(&self.connection)?.stop_preview()
+            }
+        }
     }
 
     pub fn inhibit(&self, application: &str, reason: &str) -> zbus::Result<u32> {
-        self.proxy()?.inhibit(application, reason)
+        match self.kind {
+            EndpointKind::Primary => IdlePrimaryProxyBlocking::new(&self.connection)?
+                .inhibit(application, reason),
+            EndpointKind::Legacy => TranceLegacyProxyBlocking::new(&self.connection)?
+                .inhibit(application, reason),
+        }
     }
 
     pub fn un_inhibit(&self, cookie: u32) -> zbus::Result<()> {
-        self.proxy()?.un_inhibit(cookie)
+        match self.kind {
+            EndpointKind::Primary => {
+                IdlePrimaryProxyBlocking::new(&self.connection)?.un_inhibit(cookie)
+            }
+            EndpointKind::Legacy => {
+                TranceLegacyProxyBlocking::new(&self.connection)?.un_inhibit(cookie)
+            }
+        }
     }
 
     pub fn list_inhibitors(&self) -> zbus::Result<Vec<(u32, String, String)>> {
-        self.proxy()?.list_inhibitors()
+        match self.kind {
+            EndpointKind::Primary => {
+                IdlePrimaryProxyBlocking::new(&self.connection)?.list_inhibitors()
+            }
+            EndpointKind::Legacy => {
+                TranceLegacyProxyBlocking::new(&self.connection)?.list_inhibitors()
+            }
+        }
     }
 
     pub fn set_gpu_enabled(&self, enabled: bool) -> zbus::Result<()> {
-        self.proxy()?.set_gpu_enabled(enabled)
+        match self.kind {
+            EndpointKind::Primary => {
+                IdlePrimaryProxyBlocking::new(&self.connection)?.set_gpu_enabled(enabled)
+            }
+            EndpointKind::Legacy => {
+                TranceLegacyProxyBlocking::new(&self.connection)?.set_gpu_enabled(enabled)
+            }
+        }
     }
 
     pub fn set_show_fps_overlay(&self, enabled: bool) -> zbus::Result<()> {
-        self.proxy()?.set_show_fps_overlay(enabled)
+        match self.kind {
+            EndpointKind::Primary => {
+                IdlePrimaryProxyBlocking::new(&self.connection)?.set_show_fps_overlay(enabled)
+            }
+            EndpointKind::Legacy => {
+                TranceLegacyProxyBlocking::new(&self.connection)?.set_show_fps_overlay(enabled)
+            }
+        }
     }
 
     pub fn set_render_scale(&self, scale: f32) -> zbus::Result<()> {
-        self.proxy()?.set_render_scale(f64::from(scale))
-    }
-
-    fn proxy(&self) -> zbus::Result<TranceProxyBlocking<'_>> {
-        TranceProxyBlocking::new(&self.connection)
+        match self.kind {
+            EndpointKind::Primary => IdlePrimaryProxyBlocking::new(&self.connection)?
+                .set_render_scale(f64::from(scale)),
+            EndpointKind::Legacy => TranceLegacyProxyBlocking::new(&self.connection)?
+                .set_render_scale(f64::from(scale)),
+        }
     }
 }
 
@@ -151,7 +266,7 @@ fn read_string(map: &HashMap<String, OwnedValue>, key: &str) -> String {
         .unwrap_or_default()
 }
 
-/// Returns whether the trance daemon is reachable on the session bus.
+/// Returns whether the IdleScreen daemon is reachable (primary or legacy name).
 pub fn daemon_available() -> bool {
     let connection = match zbus::blocking::Connection::session() {
         Ok(connection) => connection,
@@ -162,11 +277,14 @@ pub fn daemon_available() -> bool {
         Err(_) => return false,
     };
 
-    if let Ok(name) = zbus::names::BusName::try_from(SERVICE_NAME)
-        && dbus.name_has_owner(name).unwrap_or(false)
-    {
-        return true;
+    for name in [SERVICE_NAME, SERVICE_NAME_LEGACY] {
+        if let Ok(bus) = zbus::names::BusName::try_from(name)
+            && dbus.name_has_owner(bus).unwrap_or(false)
+        {
+            return true;
+        }
     }
+    let _ = (OBJECT_PATH, OBJECT_PATH_LEGACY);
     false
 }
 

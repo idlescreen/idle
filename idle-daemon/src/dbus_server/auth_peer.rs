@@ -4,17 +4,16 @@
 
 /// Basenames of processes allowed to call control methods on the daemon.
 pub(super) const TRUSTED_CONTROL_PEERS: &[&str] = &[
+    // Current product binaries
     "idle",
-    "idle-cli",
+    "idlescreen",
     "idle-tui",
-    "idle-applet",
-    // COSMIC panel applet primary binary (desktop Exec=idlescreen-applet)
+    "idlescreen-tui",
     "idlescreen-applet",
+    // Transitional aliases still shipped for upgrades (deprecated)
     "trance",
     "trance-applet",
     "trance-tui",
-    "idlescreen",
-    "idlescreen-tui",
     "app-tui",
 ];
 

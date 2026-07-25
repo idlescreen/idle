@@ -33,8 +33,8 @@ pub enum FilterMode {
 
 impl FilterMode {
     pub fn from_env() -> Self {
-        match std::env::var("TRANCE_GPU_FILTER").as_deref() {
-            Ok("nearest") => Self::Nearest,
+        match idle_api::env_var_first(&["IDLE_GPU_FILTER", "TRANCE_GPU_FILTER"]).as_deref() {
+            Some("nearest") => Self::Nearest,
             _ => Self::Linear,
         }
     }
@@ -63,11 +63,10 @@ pub fn render_scale_for_gpu(use_gpu: bool) -> f32 {
     resolve_render_scale(use_gpu, None)
 }
 
-/// Effective simulation grid scale: env `TRANCE_RENDER_SCALE`, then config, then defaults.
+/// Effective simulation grid scale: env `IDLE_RENDER_SCALE` / `TRANCE_RENDER_SCALE`, then config.
 #[tracing::instrument(skip_all, fields(use_gpu, configured))]
 pub fn resolve_render_scale(use_gpu: bool, configured: Option<f32>) -> f32 {
-    if let Some(scale) = std::env::var("TRANCE_RENDER_SCALE")
-        .ok()
+    if let Some(scale) = idle_api::env_var_first(&["IDLE_RENDER_SCALE", "TRANCE_RENDER_SCALE"])
         .and_then(|v| v.parse::<f32>().ok())
     {
         return scale.clamp(0.25, 1.0);
@@ -80,16 +79,14 @@ pub fn resolve_render_scale(use_gpu: bool, configured: Option<f32>) -> f32 {
 
 /// Presentation frame-rate cap. `0` means match the detected monitor refresh rate.
 pub fn max_fps() -> u32 {
-    std::env::var("TRANCE_MAX_FPS")
-        .ok()
+    idle_api::env_var_first(&["IDLE_MAX_FPS", "TRANCE_MAX_FPS"])
         .and_then(|value| value.parse::<u32>().ok())
         .unwrap_or(0)
 }
 
 /// Physics / simulation tick rate (Hz). Independent of monitor refresh.
 pub fn simulation_tick_hz() -> f32 {
-    std::env::var("TRANCE_TICK_HZ")
-        .ok()
+    idle_api::env_var_first(&["IDLE_TICK_HZ", "TRANCE_TICK_HZ"])
         .and_then(|value| value.parse::<f32>().ok())
         .map_or(60.0, |hz| hz.clamp(15.0, 240.0))
 }

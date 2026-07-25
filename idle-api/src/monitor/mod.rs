@@ -40,7 +40,7 @@ pub fn is_secondary_monitor() -> bool {
     if let Some(callback) = IS_SECONDARY_MONITOR_CALLBACK.get() {
         callback()
     } else {
-        std::env::var("TRANCE_SECONDARY_MONITOR").is_ok()
+        crate::env_is_set(&["IDLE_SECONDARY_MONITOR", "TRANCE_SECONDARY_MONITOR"])
     }
 }
 

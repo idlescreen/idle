@@ -17,11 +17,8 @@ fn main() -> anyhow::Result<()> {
     use anyhow::Context;
     use tracing_subscriber::prelude::*;
 
-    // SAFETY: Setting TRANCE_SPAN_MODE on the main thread before any other
-    // thread is spawned is safe. Other code paths only READ this variable.
-    unsafe {
-        std::env::set_var("TRANCE_SPAN_MODE", "1");
-    }
+    // Dual-set span mode before threads spawn (plugins may still read TRANCE_*).
+    idle_api::set_var_dual("IDLE_SPAN_MODE", "TRANCE_SPAN_MODE", "1");
 
     // Initialize tracing with journald or stderr fallback
     if std::env::var("JOURNAL_STREAM").is_ok() {

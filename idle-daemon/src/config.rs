@@ -101,10 +101,29 @@ impl DaemonConfig {
 
     pub fn load() -> Self {
         let mut config = Self::default();
-        if let Some(Ok(content)) = Self::resolve_config_path().map(fs::read_to_string) {
+        let resolved = Self::resolve_config_path();
+        if let Some(Ok(content)) = resolved.as_ref().map(fs::read_to_string) {
             let mut current_section = String::new();
             for line in content.lines() {
                 apply_config_line(&mut config, &mut current_section, line);
+            }
+        }
+        // Soft migrate: if we only had ~/.config/trance, copy to idle and write there next.
+        if let (Some(src), Some(dst_path)) = (resolved, Self::get_config_path()) {
+            let is_legacy = src.components().any(|c| c.as_os_str() == "trance");
+            let idle_missing = !dst_path.is_file();
+            if is_legacy && idle_missing {
+                if let Some(parent) = dst_path.parent() {
+                    let _ = fs::create_dir_all(parent);
+                }
+                if fs::copy(&src, &dst_path).is_ok() {
+                    tracing::info!(
+                        target: "idle_daemon::config",
+                        "migrated config {} → {}",
+                        src.display(),
+                        dst_path.display()
+                    );
+                }
             }
         }
         config
@@ -120,7 +139,7 @@ impl DaemonConfig {
         fs::create_dir_all(parent)?;
         let active_str = self.active_saver.as_deref().unwrap_or("none");
         let mut content = format!(
-            "# trance themes and settings\n\
+            "# IdleScreen themes and settings\n\
              accent_color: \"#00BFFF\"\n\
              # dark_mode is auto-detected from system\n\
              idle_timeout_mins: {}\n\

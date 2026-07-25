@@ -1,6 +1,8 @@
 use anyhow::Result;
 use std::process::Command;
 
+use idle_dbus::TranceClient;
+
 use super::doctor_checks::CheckResult;
 use super::doctor_env::{check_protocol_hints, check_wayland};
 use super::doctor_fs::{check_config_parses, check_shm_permissions, check_yaml_syntax};
@@ -42,6 +44,7 @@ pub fn run_doctor(fix: bool, json: bool) -> Result<()> {
         println!("IdleScreen System Diagnostics (Doctor)");
         println!("==========================================");
         print_results(&results);
+        print_deprecation_hints();
         if !results.iter().all(|r| r.passed) {
             if !fix {
                 println!("Hint: try  idlescreen doctor --fix  to reload/enable the user service.");
@@ -124,6 +127,42 @@ fn print_results(results: &[CheckResult]) {
     } else {
         println!("Diagnostics complete: PROBLEMS DETECTED.");
         println!("Resolve issues marked FAIL. See docs/BOUNDARIES.md for platform limits.");
+    }
+}
+
+fn print_deprecation_hints() {
+    let argv0 = std::env::args()
+        .next()
+        .unwrap_or_default()
+        .rsplit('/')
+        .next()
+        .unwrap_or("")
+        .to_string();
+    if matches!(argv0.as_str(), "trance" | "trance-tui" | "trance-daemon") {
+        println!(
+            "  [note] Binary '{argv0}' is a transitional alias — prefer idlescreen / idle / idle-tui."
+        );
+    }
+    if let Ok(client) = TranceClient::connect()
+        && client.endpoint_label() == "legacy"
+    {
+        println!(
+            "  [note] Connected via legacy D-Bus name; daemon will dual-export primary io.github.idlescreen.Idle after upgrade."
+        );
+    }
+    let home = std::env::var("HOME").unwrap_or_default();
+    let trance_cfg = std::path::PathBuf::from(&home)
+        .join(".config")
+        .join("trance")
+        .join("config.yaml");
+    let idle_cfg = std::path::PathBuf::from(&home)
+        .join(".config")
+        .join("idle")
+        .join("config.yaml");
+    if trance_cfg.is_file() && !idle_cfg.is_file() {
+        println!(
+            "  [note] Config still under ~/.config/trance — restart idle-daemon to migrate to ~/.config/idle."
+        );
     }
 }
 

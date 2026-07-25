@@ -1,5 +1,10 @@
 /// Environment keys for deterministic offline export (`render`).
-pub const SEED_ENV_KEYS: &[&str] = &["RENDER_SEED", "IDLE_RENDER_SEED", "TRANCE_SEED"];
+pub const SEED_ENV_KEYS: &[&str] = &[
+    "RENDER_SEED",
+    "IDLE_RENDER_SEED",
+    "IDLE_SEED",
+    "TRANCE_SEED",
+];
 
 /// Parse a seed from the process environment, if set and valid.
 pub fn seed_from_env() -> Option<u64> {

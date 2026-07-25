@@ -17,7 +17,7 @@ pub struct CenteredLogo {
 
 /// True when the simulation grid spans multiple monitors (primary is a slice of the grid).
 pub fn is_span_layout(cols: usize, rows: usize) -> bool {
-    if std::env::var("TRANCE_SPAN_MODE").is_ok() {
+    if crate::env_is_set(&["IDLE_SPAN_MODE", "TRANCE_SPAN_MODE"]) {
         return true;
     }
     let primary = get_primary_monitor_bounds(cols, rows);

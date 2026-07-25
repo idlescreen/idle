@@ -6,10 +6,10 @@ PartOf=graphical-session.target
 
 [Service]
 Type=dbus
-BusName=io.github.ubermetroid.trance
+BusName=io.github.idlescreen.Idle
 ExecStartPre=/usr/bin/mkdir -p %h/.config/idle
 ExecStart=/usr/bin/idle-daemon daemon
-# D-Bus well-known name remains historical for client ABI.
+# Also claims legacy io.github.ubermetroid.trance at runtime for upgrades.
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=10

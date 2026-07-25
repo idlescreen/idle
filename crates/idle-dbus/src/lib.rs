@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 IdleScreen
 
-//! D-Bus API for the trance screensaver daemon (`io.github.ubermetroid.trance`).
+//! D-Bus API for the IdleScreen screensaver daemon.
 //!
-//! The daemon exports configuration, preview, inhibit, and status signals on the
-//! session bus. [`TranceClient`] wraps the typed methods for applets and CLI tools;
-//! [`DaemonStatus`] is the canonical status snapshot shared with consumers.
+//! ## Primary (current) well-known names
 //!
-//! ## Constants
+//! - Service: [`SERVICE_NAME`] (`io.github.idlescreen.Idle`)
+//! - Path: [`OBJECT_PATH`] (`/io/github/idlescreen/Idle`)
 //!
-//! - [`SERVICE_NAME`] — bus name (`io.github.ubermetroid.trance`)
-//! - [`OBJECT_PATH`] — object path (`/io/github/crateria/trance`)
-//! - [`INTERFACE_NAME`] — interface name (same as service)
+//! ## Legacy (still dual-registered for upgrades)
 //!
-//! Clients should prefer [`TranceClient`] over raw D-Bus for typed errors and
-//! status decoding via [`DaemonStatus::from_map`].
+//! - Service: [`SERVICE_NAME_LEGACY`] (`io.github.ubermetroid.trance`)
+//! - Path: [`OBJECT_PATH_LEGACY`] (`/io/github/crateria/trance`)
+//!
+//! Interface name remains [`INTERFACE_NAME`] on both endpoints so one method set
+//! works during migration. Clients try primary first, then legacy.
 
 pub mod client;
 pub mod status;
@@ -22,8 +22,15 @@ pub mod status;
 pub use client::{TranceClient, daemon_available};
 pub use status::DaemonStatus;
 
-pub const SERVICE_NAME: &str = "io.github.ubermetroid.trance";
-pub const OBJECT_PATH: &str = "/io/github/crateria/trance";
-pub const INTERFACE_NAME: &str = "io.github.ubermetroid.trance";
+/// Current well-known bus name (prefer this).
+pub const SERVICE_NAME: &str = "io.github.idlescreen.Idle";
+/// Current object path (prefer this).
+pub const OBJECT_PATH: &str = "/io/github/idlescreen/Idle";
 
-// Status signals use HashMap payloads for forward-compatible applet parsing.
+/// Historical bus name — dual-claimed by the daemon.
+pub const SERVICE_NAME_LEGACY: &str = "io.github.ubermetroid.trance";
+/// Historical object path — dual-exported by the daemon.
+pub const OBJECT_PATH_LEGACY: &str = "/io/github/crateria/trance";
+
+/// D-Bus interface for control methods (same on primary and legacy endpoints).
+pub const INTERFACE_NAME: &str = "io.github.ubermetroid.trance";

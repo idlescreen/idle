@@ -15,8 +15,11 @@ pub fn check_dbus() -> CheckResult {
                 "D-Bus Service",
                 true,
                 format!(
-                    "connected idle_enabled={} timeout={}m saver='{}'",
-                    status.idle_enabled, status.idle_timeout_mins, status.active_saver
+                    "connected ({}) idle_enabled={} timeout={}m saver='{}'",
+                    client.endpoint_label(),
+                    status.idle_enabled,
+                    status.idle_timeout_mins,
+                    status.active_saver
                 ),
             ),
             Err(e) => chk("D-Bus Service", false, format!("GetStatus error: {e}")),

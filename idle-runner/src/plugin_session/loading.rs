@@ -65,16 +65,19 @@ impl PluginSession {
             // Eagerly set OS and logo text environment variables so plugins can read them
             // even inside the Landlock sandbox.
             // Propagate export determinism if seed already set by render.
-            if std::env::var_os("IDLESCREEN_RENDER_SEED").is_some() {
-                std::env::set_var("TRANCE_EXPORT_MODE", "1");
+            if std::env::var_os("IDLESCREEN_RENDER_SEED").is_some()
+                || std::env::var_os("RENDER_SEED").is_some()
+                || std::env::var_os("IDLE_RENDER_SEED").is_some()
+            {
+                idle_api::set_var_dual("IDLE_EXPORT_MODE", "TRANCE_EXPORT_MODE", "1");
             }
             let sys_info = if idle_api::SystemInfo::export_mode_enabled() {
                 idle_api::SystemInfo::export_fixture()
             } else {
                 crate::toolkit::sys_info::get_system_info()
             };
-            std::env::set_var("TRANCE_OS_NAME", &sys_info.os);
-            std::env::set_var("TRANCE_LOGO_TEXT", &sys_info.logo_text);
+            idle_api::set_var_dual("IDLE_OS_NAME", "TRANCE_OS_NAME", &sys_info.os);
+            idle_api::set_var_dual("IDLE_LOGO_TEXT", "TRANCE_LOGO_TEXT", &sys_info.logo_text);
 
             // Eagerly load caption font before filesystem is locked
             crate::caption_overlay::init_font();
@@ -83,7 +86,11 @@ impl PluginSession {
             }
 
             // Optional ABI negotiation: missing symbol => assume host-compatible legacy.
-            match lib.get::<unsafe extern "C" fn() -> u32>(b"trance_api_version") {
+            // Prefer idle_api_version; fall back to historical trance_api_version.
+            let ver_sym = lib
+                .get::<unsafe extern "C" fn() -> u32>(b"idle_api_version")
+                .or_else(|_| lib.get::<unsafe extern "C" fn() -> u32>(b"trance_api_version"));
+            match ver_sym {
                 Ok(ver_fn) => {
                     let found = ver_fn();
                     let expected = idle_api::API_VERSION;

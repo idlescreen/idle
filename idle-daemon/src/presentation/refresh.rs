@@ -36,9 +36,9 @@ pub fn presentation_refresh_hz(layouts: &[OutputLayout], primary: OutputLayout) 
         .max(60);
     let primary_hz = primary.refresh_rate_hz.max(60);
 
-    match std::env::var("TRANCE_PRESENT_SYNC").as_deref() {
-        Ok("min") => min_hz,
-        Ok("max") => max_hz,
+    match idle_api::env_var_first(&["IDLE_PRESENT_SYNC", "TRANCE_PRESENT_SYNC"]).as_deref() {
+        Some("min") => min_hz,
+        Some("max") => max_hz,
         _ => primary_hz,
     }
 }

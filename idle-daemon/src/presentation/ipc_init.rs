@@ -56,7 +56,7 @@ pub fn initialize_ipc_session(
     let session_idx = SESSION_COUNTER.fetch_add(1, Ordering::Relaxed);
     let rand_val = std::process::id();
     let socket_path =
-        runtime_socket_dir().join(format!("trance-uds-{}-{}.sock", rand_val, session_idx));
+        runtime_socket_dir().join(format!("idle-uds-{}-{}.sock", rand_val, session_idx));
     if socket_path.exists() {
         let _ = fs::remove_file(&socket_path);
     }
@@ -66,7 +66,7 @@ pub fn initialize_ipc_session(
         .set_nonblocking(true)
         .map_err(|e| format!("failed to set UDS listener nonblocking: {}", e))?;
 
-    let shm_name = format!("/trance-shm-{}-{}", rand_val, session_idx);
+    let shm_name = format!("/idle-shm-{}-{}", rand_val, session_idx);
     let shm_size = compute_shm_size(cols, rows).ok_or("shm size overflow")?;
     let shm = SharedMemory::create(&shm_name, shm_size)?;
 
