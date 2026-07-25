@@ -38,8 +38,8 @@ impl Default for SystemInfo {
             temp_os
         });
 
-        let logo_text =
-            crate::env_var_first(&["IDLE_LOGO_TEXT", "TRANCE_LOGO_TEXT"]).unwrap_or_else(|| {
+        let logo_text = crate::env_var_first(&["IDLE_LOGO_TEXT", "TRANCE_LOGO_TEXT"])
+            .unwrap_or_else(|| {
                 let mut temp_logo = "Linux".to_string();
                 if let Ok(content) = std::fs::read_to_string("/etc/os-release") {
                     for line in content.lines() {

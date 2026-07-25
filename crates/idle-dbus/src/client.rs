@@ -4,8 +4,8 @@ use std::collections::HashMap;
 
 use zbus::zvariant::OwnedValue;
 
-use crate::{OBJECT_PATH, OBJECT_PATH_LEGACY, SERVICE_NAME, SERVICE_NAME_LEGACY};
 use crate::status::DaemonStatus;
+use crate::{OBJECT_PATH, OBJECT_PATH_LEGACY, SERVICE_NAME, SERVICE_NAME_LEGACY};
 
 #[zbus::proxy(
     interface = "io.github.ubermetroid.trance",
@@ -92,8 +92,12 @@ impl TranceClient {
 
     pub fn get_status(&self) -> zbus::Result<DaemonStatus> {
         let map = match self.kind {
-            EndpointKind::Primary => IdlePrimaryProxyBlocking::new(&self.connection)?.get_status()?,
-            EndpointKind::Legacy => TranceLegacyProxyBlocking::new(&self.connection)?.get_status()?,
+            EndpointKind::Primary => {
+                IdlePrimaryProxyBlocking::new(&self.connection)?.get_status()?
+            }
+            EndpointKind::Legacy => {
+                TranceLegacyProxyBlocking::new(&self.connection)?.get_status()?
+            }
         };
         parse_status(map)
     }
@@ -136,23 +140,15 @@ impl TranceClient {
 
     pub fn list_savers(&self) -> zbus::Result<Vec<String>> {
         match self.kind {
-            EndpointKind::Primary => {
-                IdlePrimaryProxyBlocking::new(&self.connection)?.list_savers()
-            }
-            EndpointKind::Legacy => {
-                TranceLegacyProxyBlocking::new(&self.connection)?.list_savers()
-            }
+            EndpointKind::Primary => IdlePrimaryProxyBlocking::new(&self.connection)?.list_savers(),
+            EndpointKind::Legacy => TranceLegacyProxyBlocking::new(&self.connection)?.list_savers(),
         }
     }
 
     pub fn preview(&self, name: &str) -> zbus::Result<()> {
         match self.kind {
-            EndpointKind::Primary => {
-                IdlePrimaryProxyBlocking::new(&self.connection)?.preview(name)
-            }
-            EndpointKind::Legacy => {
-                TranceLegacyProxyBlocking::new(&self.connection)?.preview(name)
-            }
+            EndpointKind::Primary => IdlePrimaryProxyBlocking::new(&self.connection)?.preview(name),
+            EndpointKind::Legacy => TranceLegacyProxyBlocking::new(&self.connection)?.preview(name),
         }
     }
 
@@ -169,10 +165,12 @@ impl TranceClient {
 
     pub fn inhibit(&self, application: &str, reason: &str) -> zbus::Result<u32> {
         match self.kind {
-            EndpointKind::Primary => IdlePrimaryProxyBlocking::new(&self.connection)?
-                .inhibit(application, reason),
-            EndpointKind::Legacy => TranceLegacyProxyBlocking::new(&self.connection)?
-                .inhibit(application, reason),
+            EndpointKind::Primary => {
+                IdlePrimaryProxyBlocking::new(&self.connection)?.inhibit(application, reason)
+            }
+            EndpointKind::Legacy => {
+                TranceLegacyProxyBlocking::new(&self.connection)?.inhibit(application, reason)
+            }
         }
     }
 
@@ -222,10 +220,12 @@ impl TranceClient {
 
     pub fn set_render_scale(&self, scale: f32) -> zbus::Result<()> {
         match self.kind {
-            EndpointKind::Primary => IdlePrimaryProxyBlocking::new(&self.connection)?
-                .set_render_scale(f64::from(scale)),
-            EndpointKind::Legacy => TranceLegacyProxyBlocking::new(&self.connection)?
-                .set_render_scale(f64::from(scale)),
+            EndpointKind::Primary => {
+                IdlePrimaryProxyBlocking::new(&self.connection)?.set_render_scale(f64::from(scale))
+            }
+            EndpointKind::Legacy => {
+                TranceLegacyProxyBlocking::new(&self.connection)?.set_render_scale(f64::from(scale))
+            }
         }
     }
 }
