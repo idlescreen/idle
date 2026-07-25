@@ -1,57 +1,100 @@
-# IdleScreen
+# IdleScreen (idle)
 
-**IdleScreen** is a modular, high-performance ambient screensaver host and idle management suite designed for Wayland compositors (COSMIC, Hyprland, Sway, GNOME, KDE Plasma).
+Core daemon, CLI, plugin API, and presentation host for **IdleScreen**.
 
-Official Website: [https://idlescreen.github.io](https://idlescreen.github.io)
+IdleScreen is a modular Wayland idle manager: the daemon watches compositor idle signals, loads screensaver plugins, and presents their frames on a layer-shell surface. Control it with the CLI, optional TUI, or optional COSMIC panel applet (separate packages).
+
+Website: [https://idlescreen.github.io](https://idlescreen.github.io)
 
 ---
 
-## Quick Install
+## Quick install
 
-**Supported Linux Distributions:** **Arch**, **Debian**, **Fedora**
+**install.sh supports:** Fedora / RHEL-family (**DNF**) and Debian / Ubuntu-family (**APT**).  
+**Arch:** experimental PKGBUILD in [idlescreen/packages](https://github.com/idlescreen/packages) `arch/` — not covered by the one-line installer.
 
 ```bash
 curl -fsSL https://idlescreen.github.io/packages/install.sh | sh
 ```
 
----
-
-## Official Screensaver Gallery
-
-IdleScreen includes 10 real-time procedural GPU & TUI visual effect modules out of the box:
-
-| Module | Description | Preview Command | Video Preview |
-|--------|-------------|-----------------|---------------|
-| **Beams** | Vector laser particle beams crossing in space | `idlescreen preview beams` | <video autoplay loop muted playsinline src="https://idlescreen.github.io/assets/videos/beams.mp4" width="280"></video> |
-| **Cosmos** | Deep space starfield & nebula warp simulation | `idlescreen preview cosmos` | <video autoplay loop muted playsinline src="https://idlescreen.github.io/assets/videos/cosmos.mp4" width="280"></video> |
-| **Bursts** | Supernova geometry & shockwave physics | `idlescreen preview bursts` | <video autoplay loop muted playsinline src="https://idlescreen.github.io/assets/videos/bursts.mp4" width="280"></video> |
-| **Storm** | Particle storm with lightning displacement | `idlescreen preview storm` | <video autoplay loop muted playsinline src="https://idlescreen.github.io/assets/videos/storm.mp4" width="280"></video> |
-| **Chaos** | Mathematical attractor chaos fractals | `idlescreen preview chaos` | <video autoplay loop muted playsinline src="https://idlescreen.github.io/assets/videos/chaos.mp4" width="280"></video> |
-| **Hearth** | Warm ambient embers & fire simulation | `idlescreen preview hearth` | <video autoplay loop muted playsinline src="https://idlescreen.github.io/assets/videos/hearth.mp4" width="280"></video> |
-| **Ripple** | Fluid wave dynamics & caustics | `idlescreen preview ripple` | <video autoplay loop muted playsinline src="https://idlescreen.github.io/assets/videos/ripple.mp4" width="280"></video> |
-| **Radar** | Polar sonar sweep radar tracking | `idlescreen preview radar` | <video autoplay loop muted playsinline src="https://idlescreen.github.io/assets/videos/radar.mp4" width="280"></video> |
-| **Glyphs** | Digital matrix stream character cascade | `idlescreen preview glyphs` | <video autoplay loop muted playsinline src="https://idlescreen.github.io/assets/videos/glyphs.mp4" width="280"></video> |
-| **Gnats** | Swarming autonomous agent behavior | `idlescreen preview gnats` | <video autoplay loop muted playsinline src="https://idlescreen.github.io/assets/videos/gnats.mp4" width="280"></video> |
+Installs `idle-daemon`, `idle-cli`, `idle-savers`, `idle-tui`, and on COSMIC also `idle-cosmic`.
 
 ---
 
-## Features & Architecture
+## Repository layout (this monorepo)
 
-- **WGPU Low-CPU Engine:** High-performance hardware acceleration with fallback software rasterization for terminal & headless hosts.
-- **COSMIC DE Panel Applet:** Native System76 COSMIC desktop integration with 1-click status control.
-- **Universal Terminal Host:** Interactive TUI (`idlescreen tui`) for terminal power users.
-- **Smart Power Management:** Automatic battery state detection and media playback inhibit listeners.
+| Crate / area | Role |
+|--------------|------|
+| `idle-daemon` | Idle policy, plugin host, Wayland presentation, user systemd unit |
+| `idle-cli` | CLI binaries `idlescreen` / `idle` (and legacy `trance`) |
+| `idle-api` | Plugin trait / cell-grid ABI for savers |
+| `idle-runner` | Shared host helpers (cell raster, sys info, plugin session) |
+| `crates/wayland-present` | Layer-shell overlay presentation |
+
+Related org repos (not always in this tree): `idle-tui`, `idle-cosmic`, `idle-saver-*`, `packages`, `render`, `idle-studio`.
 
 ---
 
-## Manual Package Installation
+## Official screensavers
 
-If you prefer to manually configure your Linux package manager:
+Ten procedural **cell-grid plugins** (separate packages / repos). The host rasterizes cells to pixels (optional wgpu cell path, CPU fallback).
+
+| Module | Description | Preview |
+|--------|-------------|---------|
+| **Beams** | Crossing vector beams | `idlescreen preview beams` |
+| **Cosmos** | Starfield / nebula-style motion | `idlescreen preview cosmos` |
+| **Bursts** | Expanding burst patterns | `idlescreen preview bursts` |
+| **Storm** | Dense particles with flash accents | `idlescreen preview storm` |
+| **Chaos** | Strange-attractor style curves | `idlescreen preview chaos` |
+| **Hearth** | Warm ember / fire-like ambient | `idlescreen preview hearth` |
+| **Ripple** | Expanding wave patterns | `idlescreen preview ripple` |
+| **Radar** | Sweeping radar arc with blips | `idlescreen preview radar` |
+| **Glyphs** | Falling character cascade | `idlescreen preview glyphs` |
+| **Gnats** | Swarming agent motion | `idlescreen preview gnats` |
+
+---
+
+## Features (as shipped)
+
+- **Wayland presentation** — requires compositor support for idle-notify and layer-shell (or equivalent). Strongest on COSMIC, Hyprland, and Sway; GNOME and KDE vary by protocol coverage. See `docs/BOUNDARIES.md`.
+- **Cell-grid plugins + host raster** — savers implement `idle-api`; host rasterizes (optional wgpu, CPU fallback).
+- **COSMIC panel applet** — optional package `idle-cosmic` (separate repo).
+- **CLI and TUI** — `idlescreen` / `idle`; `idlescreen tui` runs the `idle-tui` binary when installed.
+- **Inhibit and battery** — logind + MPRIS2 media inhibit; on battery, present/sim targets capped to 30 FPS/Hz.
+
+---
+
+## Manual package installation
 
 <details>
-<summary><b>Arch Linux (`makepkg`)</b></summary>
+<summary><b>Fedora / RHEL (DNF)</b></summary>
 
-<br>
+```bash
+sudo curl -fsSL https://idlescreen.github.io/packages/rpm/idlescreen.repo \
+  -o /etc/yum.repos.d/idlescreen.repo
+sudo dnf check-update
+sudo dnf install idle-daemon idle-cli idle-savers idle-tui
+# COSMIC: sudo dnf install idle-cosmic
+```
+</details>
+
+<details>
+<summary><b>Debian / Ubuntu (APT)</b></summary>
+
+```bash
+sudo mkdir -p /etc/apt/keyrings
+curl -fsSL https://idlescreen.github.io/packages/apt/idlescreen-keyring.gpg \
+  | sudo tee /etc/apt/keyrings/idlescreen-keyring.gpg >/dev/null
+echo "deb [signed-by=/etc/apt/keyrings/idlescreen-keyring.gpg] https://idlescreen.github.io/packages/apt stable main" \
+  | sudo tee /etc/apt/sources.list.d/idlescreen.list >/dev/null
+sudo apt update
+sudo apt install idle-daemon idle-cli idle-savers idle-tui
+# COSMIC: sudo apt install idle-cosmic
+```
+</details>
+
+<details>
+<summary><b>Arch Linux (experimental)</b></summary>
 
 ```bash
 git clone https://github.com/idlescreen/packages.git
@@ -60,77 +103,44 @@ makepkg -si
 ```
 </details>
 
-<details>
-<summary><b>Debian / Ubuntu / Pop!_OS (APT)</b></summary>
+---
 
-<br>
-
-```bash
-# Add Keyring & Repository
-sudo mkdir -p /etc/apt/keyrings
-curl -fsSL https://idlescreen.github.io/packages/apt/idlescreen-keyring.gpg | sudo tee /etc/apt/keyrings/idlescreen-keyring.gpg >/dev/null
-echo "deb [signed-by=/etc/apt/keyrings/idlescreen-keyring.gpg] https://idlescreen.github.io/packages/apt stable main" | sudo tee /etc/apt/sources.list.d/idlescreen.list >/dev/null
-
-# Update Index & Install Product
-sudo apt update
-sudo apt install idle-daemon idle-cli idle-savers idle-tui
-```
-</details>
-
-<details>
-<summary><b>Fedora / RHEL / CentOS Stream (DNF)</b></summary>
-
-<br>
+## CLI commands
 
 ```bash
-# Add DNF Repository
-sudo curl -fsSL https://idlescreen.github.io/packages/rpm/idlescreen.repo -o /etc/yum.repos.d/idlescreen.repo
-
-# Refresh Metadata & Install Product
-sudo dnf check-update
-sudo dnf install idle-daemon idle-cli idle-savers idle-tui
+idlescreen tui              # Launch idle-tui dashboard
+idlescreen status           # Daemon and saver state
+idlescreen on               # Enable idle screensaver (alias: enable)
+idlescreen off              # Disable idle screensaver (alias: disable)
+idlescreen preview <name>   # Preview a saver now
+idlescreen stop             # Stop preview / presentation
+idlescreen doctor           # Diagnostics
+idlescreen --help           # Full command list
 ```
-</details>
+
+Alias: `idle` is the same binary as `idlescreen`.
 
 ---
 
-## CLI Commands
-
-Control IdleScreen from your terminal using `idlescreen` (or short alias `idle`):
-
-```bash
-idlescreen tui            # Launch interactive terminal UI dashboard
-idlescreen status         # Check daemon and active screensaver status
-idlescreen trigger        # Trigger screensaver immediately
-idlescreen on             # Enable screensaver engine
-idlescreen off            # Disable screensaver engine
-idlescreen preview <name> # Preview a specific screensaver module
-idlescreen doctor         # Run system health and Wayland diagnostic check
-```
-
----
-
-## Terminal UI (`idlescreen tui`)
-
-Launch the live interactive dashboard in any terminal window:
+## Terminal UI
 
 ```bash
 idlescreen tui
+# or: idle-tui
 ```
-
-### Keyboard Shortcuts
 
 | Key | Action |
 |-----|--------|
-| `Tab` / `Shift+Tab` | Switch between Dashboard, Savers, and Settings panes |
-| `Space` | Toggle screensaver engine On / Off |
-| `Enter` | Trigger screensaver immediately |
-| `c` | 1-Click install COSMIC DE panel applet (COSMIC DE only) |
-| `q` | Quit TUI |
+| `Tab` | Switch panes |
+| `Space` / `Enter` | Toggle or activate (depends on pane) |
+| `p` | Preview selected saver (Savers pane) |
+| `c` | Install `idle-cosmic` when COSMIC is detected and applet is missing |
+| `q` / `Esc` | Quit |
 
 ---
 
 ## Links
 
-- **Official Website:** [https://idlescreen.github.io](https://idlescreen.github.io)
-- **GitHub Organization:** [github.com/idlescreen](https://github.com/idlescreen)
+- Website: [https://idlescreen.github.io](https://idlescreen.github.io)
+- Packages: [github.com/idlescreen/packages](https://github.com/idlescreen/packages)
+- Org: [github.com/idlescreen](https://github.com/idlescreen)
