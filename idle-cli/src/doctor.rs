@@ -114,7 +114,6 @@ fn fix_user_service() -> Result<()> {
 }
 
 fn print_results(results: &[CheckResult]) {
-    println!("==========================================");
     for result in results {
         let marker = if result.passed { "ok" } else { "FAIL" };
         println!("  [{marker}] {}: {}", result.name, result.detail);
