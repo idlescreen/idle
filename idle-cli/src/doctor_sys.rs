@@ -36,7 +36,13 @@ pub fn check_package_install() -> CheckResult {
     ];
 
     // Binaries that imply an IdleScreen install when owned by a package.
-    const BINARIES: &[&str] = &["idle-daemon", "idlescreen", "idle", "idle-tui", "idle-cosmic"];
+    const BINARIES: &[&str] = &[
+        "idle-daemon",
+        "idlescreen",
+        "idle",
+        "idle-tui",
+        "idle-cosmic",
+    ];
 
     let mut found: Vec<String> = Vec::new();
 
@@ -82,7 +88,9 @@ pub fn check_package_install() -> CheckResult {
             println!("     -> System packages: https://idlescreen.github.io/packages/");
             return chk("Package", true, "unmanaged install (binaries present)");
         }
-        println!(" [✗] Package: no IdleScreen packages detected (expected idle-daemon / idle-cli).");
+        println!(
+            " [✗] Package: no IdleScreen packages detected (expected idle-daemon / idle-cli)."
+        );
         println!(
             "     -> Install: curl -fsSL https://idlescreen.github.io/packages/install.sh | sh"
         );
@@ -256,8 +264,12 @@ mod tests {
 
     #[test]
     fn package_rank_prefers_core() {
-        assert!(package_rank("idle-daemon-2.3.1-1.x86_64") < package_rank("idle-cli-2.3.1-1.x86_64"));
+        assert!(
+            package_rank("idle-daemon-2.3.1-1.x86_64") < package_rank("idle-cli-2.3.1-1.x86_64")
+        );
         assert!(package_rank("idle-cli-2.3.1-1.x86_64") < package_rank("idle-tui-2.2.0-1.x86_64"));
-        assert!(package_rank("idle-savers-2.3.1-1.x86_64") < package_rank("idle-cosmic-2.1.2-1.x86_64"));
+        assert!(
+            package_rank("idle-savers-2.3.1-1.x86_64") < package_rank("idle-cosmic-2.1.2-1.x86_64")
+        );
     }
 }
