@@ -5,9 +5,7 @@
 use anyhow::Result;
 use std::process::Command;
 
-use super::self_update_backend::{
-    Backend, PKG_CANDIDATES, detect_backend, stdout_trim,
-};
+use super::self_update_backend::{Backend, PKG_CANDIDATES, detect_backend, stdout_trim};
 
 fn rpm_installed_version(pkg: &str) -> Option<String> {
     stdout_trim("rpm", &["-q", pkg, "--qf", "%{VERSION}-%{RELEASE}"])
@@ -48,9 +46,9 @@ fn parse_dnf_list_version(text: &str, want_available: bool) -> Option<String> {
             section = "available";
             continue;
         }
-        let looks_like_pkg = PKG_CANDIDATES.iter().any(|p| {
-            line.starts_with(&format!("{p}.")) || line.starts_with(&format!("{p} "))
-        });
+        let looks_like_pkg = PKG_CANDIDATES
+            .iter()
+            .any(|p| line.starts_with(&format!("{p}.")) || line.starts_with(&format!("{p} ")));
         if !looks_like_pkg {
             continue;
         }

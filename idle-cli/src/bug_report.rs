@@ -87,20 +87,9 @@ pub fn handle_bug_report() -> Result<()> {
 }
 
 fn package_version_line() -> Option<String> {
-    for pkg in [
-        "idle-cli",
-        "idle-daemon",
-        "idlescreen",
-        "idle",
-        "trance",
-    ] {
+    for pkg in ["idle-cli", "idle-daemon", "idlescreen", "idle", "trance"] {
         if let Ok(o) = Command::new("rpm")
-            .args([
-                "-q",
-                pkg,
-                "--qf",
-                "%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}",
-            ])
+            .args(["-q", pkg, "--qf", "%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}"])
             .output()
             && o.status.success()
         {

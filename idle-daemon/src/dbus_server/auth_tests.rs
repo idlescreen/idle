@@ -42,7 +42,10 @@ fn trusted_peer_names_are_fixed() {
 fn trusted_peer_names_fit_linux_comm() {
     // Kernel task comm is 15 visible chars; long basenames match via prefix truncation.
     for name in TRUSTED_CONTROL_PEERS {
-        assert!(comm_matches_trusted(name), "{name:?} should match full name");
+        assert!(
+            comm_matches_trusted(name),
+            "{name:?} should match full name"
+        );
         if name.len() > 15 {
             let trunc = &name[..15];
             assert!(

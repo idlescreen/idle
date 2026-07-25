@@ -3,13 +3,7 @@
 use std::process::Command;
 
 /// Product/engine package names for update detection (NEVRA order preferred).
-pub const PKG_CANDIDATES: &[&str] = &[
-    "idle-cli",
-    "idle-daemon",
-    "idlescreen",
-    "idle",
-    "trance",
-];
+pub const PKG_CANDIDATES: &[&str] = &["idle-cli", "idle-daemon", "idlescreen", "idle", "trance"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Backend {
