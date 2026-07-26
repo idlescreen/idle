@@ -3,7 +3,7 @@
 
 pub fn print_usage() {
     println!(
-        "Usage: idlescreen <command> [args]  (alias: idle <command>)\n\
+        "Usage: idlescreen <command> [args]\n\
          \n\
          Global flags:\n\
            -h, --help              Show this help\n\

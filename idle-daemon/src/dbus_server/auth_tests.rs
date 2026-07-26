@@ -23,14 +23,11 @@ fn clear_trust_all_env() {
 
 #[test]
 fn trusted_peer_names_are_fixed() {
-    assert!(TRUSTED_CONTROL_PEERS.contains(&"idle"));
     assert!(TRUSTED_CONTROL_PEERS.contains(&"idlescreen"));
     assert!(TRUSTED_CONTROL_PEERS.contains(&"idle-tui"));
-    assert!(TRUSTED_CONTROL_PEERS.contains(&"idlescreen-tui"));
     assert!(TRUSTED_CONTROL_PEERS.contains(&"idlescreen-applet"));
-    assert!(!TRUSTED_CONTROL_PEERS.contains(&"trance"));
-    assert!(!TRUSTED_CONTROL_PEERS.contains(&"trance-applet"));
-    assert!(!TRUSTED_CONTROL_PEERS.contains(&"trance-tui"));
+    // /usr/bin/idle is python3-idle on Fedora — must not be trusted for D-Bus control.
+    assert!(!TRUSTED_CONTROL_PEERS.contains(&"idle"));
     assert!(!TRUSTED_CONTROL_PEERS.contains(&"bash"));
     assert!(!TRUSTED_CONTROL_PEERS.contains(&"python3"));
     assert!(!TRUSTED_CONTROL_PEERS.contains(&"idle-daemon"));

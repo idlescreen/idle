@@ -4,10 +4,9 @@
 
 /// Basenames of processes allowed to call control methods on the daemon.
 pub(super) const TRUSTED_CONTROL_PEERS: &[&str] = &[
-    "idle",
+    // Never trust basename "idle" — that is Fedora's python3-idle IDE binary.
     "idlescreen",
     "idle-tui",
-    "idlescreen-tui",
     "idlescreen-applet",
 ];
 

@@ -1,19 +1,22 @@
 .TH IDLESCREEN 1 "July 2026" "idlescreen" "IdleScreen CLI"
 .SH NAME
-idlescreen, idle \- control the IdleScreen daemon
+idlescreen \- control the IdleScreen daemon
 .SH SYNOPSIS
 .B idlescreen
 [\fICOMMAND\fR] [\fIARGS\fR...]
-.br
-.B idle
-[\fICOMMAND\fR] [\fIARGS\fR...]
 .SH DESCRIPTION
 .B idlescreen
-(alias
-.BR idle )
 is the CLI for the IdleScreen user daemon
 .BR idle-daemon (1).
 It controls idle presentation, previews plugins, and runs diagnostics over D-Bus.
+.br
+Note: this package does
+.B not
+install
+.BR /usr/bin/idle ,
+which is reserved for Fedora's
+.B python3-idle
+(Python IDE).
 .SH COMMANDS
 .TP
 .B tui

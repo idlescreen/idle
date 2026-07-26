@@ -27,7 +27,7 @@ Installs the product metapackage **`idlescreen`** (depends on `idle-daemon`, `id
 | Crate / area | Role |
 |--------------|------|
 | `idle-daemon` | Idle policy, plugin host, Wayland presentation, user systemd unit |
-| `idle-cli` | CLI binaries `idlescreen` / `idle` |
+| `idle-cli` | CLI binary `idlescreen` (not `/usr/bin/idle` — that is python3-idle on Fedora) |
 | `idle-api` | Plugin trait / cell-grid ABI for savers |
 | `idle-runner` | Shared host helpers (cell raster, sys info, plugin session) |
 | `crates/wayland-present` | Layer-shell overlay presentation |
@@ -60,7 +60,7 @@ Ten procedural **cell-grid plugins** (separate packages / repos). The host raste
 - **Wayland presentation** — requires compositor support for idle-notify and layer-shell (or equivalent). Strongest on COSMIC, Hyprland, and Sway; GNOME and KDE vary by protocol coverage. See `docs/BOUNDARIES.md`.
 - **Cell-grid plugins + host raster** — savers implement `idle-api`; host rasterizes (optional wgpu, CPU fallback).
 - **COSMIC panel applet** — optional package `idle-cosmic` (separate repo).
-- **CLI and TUI** — `idlescreen` / `idle`; `idlescreen tui` runs the `idle-tui` binary when installed.
+- **CLI and TUI** — `idlescreen`; `idlescreen tui` runs the `idle-tui` binary when installed.
 - **Inhibit and battery** — logind + MPRIS2 media inhibit; on battery, present/sim targets capped to 30 FPS/Hz.
 
 ---
@@ -120,8 +120,6 @@ idlescreen stop             # Stop preview / presentation
 idlescreen doctor           # Diagnostics
 idlescreen --help           # Full command list
 ```
-
-Alias: `idle` is the same binary as `idlescreen`.
 
 ---
 

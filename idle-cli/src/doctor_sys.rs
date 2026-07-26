@@ -18,8 +18,8 @@ pub fn check_fonts() -> CheckResult {
 
 /// Probe IdleScreen product packages by NEVRA and by ownership of known binaries.
 ///
-/// Do **not** query `cosmic-idle` as a package name: on Fedora that is System76's
-/// COSMIC DE package. IdleScreen ships a wrapper binary of that name inside `idle-cli`.
+/// Do **not** query `cosmic-idle` (System76 COSMIC) or treat `/usr/bin/idle` as
+/// IdleScreen — that path is Fedora's `python3-idle` (Python IDE).
 pub fn check_package_install() -> CheckResult {
     // Published IdleScreen package names (order = report preference).
     const CANDIDATES: &[&str] = &[
@@ -29,18 +29,13 @@ pub fn check_package_install() -> CheckResult {
         "idle-tui",
         "idle-cosmic",
         "idle-studio",
-        // Meta product package from packages repo (optional).
+        // Meta product package from packages repo.
         "idlescreen",
     ];
 
     // Binaries that imply an IdleScreen install when owned by a package.
-    const BINARIES: &[&str] = &[
-        "idle-daemon",
-        "idlescreen",
-        "idle",
-        "idle-tui",
-        "idle-cosmic",
-    ];
+    // Never include bare `idle` — that is python3-idle on Fedora.
+    const BINARIES: &[&str] = &["idle-daemon", "idlescreen", "idle-tui", "idlescreen-applet"];
 
     let mut found: Vec<String> = Vec::new();
 

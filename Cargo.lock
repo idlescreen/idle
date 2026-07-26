@@ -644,7 +644,7 @@ dependencies = [
 
 [[package]]
 name = "idle-cli"
-version = "2.5.0"
+version = "2.5.1"
 dependencies = [
  "anyhow",
  "idle-dbus",
@@ -656,7 +656,7 @@ dependencies = [
 
 [[package]]
 name = "idle-daemon"
-version = "2.5.0"
+version = "2.5.1"
 dependencies = [
  "anyhow",
  "futures-lite",
