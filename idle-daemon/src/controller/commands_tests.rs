@@ -160,12 +160,78 @@ fn set_show_fps_overlay_toggles() {
 
 #[test]
 fn preview_and_stop_are_no_ops() {
+    // apply_command does not mutate config for Preview/Stop — tick loop owns that.
     let (c, _tmp, _guard) = test_controller();
     assert!(
         c.apply_command(DaemonCommand::Preview("beams".into()))
             .is_ok()
     );
     assert!(c.apply_command(DaemonCommand::StopPresentation).is_ok());
+}
+
+#[test]
+fn command_queue_drains_preview_and_stop_in_order() {
+    let (c, _tmp, _guard) = test_controller();
+    c.command_tx
+        .send(DaemonCommand::Preview("beams".into()))
+        .expect("send preview");
+    c.command_tx
+        .send(DaemonCommand::Preview("ripple".into()))
+        .expect("send preview2");
+    c.command_tx
+        .send(DaemonCommand::StopPresentation)
+        .expect("send stop");
+    let cmds = c.drain_commands();
+    assert_eq!(cmds.len(), 3);
+    assert!(matches!(&cmds[0], DaemonCommand::Preview(n) if n == "beams"));
+    assert!(matches!(&cmds[1], DaemonCommand::Preview(n) if n == "ripple"));
+    assert!(matches!(cmds[2], DaemonCommand::StopPresentation));
+    assert!(c.drain_commands().is_empty());
+}
+
+#[test]
+fn command_queue_enable_persists_and_is_drainable() {
+    let (c, _tmp, _guard) = test_controller();
+    c.command_tx
+        .send(DaemonCommand::Disable)
+        .expect("send disable");
+    // Drain does not apply — only returns. apply_command is separate path.
+    let cmds = c.drain_commands();
+    assert_eq!(cmds.len(), 1);
+    c.apply_command(DaemonCommand::Disable).expect("apply");
+    assert!(
+        !c.config
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .idle_enabled
+    );
+}
+
+#[test]
+fn set_saver_none_is_random_mode() {
+    let (c, _tmp, _guard) = test_controller();
+    c.apply_command(DaemonCommand::SetSaver(None))
+        .expect("random");
+    assert!(
+        c.config
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .active_saver
+            .is_none()
+    );
+}
+
+#[test]
+fn set_saver_rejects_path_traversal_name() {
+    let (c, _tmp, _guard) = test_controller();
+    assert!(
+        c.apply_command(DaemonCommand::SetSaver(Some("../evil".into())))
+            .is_err()
+    );
+    assert!(
+        c.apply_command(DaemonCommand::SetSaver(Some("beams;rm".into())))
+            .is_err()
+    );
 }
 
 #[test]

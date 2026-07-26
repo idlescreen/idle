@@ -9,6 +9,7 @@ mod battery;
 mod idle_decision;
 mod idle_logic;
 mod presentation;
+mod preview_queue;
 mod runtime;
 mod tick_loop;
 

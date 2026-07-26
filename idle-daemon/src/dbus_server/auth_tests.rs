@@ -154,7 +154,60 @@ fn untrusted_basename_never_matches_comm_policy() {
         "idle-daemon",
         "idle_daemon",
         "trance",
+        "python3",
+        "bash",
+        "zsh",
+        "node",
+        "cargo",
+        "firefox",
+        "idle", // Fedora python3-idle IDE
+        "Idle",
+        "IDLE",
+        "idlescreen-daemon",
+        "idlescreen-extra",
+        "idlescreen-tui", // wrong; real is idle-tui
+        "com.system76.CosmicAppletIdle",
     ] {
         assert!(!comm_matches_trusted(bad), "{bad} must not be trusted");
     }
+}
+
+#[test]
+fn trusted_control_peers_exact_set() {
+    // Package-gate contract: only these three control clients.
+    assert_eq!(TRUSTED_CONTROL_PEERS.len(), 3);
+    assert!(TRUSTED_CONTROL_PEERS.contains(&"idlescreen"));
+    assert!(TRUSTED_CONTROL_PEERS.contains(&"idle-tui"));
+    assert!(TRUSTED_CONTROL_PEERS.contains(&"idlescreen-applet"));
+}
+
+#[test]
+fn applet_comm_truncation_still_trusted() {
+    // idlescreen-applet is 17 chars → kernel comm first 15.
+    assert!(comm_matches_trusted("idlescreen-appl"));
+    assert!(!comm_matches_trusted("idlescreen-app")); // too short / wrong
+}
+
+#[test]
+fn security_reject_path_like_comms() {
+    for bad in [
+        "../idlescreen",
+        "/usr/bin/idlescreen",
+        "idlescreen;rm",
+        "idlescreen\n",
+        " idlescreen ",
+    ] {
+        // Trim only applies inside comm_matches for spaces; path forms must fail.
+        let trimmed = bad.trim();
+        if trimmed == "idlescreen" {
+            continue;
+        }
+        assert!(
+            !comm_matches_trusted(trimmed) || trimmed == "idlescreen",
+            "{bad:?}"
+        );
+    }
+    // Explicit path forms without trim equality
+    assert!(!comm_matches_trusted("../idlescreen"));
+    assert!(!comm_matches_trusted("/usr/bin/idlescreen"));
 }

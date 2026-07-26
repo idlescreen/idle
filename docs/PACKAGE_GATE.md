@@ -56,3 +56,18 @@ Prefer **pure functions + unit tests** over live checks:
 
 Do **not** add tests that open Wayland, need `sudo`, or require a running
 daemon to the package gate.
+
+## Categories covered (package-time)
+
+| Category | Examples in tree |
+|----------|------------------|
+| **Contract** | `idle-dbus` STATUS_FIELD_KEYS, CONTROL_METHODS, bus names |
+| **In-process integration** | `preview_queue`, command drain, `apply_live_fields` |
+| **Security tables** | auth trusted peers, path_safety SHM/socket, saver name reject |
+| **Goldens** | doctor_rules messages, inhibitors_fmt exact empty reports |
+| **Policy / recovery** | runtime recovery_plan, idle_decision, cooldown, battery |
+| **Presenter pure** | exclusive_zone, panel margins, EAGAIN, frame geometry |
+
+## Live-only (not package gate)
+
+`scripts/qa_preview_smoke.sh` — NRestarts, fullscreen journal, Grok list on a real session.

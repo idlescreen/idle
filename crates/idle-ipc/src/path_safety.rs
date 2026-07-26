@@ -111,6 +111,29 @@ mod tests {
         assert!(!is_plausible_socket_path("/run/../user/x.sock"));
         assert!(!is_plausible_socket_path("/a/b/../c.sock"));
     }
+
+    #[test]
+    fn shm_rejects_absolute_system_paths_disguised() {
+        assert!(!is_valid_shm_name("/etc/passwd"));
+        assert!(!is_valid_shm_name("/idle-shm-/etc/passwd"));
+        assert!(!is_valid_shm_name("/dev/shm/idle-shm-1-0"));
+        assert!(!is_valid_shm_name("idle-shm-1-0"));
+    }
+
+    #[test]
+    fn shm_accepts_only_prefix_forms() {
+        assert!(is_valid_shm_name("/idle-shm-0-0"));
+        assert!(is_valid_shm_name("/trance-shm-0-0"));
+        assert!(!is_valid_shm_name("/idlescreen-shm-0-0"));
+        assert!(!is_valid_shm_name("/idle_shm_0_0"));
+    }
+
+    #[test]
+    fn socket_rejects_non_sock_suffix() {
+        assert!(!is_plausible_socket_path("/run/user/1000/idle-uds-1-0"));
+        assert!(!is_plausible_socket_path("/run/user/1000/idle-uds-1-0.socket"));
+        assert!(is_plausible_socket_path("/run/user/1000/idle-uds-1-0.sock"));
+    }
 }
 
 #[cfg(test)]

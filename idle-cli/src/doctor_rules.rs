@@ -169,4 +169,35 @@ mod tests {
         ];
         assert!(all_systems_nominal(&results));
     }
+
+    #[test]
+    fn golden_dbus_disconnected_message() {
+        let r = dbus_disconnected_check();
+        assert_eq!(r.name, "D-Bus Service");
+        assert!(!r.passed);
+        assert!(r.detail.contains("idle-daemon is not running"));
+        assert!(r.detail.contains("systemctl --user start idle-daemon"));
+    }
+
+    #[test]
+    fn golden_inhibitor_blocked_message() {
+        let r = inhibitor_status_check(true, true);
+        assert_eq!(r.name, "Inhibitor Status");
+        assert!(!r.passed);
+        assert!(r.detail.contains("INHIBITED"));
+        assert!(r.detail.contains("idlescreen inhibitors"));
+    }
+
+    #[test]
+    fn golden_dbus_disabled_message() {
+        let r = dbus_status_check(false, 5, "beams");
+        assert!(!r.passed);
+        assert!(r.detail.contains("DISABLED"));
+        assert!(r.detail.contains("idlescreen enable"));
+    }
+
+    #[test]
+    fn empty_results_is_nominal() {
+        assert!(all_systems_nominal(&[]));
+    }
 }

@@ -53,13 +53,17 @@ echo ""
 # Named regression filters — fail closed on the bugs we already fixed.
 # Keeps the gate honest even if a new untested module is added elsewhere.
 echo ">>> cargo test (named host/preview regressions)"
-cargo test -p idle-cli -p idle-daemon -p idle-ipc -p wayland-present -- \
+cargo test -p idle-cli -p idle-daemon -p idle-ipc -p idle-dbus -p wayland-present -- \
   doctor_rules inhibitors_fmt ignore_logind merge_drops merge_includes \
   recovery_plan present_cooldown thrash hold_idle exit_process \
   preview_starts idle_decision path_safety hw_scaling \
   frame_geometry layer_not would_block eagain exclusive_zone \
   panel_expand fullscreen_expands geom_tests battery_should \
-  format_status status_text status_json
+  format_status status_text status_json golden_ \
+  contract_ STATUS_FIELD control_methods bus_contract \
+  queue_preview queue_stop requeue after_fault multi_preview \
+  trusted_control untrusted_basename applet_comm security_reject \
+  command_queue set_saver_rejects shm_rejects shm_accepts socket_rejects
 echo ""
 echo ">>> package gate: named regressions passed"
 echo ""

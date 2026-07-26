@@ -109,4 +109,32 @@ mod tests {
         assert!(s.contains("inhibited: false"));
         assert!(s.contains("idlescreen cookie 1"));
     }
+
+    #[test]
+    fn golden_empty_uninhibited_exact() {
+        let s = format_inhibitors_report(false, &[]);
+        assert_eq!(
+            s,
+            "inhibited: false\nNo active inhibitors.\n"
+        );
+    }
+
+    #[test]
+    fn golden_empty_inhibited_exact() {
+        let s = format_inhibitors_report(true, &[]);
+        assert_eq!(
+            s,
+            "inhibited: true\nNo listed inhibitors (unknown external block — see doctor).\n"
+        );
+    }
+
+    #[test]
+    fn golden_single_external_includes_preview_ignore_header() {
+        let rows = [(0u32, "mpris:mpv".into(), "PlaybackStatus=Playing".into())];
+        let s = format_inhibitors_report(true, &rows);
+        assert!(s.starts_with("inhibited: true  (1 source)\n"));
+        assert!(s.contains("forced preview ignores these"));
+        assert!(s.contains("[mpris:mpv] PlaybackStatus=Playing\n"));
+        assert!(!s.contains("cookie 0"));
+    }
 }
