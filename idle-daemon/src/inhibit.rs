@@ -9,7 +9,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 
 use zbus::names::UniqueName;
 
-use external::{check_logind_inhibited, check_mpris_playing, list_external};
+use external::list_external;
 
 #[derive(Debug, Clone)]
 pub struct Inhibitor {
@@ -162,11 +162,7 @@ impl InhibitorState {
     pub fn list_all(&self) -> Vec<(u32, String, String)> {
         let mut out = self.list();
         for ext in list_external() {
-            out.push((
-                0,
-                format!("{}:{}", ext.source, ext.who),
-                ext.why,
-            ));
+            out.push((0, format!("{}:{}", ext.source, ext.who), ext.why));
         }
         out
     }

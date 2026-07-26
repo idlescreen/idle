@@ -114,11 +114,7 @@ pub fn list_mpris_playing() -> Vec<ExternalInhibitor> {
 }
 
 #[cfg(all(target_os = "linux", not(test)))]
-fn mpris_status_playing(
-    conn: &zbus::blocking::Connection,
-    name: &str,
-    path: &str,
-) -> bool {
+fn mpris_status_playing(conn: &zbus::blocking::Connection, name: &str, path: &str) -> bool {
     let Ok(prop_reply) = conn.call_method(
         Some(name),
         path,
