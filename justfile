@@ -86,7 +86,15 @@ qa-unit-named:
 qa-smoke saver="beams":
     ./scripts/qa_preview_smoke.sh {{saver}}
 
-# Full local QA: package gate + live smoke
+# Full product closed-loop (install/bus/preview/fault) — needs Wayland session
+qa-product:
+    ./scripts/qa_product_loop.sh
+
+# Package gate + lighter live smoke
 qa: qa-package-gate qa-smoke
     @echo "QA package gate + live smoke passed."
+
+# Package gate + full product closed-loop (release machine)
+qa-all: qa-package-gate qa-product
+    @echo "QA package gate + product loop passed."
 

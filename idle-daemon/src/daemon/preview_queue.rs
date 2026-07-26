@@ -175,4 +175,57 @@ mod tests {
             assert!(p.is_none(), "{fault:?} should clear sticky preview");
         }
     }
+
+    /// Closed-loop simulation: control → fault → requeue (no Wayland).
+    #[test]
+    fn closed_loop_preview_fault_requeue_status_story() {
+        let mut preview = None;
+        // User presses p
+        queue_preview(&mut preview, "beams");
+        assert_eq!(
+            decide_after_queue(preview.as_deref(), true, false, "ripple"),
+            PresentationDecision::Start {
+                name: "beams".into(),
+                reason: "preview",
+            }
+        );
+        // Presenter dies; recovery clears sticky preview
+        apply_fault_clear_preview(&mut preview, RuntimeFault::PresenterDead);
+        assert!(preview.is_none());
+        // Cooldown path = inhibited for idle; must not thrash
+        assert_eq!(
+            decide_after_queue(None, true, true, "ripple"),
+            PresentationDecision::Hold
+        );
+        // User presses p again
+        queue_preview(&mut preview, "beams");
+        assert_eq!(
+            decide_after_queue(preview.as_deref(), true, true, "ripple"),
+            PresentationDecision::Start {
+                name: "beams".into(),
+                reason: "preview",
+            }
+        );
+        // Stop
+        queue_stop(&mut preview);
+        assert_eq!(
+            decide_after_queue(None, false, false, "ripple"),
+            PresentationDecision::Hold
+        );
+    }
+
+    #[test]
+    fn closed_loop_stop_during_idle_request() {
+        // Idle would start, but stop clears any sticky preview first.
+        let mut preview = Some("beams".into());
+        queue_stop(&mut preview);
+        let d = decide_after_queue(preview.as_deref(), false, true, "cosmos");
+        assert_eq!(
+            d,
+            PresentationDecision::Start {
+                name: "cosmos".into(),
+                reason: "idle",
+            }
+        );
+    }
 }

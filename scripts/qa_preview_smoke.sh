@@ -21,7 +21,9 @@ set -euo pipefail
 SAVER="${1:-${SAVER:-beams}}"
 LOOPS="${LOOPS:-2}"
 HOLD_SECS="${HOLD_SECS:-3}"
-MIN_DAEMON_VER="${MIN_DAEMON_VER:-2.5.9}"
+MIN_DAEMON_VER="${MIN_DAEMON_VER:-2.5.10}"
+# Set REQUIRE_PREVIEW_ACTIVE=0 to soft-skip durability (not for release cuts).
+REQUIRE_PREVIEW_ACTIVE="${REQUIRE_PREVIEW_ACTIVE:-1}"
 
 pass=0
 fail=0
@@ -114,10 +116,11 @@ for i in $(seq 1 "$LOOPS"); do
   st="$(idlescreen status 2>&1 || true)"
   if echo "$st" | grep -q 'preview_active:[[:space:]]*true'; then
     ok "preview_active=true after ${HOLD_SECS}s (loop $i)"
+  elif [[ "$REQUIRE_PREVIEW_ACTIVE" == "1" ]]; then
+    bad "preview_active not true after ${HOLD_SECS}s (loop $i) — broken presentation"
+    echo "$st" | sed 's/^/  | /' | head -20
   else
-    # Not always fatal if user dismissed or compositor quirks — warn as soft fail path.
-    # We still require daemon alive.
-    echo "INFO: preview_active not true after hold (loop $i) — checking daemon survival only"
+    echo "INFO: preview_active not true after hold (loop $i) — soft mode"
     echo "$st" | sed 's/^/  | /' | head -20
   fi
 

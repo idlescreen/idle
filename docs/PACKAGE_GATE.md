@@ -35,7 +35,9 @@ Grok filter, fullscreen panel, doctor NOMINAL, SHM, etc.). See
 
 | Check | Why excluded | When to run |
 |-------|--------------|-------------|
-| `scripts/qa_preview_smoke.sh` | Needs user session + compositor | After install on a real desktop |
+| `scripts/qa_package_gate.sh` | *(this file — does run)* | Every package build |
+| `scripts/qa_preview_smoke.sh` | Needs user session + compositor | After install |
+| `scripts/qa_product_loop.sh` | Full closed loop (bus, hold, fault) | After install / `just qa-all` — see [PRODUCT_GATE.md](PRODUCT_GATE.md) |
 | COSMIC applet UI | Separate package / desktop | Manual |
 | Nested Wayland CI | Infra-heavy | Optional later |
 
