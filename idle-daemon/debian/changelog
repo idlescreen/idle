@@ -1,3 +1,10 @@
+idle-daemon (2.5.10-1) unstable; urgency=medium
+
+  * Release cut: packaging now gates on qa-unit (idle-cli/daemon/ipc/wayland-present).
+  * Same product as 2.5.9 (fullscreen preview, stable recovery, Grok filter) verified by that gate.
+
+ -- IdleScreen <noreply@idlescreen.github.io>  Sat, 26 Jul 2026 09:10:00 -0700
+
 idle-daemon (2.5.9-1) unstable; urgency=medium
 
   * Preview/idle fullscreen again: exclusive_zone -1 + expand to native mode under panel.

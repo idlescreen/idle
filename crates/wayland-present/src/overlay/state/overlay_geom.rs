@@ -35,6 +35,7 @@ pub fn panel_expand_margins(
 }
 
 /// True when configure is strictly smaller than native mode (panel inset case).
+#[allow(dead_code)] // pure helper; covered by unit tests
 pub fn configure_is_panel_inset(
     native_w: u32,
     native_h: u32,
