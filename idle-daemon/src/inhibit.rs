@@ -9,7 +9,9 @@ use std::sync::atomic::{AtomicU32, Ordering};
 
 use zbus::names::UniqueName;
 
-use external::list_external;
+use external::{
+    check_logind_inhibited, check_mpris_playing, list_external,
+};
 
 #[derive(Debug, Clone)]
 pub struct Inhibitor {
@@ -165,12 +167,19 @@ impl InhibitorState {
 }
 
 /// Merge local cookies with external blocks (pure; unit-tested).
+///
+/// Callers must already drop ignored logind holds (see
+/// [`external::ignore_logind_idle_hold`]); this only formats rows.
 pub fn merge_inhibitor_rows(
     local: Vec<(u32, String, String)>,
     external: &[external::ExternalInhibitor],
 ) -> Vec<(u32, String, String)> {
     let mut out = local;
     for ext in external {
+        // Defense in depth: never surface Grok/agent-turn logind rows.
+        if ext.source == "logind" && external::ignore_logind_idle_hold(&ext.who, &ext.why) {
+            continue;
+        }
         out.push((0, format!("{}:{}", ext.source, ext.who), ext.why.clone()));
     }
     out

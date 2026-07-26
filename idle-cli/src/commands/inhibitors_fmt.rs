@@ -26,7 +26,9 @@ pub fn format_inhibitors_report(inhibited: bool, rows: &[(u32, String, String)])
         n,
         if n == 1 { "" } else { "s" }
     ));
-    out.push_str("Active inhibitors (block idle / can clear preview):\n");
+    out.push_str(
+        "Active inhibitors (block idle savers; forced preview ignores these):\n",
+    );
     for (cookie, app, reason) in rows {
         if *cookie == 0 {
             out.push_str(&format!("  [{app}] {reason}\n"));
@@ -58,17 +60,19 @@ mod tests {
     }
 
     #[test]
-    fn logind_grok_row() {
-        // Regression: Grok logind idle must appear by name.
+    fn logind_media_row_and_preview_note() {
+        // Real external holds list; forced preview is not blocked by them.
         let rows = vec![(
             0u32,
-            "logind:grok (block)".into(),
-            "agent turn in progress".into(),
+            "logind:vlc (block)".into(),
+            "playing video".into(),
         )];
         let s = format_inhibitors_report(true, &rows);
         assert!(s.contains("inhibited: true"));
-        assert!(s.contains("logind:grok"));
-        assert!(s.contains("agent turn in progress"));
+        assert!(s.contains("logind:vlc"));
+        assert!(s.contains("playing video"));
+        assert!(s.contains("forced preview ignores"));
+        assert!(!s.contains("can clear preview"));
         assert!(!s.contains("cookie 0"));
     }
 
@@ -97,11 +101,7 @@ mod tests {
 
     #[test]
     fn single_source_singular_label() {
-        let rows = vec![(
-            0u32,
-            "logind:grok (block)".into(),
-            "agent turn in progress".into(),
-        )];
+        let rows = vec![(0u32, "logind:vlc (block)".into(), "playing video".into())];
         let s = format_inhibitors_report(true, &rows);
         assert!(s.contains("1 source"));
         assert!(!s.contains("1 sources"));

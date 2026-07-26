@@ -13,10 +13,34 @@ pub struct ExternalInhibitor {
     pub why: String,
 }
 
+/// Whether a logind idle hold should be ignored by IdleScreen.
+///
+/// Coding agents (e.g. Grok) take a session `idle` inhibit so the DE does not
+/// blank during a turn. That must **not**:
+/// - appear in `idlescreen inhibitors`, or
+/// - block idle-driven savers / force doctor FAIL for "inhibited",
+/// because it is not a user media/fullscreen intent.
+///
+/// Forced preview (`idlescreen preview` / TUI `p`) already ignores *all*
+/// inhibitors in presentation policy; this filter cleans list + idle path.
+pub fn ignore_logind_idle_hold(who: &str, why: &str) -> bool {
+    // logind Who is typically "grok"; after format we store "grok (block)".
+    let who_base = who
+        .split(|c: char| c.is_whitespace() || c == '(')
+        .next()
+        .unwrap_or("")
+        .trim();
+    if who_base.eq_ignore_ascii_case("grok") {
+        return true;
+    }
+    let why_l = why.to_ascii_lowercase();
+    why_l.contains("agent turn")
+}
+
 #[cfg(all(target_os = "linux", not(test)))]
 type LogindInhibitorInfo = (String, String, String, String, u32, u32);
 
-/// True when logind has any inhibitor with `what` containing `idle`.
+/// True when logind has any **IdleScreen-relevant** idle inhibitor.
 #[cfg(all(target_os = "linux", not(test)))]
 pub fn check_logind_inhibited() -> bool {
     !list_logind_idle().is_empty()
@@ -42,13 +66,17 @@ pub fn list_logind_idle() -> Vec<ExternalInhibitor> {
         };
         let mut out = Vec::new();
         for (what, who, why, mode, _uid, _pid) in inhibitors {
-            if what.split(':').any(|w| w == "idle") {
-                out.push(ExternalInhibitor {
-                    source: "logind".into(),
-                    who: format!("{who} ({mode})"),
-                    why,
-                });
+            if !what.split(':').any(|w| w == "idle") {
+                continue;
             }
+            if ignore_logind_idle_hold(&who, &why) {
+                continue;
+            }
+            out.push(ExternalInhibitor {
+                source: "logind".into(),
+                who: format!("{who} ({mode})"),
+                why,
+            });
         }
         out
     };
@@ -159,4 +187,35 @@ pub fn list_external() -> Vec<ExternalInhibitor> {
     let mut out = list_logind_idle();
     out.extend(list_mpris_playing());
     out
+}
+
+#[cfg(test)]
+mod ignore_tests {
+    use super::ignore_logind_idle_hold;
+
+    #[test]
+    fn ignores_grok_who() {
+        assert!(ignore_logind_idle_hold("grok", "agent turn in progress"));
+        assert!(ignore_logind_idle_hold("Grok", "anything"));
+        assert!(ignore_logind_idle_hold("grok (block)", "agent turn in progress"));
+    }
+
+    #[test]
+    fn ignores_agent_turn_why_even_if_who_unknown() {
+        assert!(ignore_logind_idle_hold(
+            "some-agent",
+            "Agent turn in progress"
+        ));
+    }
+
+    #[test]
+    fn keeps_real_media_and_fullscreen_holds() {
+        assert!(!ignore_logind_idle_hold("vlc", "playing video"));
+        assert!(!ignore_logind_idle_hold("firefox", "fullscreen"));
+        assert!(!ignore_logind_idle_hold(
+            "org.gnome.Shell.fullscreen",
+            "application is fullscreen"
+        ));
+        assert!(!ignore_logind_idle_hold("steam", "game running"));
+    }
 }

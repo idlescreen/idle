@@ -115,25 +115,50 @@ fn list_all_includes_local_cookies() {
 }
 
 #[test]
-fn merge_includes_logind_grok_style_external() {
-    // Regression: status.inhibited true while CLI showed empty list.
+fn merge_includes_real_logind_external() {
+    // Real media/fullscreen holds still list (not Grok agent-turn).
     use super::external::ExternalInhibitor;
     use super::merge_inhibitor_rows;
 
     let local = vec![(1u32, "app".into(), "reason".into())];
     let external = vec![ExternalInhibitor {
         source: "logind".into(),
-        who: "grok (block)".into(),
-        why: "agent turn in progress".into(),
+        who: "vlc (block)".into(),
+        why: "playing video".into(),
     }];
     let rows = merge_inhibitor_rows(local, &external);
     assert_eq!(rows.len(), 2);
     assert!(
         rows.iter().any(|(k, app, why)| {
-            *k == 0 && app == "logind:grok (block)" && why == "agent turn in progress"
+            *k == 0 && app == "logind:vlc (block)" && why == "playing video"
         }),
-        "grok logind row missing: {rows:?}"
+        "vlc logind row missing: {rows:?}"
     );
+}
+
+#[test]
+fn merge_drops_grok_agent_turn_logind() {
+    use super::external::ExternalInhibitor;
+    use super::merge_inhibitor_rows;
+
+    let rows = merge_inhibitor_rows(
+        vec![],
+        &[
+            ExternalInhibitor {
+                source: "logind".into(),
+                who: "grok (block)".into(),
+                why: "agent turn in progress".into(),
+            },
+            ExternalInhibitor {
+                source: "mpris".into(),
+                who: "spotify".into(),
+                why: "PlaybackStatus=Playing".into(),
+            },
+        ],
+    );
+    assert_eq!(rows.len(), 1, "only mpris should remain: {rows:?}");
+    assert!(rows[0].1.starts_with("mpris:"));
+    assert!(!rows.iter().any(|(_, app, _)| app.contains("grok")));
 }
 
 #[test]

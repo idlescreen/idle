@@ -1,3 +1,10 @@
+idle-daemon (2.5.7-1) unstable; urgency=medium
+
+  * Ignore Grok/agent-turn logind idle holds in inhibitors list and idle block.
+  * Forced preview already ignores inhibitors; CLI copy says so explicitly.
+
+ -- IdleScreen <noreply@idlescreen.github.io>  Sat, 26 Jul 2026 08:15:00 -0700
+
 idle-daemon (2.5.6-1) unstable; urgency=medium
 
   * Preview stability: do not create wp_viewport unless IDLE_HW_VIEWPORT=1;

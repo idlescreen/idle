@@ -71,10 +71,12 @@ idlescreen stop
 
 | ID | Steps | Pass criteria |
 |----|--------|----------------|
-| I1 | While Grok/agent holds logind idle: `idlescreen inhibitors` | Shows `logind:…` and reason (e.g. agent turn) |
+| I1 | While Grok/agent holds logind idle only: `idlescreen inhibitors` | **Does not** list grok; inhibited false (agent-turn ignored) |
 | I2 | Play MPRIS media: `idlescreen inhibitors` | Shows `mpris:…` with Playing |
 | I3 | No external blocks, no cookies | `inhibited: false` + No active inhibitors |
 | I4 | `status` inhibited=true ⇔ list names sources **or** honest “unknown external” |
+| I5 | Real logind idle (vlc/fullscreen) | Listed; blocks **idle** savers only |
+| I6 | Forced preview while MPRIS/logind inhibited | Preview still starts; header says preview ignores |
 
 ## Preview / TUI `p` (critical)
 
