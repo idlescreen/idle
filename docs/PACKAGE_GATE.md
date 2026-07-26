@@ -45,7 +45,27 @@ Grok filter, fullscreen panel, doctor NOMINAL, SHM, etc.). See
 
 ```bash
 SKIP_TESTS=1 ./package.rs   # emergency only — not for release cuts
+GATE_SAVERS=0 ./scripts/qa_package_gate.sh  # host only (skip sibling plugins)
 ```
+
+## Screensavers
+
+Official plugins live in sibling repos `idle-saver-*`. When those directories are
+present next to `idle/`, the host package gate also runs:
+
+```bash
+../packages/scripts/qa_savers_package_gate.sh
+```
+
+Each saver also has:
+
+```bash
+cd ../idle-saver-beams
+./scripts/qa_package_gate.sh   # cargo test
+./package.sh                   # test → release build → RPM
+```
+
+That moves saver shipping to **yes**: no plugin RPM without its unit tests.
 
 ## Extending the gate
 

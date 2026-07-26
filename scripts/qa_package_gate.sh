@@ -68,6 +68,34 @@ echo ""
 echo ">>> package gate: named regressions passed"
 echo ""
 
+# When sibling screensaver checkouts exist, require their tests too
+# (GH host cuts often ship next to idle-savers meta). Set GATE_SAVERS=0 to skip.
+if [[ "${GATE_SAVERS:-1}" != "0" ]]; then
+  SAVERS_GATE="$(cd "$ROOT/.." && pwd)/packages/scripts/qa_savers_package_gate.sh"
+  if [[ -x "$SAVERS_GATE" ]] || [[ -f "$SAVERS_GATE" ]]; then
+    echo ">>> sibling savers package gate"
+    bash "$SAVERS_GATE"
+  elif compgen -G "$ROOT/../idle-saver-*/Cargo.toml" >/dev/null; then
+    echo ">>> sibling savers (inline)"
+    failed_s=0
+    for dir in "$ROOT"/../idle-saver-*/; do
+      name="$(basename "$dir")"
+      echo ">>> $name"
+      (
+        cd "$dir"
+        [[ -e idle ]] || ln -sfn ../idle idle
+        cargo test --quiet
+      ) || failed_s=$((failed_s + 1))
+    done
+    if [[ "$failed_s" -gt 0 ]]; then
+      echo "FAIL: $failed_s saver suite(s) failed" >&2
+      exit 1
+    fi
+  else
+    echo "INFO: no sibling idle-saver-* checkouts — host-only gate"
+  fi
+fi
+
 echo "=========================================="
 echo "PACKAGE_GATE_PASS"
 echo "=========================================="
