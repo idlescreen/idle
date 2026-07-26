@@ -65,10 +65,21 @@ qa-unit:
     cargo test -p idle-cli -p idle-daemon -p idle-ipc -p wayland-present
     @echo "QA unit regression suite passed."
 
+# Named filters covering morning+preview+fullscreen regressions (docs/QA_REGRESSION.md)
+qa-unit-named:
+    cargo test -p idle-cli -p idle-daemon -p idle-ipc -p wayland-present -- \
+        doctor_rules inhibitors_fmt ignore_logind merge_drops merge_includes \
+        recovery_plan present_cooldown thrash hold_idle exit_process \
+        preview_starts idle_decision path_safety hw_scaling \
+        frame_geometry layer_not would_block eagain exclusive_zone \
+        panel_expand fullscreen_expands geom_tests
+    @echo "QA named regression filters passed."
+
 # Live preview smoke: NRestarts must not rise (needs active idle-daemon + Wayland)
 qa-smoke saver="beams":
     ./scripts/qa_preview_smoke.sh {{saver}}
 
-# Full local QA gate: units + live smoke
-qa: qa-unit qa-smoke
-    @echo "QA unit + live smoke passed."
+# Full local QA gate: units + named filters + live smoke
+qa: qa-unit qa-unit-named qa-smoke
+    @echo "QA unit + named + live smoke passed."
+

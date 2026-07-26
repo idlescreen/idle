@@ -225,15 +225,23 @@ mod would_block_tests {
 
     #[test]
     fn eagain_is_would_block() {
+        // Regression: EAGAIN killed presenter → daemon recovered in a loop.
         let err = WaylandError::Io(std::io::Error::from(std::io::ErrorKind::WouldBlock));
         assert!(is_wayland_would_block(&err));
     }
 
     #[test]
+    fn interrupted_is_retryable() {
+        let err = WaylandError::Io(std::io::Error::from(std::io::ErrorKind::Interrupted));
+        assert!(is_wayland_would_block(&err));
+    }
+
+    #[test]
     fn protocol_error_is_fatal() {
-        // Non-Io errors must still tear down the thread.
-        // Construct via a real Io ConnectionAborted as a stand-in for non-WouldBlock.
+        // Connection loss / abort must still tear down the thread.
         let err = WaylandError::Io(std::io::Error::from(std::io::ErrorKind::ConnectionAborted));
         assert!(!is_wayland_would_block(&err));
+        let err2 = WaylandError::Io(std::io::Error::from(std::io::ErrorKind::BrokenPipe));
+        assert!(!is_wayland_would_block(&err2));
     }
 }

@@ -195,9 +195,11 @@ mod ignore_tests {
 
     #[test]
     fn ignores_grok_who() {
+        // Regression: Grok listed as inhibitor during agent turns.
         assert!(ignore_logind_idle_hold("grok", "agent turn in progress"));
         assert!(ignore_logind_idle_hold("Grok", "anything"));
         assert!(ignore_logind_idle_hold("grok (block)", "agent turn in progress"));
+        assert!(ignore_logind_idle_hold("grok(block)", "idle"));
     }
 
     #[test]
@@ -206,6 +208,7 @@ mod ignore_tests {
             "some-agent",
             "Agent turn in progress"
         ));
+        assert!(ignore_logind_idle_hold("tool", "agent turn"));
     }
 
     #[test]
@@ -217,5 +220,14 @@ mod ignore_tests {
             "application is fullscreen"
         ));
         assert!(!ignore_logind_idle_hold("steam", "game running"));
+        // grok sleep delay is not idle-what — who is still grok though:
+        // who-based filter still drops it (intentional: agent session).
+        assert!(ignore_logind_idle_hold("grok", "Pause token refresh across sleep"));
+    }
+
+    #[test]
+    fn does_not_ignore_empty_who_with_unrelated_why() {
+        assert!(!ignore_logind_idle_hold("", "playing video"));
+        assert!(!ignore_logind_idle_hold("mpv", "idle inhibit for playback"));
     }
 }

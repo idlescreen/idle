@@ -259,3 +259,39 @@ fn preview_stop_clears_without_starting_idle() {
     i.system_idle = false;
     assert_eq!(decide_presentation(i, "beams"), PresentationDecision::Hold);
 }
+
+#[test]
+fn cooldown_as_inhibit_blocks_idle_not_forced_preview() {
+    // Tick loop maps present_cooldown → inhibited=true for idle path only.
+    // Forced preview must still Start (same as MPRIS/logind inhibit).
+    let mut idle_blocked = base();
+    idle_blocked.system_idle = true;
+    idle_blocked.inhibited = true;
+    assert_eq!(
+        decide_presentation(idle_blocked, "ripple"),
+        PresentationDecision::Hold,
+        "post-fault cooldown must not thrash idle auto-start"
+    );
+
+    let mut force = base();
+    force.preview_name = Some("beams");
+    force.inhibited = true;
+    assert_eq!(
+        decide_presentation(force, "ripple"),
+        PresentationDecision::Start {
+            name: "beams".into(),
+            reason: "preview",
+        }
+    );
+}
+
+#[test]
+fn activity_does_not_stop_forced_preview_while_inhibited() {
+    let mut i = base();
+    i.is_active = true;
+    i.current_saver = "beams";
+    i.preview_name = Some("beams");
+    i.system_idle = false;
+    i.inhibited = true;
+    assert_eq!(decide_presentation(i, "ripple"), PresentationDecision::Hold);
+}

@@ -241,4 +241,19 @@ mod tests {
         assert!(should_hold_idle_presentation(true));
         assert!(!should_hold_idle_presentation(false));
     }
+
+    #[test]
+    fn thrash_guard_first_fault_is_at_least_five_seconds() {
+        // Without cooldown, idle restarts every tick (~250ms) after presenter death.
+        assert!(present_cooldown_after_fault(1).as_secs() >= 5);
+    }
+
+    #[test]
+    fn recovery_plan_always_clears_preview_on_presenter_death() {
+        // Sticky preview_name without clear → immediate re-Start after recover thrash.
+        let plan = recovery_plan(RuntimeFault::PresenterDead);
+        assert!(plan.clear_preview);
+        assert!(plan.stop_presentation);
+        assert!(!plan.exit_process);
+    }
 }
