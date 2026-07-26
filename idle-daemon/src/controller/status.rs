@@ -148,8 +148,8 @@ fn render_scale_matches(existing: &str, scale: f32) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::render_scale_matches;
     use super::DaemonController;
+    use super::render_scale_matches;
     use crate::config::DaemonConfig;
     use idle_dbus::DaemonStatus;
 
@@ -188,10 +188,24 @@ mod tests {
         let mut status = DaemonStatus::default();
         let config = DaemonConfig::default();
         let _ = DaemonController::apply_live_fields(
-            &mut status, &config, true, false, false, "", false, false,
+            &mut status,
+            &config,
+            true,
+            false,
+            false,
+            "",
+            false,
+            false,
         );
         let changed = DaemonController::apply_live_fields(
-            &mut status, &config, true, false, false, "", false, false,
+            &mut status,
+            &config,
+            true,
+            false,
+            false,
+            "",
+            false,
+            false,
         );
         assert!(!changed);
     }
@@ -201,7 +215,14 @@ mod tests {
         let mut status = DaemonStatus::default();
         let config = DaemonConfig::default();
         DaemonController::apply_live_fields(
-            &mut status, &config, false, false, false, "", true, false,
+            &mut status,
+            &config,
+            false,
+            false,
+            false,
+            "",
+            true,
+            false,
         );
         assert!(status.session_locked);
         assert!(!status.preview_active);
@@ -213,7 +234,14 @@ mod tests {
         let mut config = DaemonConfig::default();
         config.idle_enabled = false;
         DaemonController::apply_live_fields(
-            &mut status, &config, false, false, false, "", false, false,
+            &mut status,
+            &config,
+            false,
+            false,
+            false,
+            "",
+            false,
+            false,
         );
         assert!(!status.idle_enabled);
     }

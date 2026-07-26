@@ -46,8 +46,8 @@ pub fn decide_after_queue(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::idle_decision::PresentationDecision;
+    use super::*;
 
     #[test]
     fn queue_preview_sets_name() {

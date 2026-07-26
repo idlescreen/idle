@@ -131,7 +131,9 @@ mod tests {
     #[test]
     fn socket_rejects_non_sock_suffix() {
         assert!(!is_plausible_socket_path("/run/user/1000/idle-uds-1-0"));
-        assert!(!is_plausible_socket_path("/run/user/1000/idle-uds-1-0.socket"));
+        assert!(!is_plausible_socket_path(
+            "/run/user/1000/idle-uds-1-0.socket"
+        ));
         assert!(is_plausible_socket_path("/run/user/1000/idle-uds-1-0.sock"));
     }
 }

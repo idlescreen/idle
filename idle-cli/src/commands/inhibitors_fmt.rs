@@ -113,10 +113,7 @@ mod tests {
     #[test]
     fn golden_empty_uninhibited_exact() {
         let s = format_inhibitors_report(false, &[]);
-        assert_eq!(
-            s,
-            "inhibited: false\nNo active inhibitors.\n"
-        );
+        assert_eq!(s, "inhibited: false\nNo active inhibitors.\n");
     }
 
     #[test]

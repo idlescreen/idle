@@ -58,32 +58,6 @@ fn font() -> Option<&'static Font> {
     .as_ref()
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn font_candidates_include_fedora_and_debian_layouts() {
-        let c = caption_font_candidates();
-        assert!(c.iter().any(|p| p.contains("dejavu-sans-mono-fonts")));
-        assert!(c.iter().any(|p| p.contains("truetype/dejavu")));
-        assert!(c.iter().any(|p| p.contains("LiberationMono")));
-    }
-
-    #[test]
-    fn font_init_succeeds_when_system_mono_present() {
-        // On CI without fonts this may be None; on a desktop with DejaVu it loads.
-        init_font();
-        let any_present = FONT_CANDIDATES.iter().any(|p| std::path::Path::new(p).is_file());
-        if any_present {
-            assert!(
-                font().is_some(),
-                "expected a caption font when a candidate file exists on disk"
-            );
-        }
-    }
-}
-
 /// Draw a readable bottom-centered caption bar at native monitor resolution.
 pub fn draw_bottom_center(
     pixels: &mut [u8],
@@ -210,4 +184,32 @@ fn blend_pixel(pixels: &mut [u8], width: u32, x: u32, y: u32, rgb: (u8, u8, u8),
     pixels[idx + 1] = (pixels[idx + 1] as f32 * inv + rgb.1 as f32 * a) as u8;
     pixels[idx + 2] = (pixels[idx + 2] as f32 * inv + rgb.0 as f32 * a) as u8;
     pixels[idx + 3] = 255;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn font_candidates_include_fedora_and_debian_layouts() {
+        let c = caption_font_candidates();
+        assert!(c.iter().any(|p| p.contains("dejavu-sans-mono-fonts")));
+        assert!(c.iter().any(|p| p.contains("truetype/dejavu")));
+        assert!(c.iter().any(|p| p.contains("LiberationMono")));
+    }
+
+    #[test]
+    fn font_init_succeeds_when_system_mono_present() {
+        // On CI without fonts this may be None; on a desktop with DejaVu it loads.
+        init_font();
+        let any_present = FONT_CANDIDATES
+            .iter()
+            .any(|p| std::path::Path::new(p).is_file());
+        if any_present {
+            assert!(
+                font().is_some(),
+                "expected a caption font when a candidate file exists on disk"
+            );
+        }
+    }
 }

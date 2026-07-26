@@ -27,8 +27,7 @@ pub const STATUS_FIELD_COUNT: usize = 13;
 
 /// True when `map` contains every contract key.
 pub fn status_map_has_contract_keys(keys: impl Iterator<Item = impl AsRef<str>>) -> bool {
-    let set: std::collections::HashSet<String> =
-        keys.map(|k| k.as_ref().to_string()).collect();
+    let set: std::collections::HashSet<String> = keys.map(|k| k.as_ref().to_string()).collect();
     STATUS_FIELD_KEYS
         .iter()
         .all(|required| set.contains(*required))
