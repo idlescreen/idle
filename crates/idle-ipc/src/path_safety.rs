@@ -3,10 +3,15 @@
 
 //! Path / name validation for IPC sockets and POSIX SHM objects.
 
-/// POSIX SHM object names we create look like `/trance-shm-<pid>-<idx>`.
+/// POSIX SHM object names the daemon creates look like `/idle-shm-<id>-<idx>`.
+/// Legacy `/trance-shm-…` names are still accepted so older peers can open.
 /// Reject anything else so a compromised arg vector cannot open arbitrary objects.
 pub fn is_valid_shm_name(name: &str) -> bool {
-    let Some(rest) = name.strip_prefix("/trance-shm-") else {
+    let rest = if let Some(r) = name.strip_prefix("/idle-shm-") {
+        r
+    } else if let Some(r) = name.strip_prefix("/trance-shm-") {
+        r
+    } else {
         return false;
     };
     if rest.is_empty() || rest.len() > 64 {
@@ -37,39 +42,31 @@ mod tests {
 
     #[test]
     fn shm_name_accepts_daemon_format() {
-        assert!(is_valid_shm_name("/trance-shm-1234-0"));
-        assert!(is_valid_shm_name("/trance-shm-1-99"));
-        assert!(is_valid_shm_name("/trance-shm-test_name-0"));
-        assert!(is_valid_shm_name(&format!(
-            "/trance-shm-{}",
-            "a".repeat(64)
-        )));
+        assert!(is_valid_shm_name("/idle-shm-1234-0"));
+        assert!(is_valid_shm_name("/idle-shm-1-99"));
+        assert!(is_valid_shm_name("/idle-shm-test_name-0"));
+        assert!(is_valid_shm_name("/trance-shm-1234-0")); // legacy
+        assert!(is_valid_shm_name(&format!("/idle-shm-{}", "a".repeat(64))));
     }
 
     #[test]
     fn shm_name_rejects_traversal_and_oddities() {
-        assert!(!is_valid_shm_name("trance-shm-1-0"));
+        assert!(!is_valid_shm_name("idle-shm-1-0"));
         assert!(!is_valid_shm_name("/other-1-0"));
-        assert!(!is_valid_shm_name("/trance-shm-../etc"));
-        assert!(!is_valid_shm_name("/trance-shm-"));
-        assert!(!is_valid_shm_name("/trance-shm-a/b"));
-        assert!(!is_valid_shm_name("/trance-shm-a b"));
-        assert!(!is_valid_shm_name("/trance-shm-a;b"));
-        assert!(!is_valid_shm_name("/TRANCE-SHM-1-0"));
-        assert!(!is_valid_shm_name(&format!(
-            "/trance-shm-{}",
-            "x".repeat(80)
-        )));
-        assert!(!is_valid_shm_name(&format!(
-            "/trance-shm-{}",
-            "x".repeat(65)
-        )));
+        assert!(!is_valid_shm_name("/idle-shm-../etc"));
+        assert!(!is_valid_shm_name("/idle-shm-"));
+        assert!(!is_valid_shm_name("/idle-shm-a/b"));
+        assert!(!is_valid_shm_name("/idle-shm-a b"));
+        assert!(!is_valid_shm_name("/idle-shm-a;b"));
+        assert!(!is_valid_shm_name("/IDLE-SHM-1-0"));
+        assert!(!is_valid_shm_name(&format!("/idle-shm-{}", "x".repeat(80))));
+        assert!(!is_valid_shm_name(&format!("/idle-shm-{}", "x".repeat(65))));
     }
 
     #[test]
     fn socket_path_rejects_relative_and_dots() {
         assert!(is_plausible_socket_path(
-            "/run/user/1000/trance-uds-1-0.sock"
+            "/run/user/1000/idle-uds-1-0.sock"
         ));
         assert!(!is_plausible_socket_path("relative.sock"));
         assert!(!is_plausible_socket_path("/tmp/../etc/passwd.sock"));
@@ -85,7 +82,7 @@ mod tests {
 
     #[test]
     fn socket_path_accepts_tmp_and_runtime() {
-        assert!(is_plausible_socket_path("/tmp/trance-uds-1-0.sock"));
+        assert!(is_plausible_socket_path("/tmp/idle-uds-1-0.sock"));
         assert!(is_plausible_socket_path(
             "/run/user/1000/idle-uds-42-1.sock"
         ));
