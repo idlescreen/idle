@@ -22,37 +22,6 @@ pub fn layer_surface_configured(surface_w: u32, surface_h: u32) -> bool {
     surface_w > 0 && surface_h > 0
 }
 
-#[cfg(test)]
-mod geometry_tests {
-    use super::{frame_geometry_ok, layer_surface_configured};
-
-    #[test]
-    fn rejects_zero_buffer() {
-        assert!(!frame_geometry_ok(0, 1080, 1920, 1080));
-        assert!(!frame_geometry_ok(1920, 0, 1920, 1080));
-    }
-
-    #[test]
-    fn rejects_zero_destination() {
-        assert!(!frame_geometry_ok(1920, 1080, 0, 1080));
-        assert!(!frame_geometry_ok(1920, 1080, 1920, 0));
-    }
-
-    #[test]
-    fn accepts_positive() {
-        assert!(frame_geometry_ok(960, 540, 1920, 1080));
-        assert!(frame_geometry_ok(1920, 1080, 1920, 1080));
-    }
-
-    #[test]
-    fn layer_not_configured_until_positive_size() {
-        assert!(!layer_surface_configured(0, 0));
-        assert!(!layer_surface_configured(1920, 0));
-        assert!(!layer_surface_configured(0, 1080));
-        assert!(layer_surface_configured(1920, 1080));
-    }
-}
-
 impl SessionState {
     /// Publish configured size into the output registry used by presenters.
     pub(super) fn register_configured_output(
@@ -170,5 +139,36 @@ impl SessionState {
             .damage_buffer(0, 0, width as i32, height as i32);
         overlay.surface.commit();
         true
+    }
+}
+
+#[cfg(test)]
+mod geometry_tests {
+    use super::{frame_geometry_ok, layer_surface_configured};
+
+    #[test]
+    fn rejects_zero_buffer() {
+        assert!(!frame_geometry_ok(0, 1080, 1920, 1080));
+        assert!(!frame_geometry_ok(1920, 0, 1920, 1080));
+    }
+
+    #[test]
+    fn rejects_zero_destination() {
+        assert!(!frame_geometry_ok(1920, 1080, 0, 1080));
+        assert!(!frame_geometry_ok(1920, 1080, 1920, 0));
+    }
+
+    #[test]
+    fn accepts_positive() {
+        assert!(frame_geometry_ok(960, 540, 1920, 1080));
+        assert!(frame_geometry_ok(1920, 1080, 1920, 1080));
+    }
+
+    #[test]
+    fn layer_not_configured_until_positive_size() {
+        assert!(!layer_surface_configured(0, 0));
+        assert!(!layer_surface_configured(1920, 0));
+        assert!(!layer_surface_configured(0, 1080));
+        assert!(layer_surface_configured(1920, 1080));
     }
 }

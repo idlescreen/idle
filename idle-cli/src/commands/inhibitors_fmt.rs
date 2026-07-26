@@ -26,9 +26,7 @@ pub fn format_inhibitors_report(inhibited: bool, rows: &[(u32, String, String)])
         n,
         if n == 1 { "" } else { "s" }
     ));
-    out.push_str(
-        "Active inhibitors (block idle savers; forced preview ignores these):\n",
-    );
+    out.push_str("Active inhibitors (block idle savers; forced preview ignores these):\n");
     for (cookie, app, reason) in rows {
         if *cookie == 0 {
             out.push_str(&format!("  [{app}] {reason}\n"));
@@ -62,11 +60,7 @@ mod tests {
     #[test]
     fn logind_media_row_and_preview_note() {
         // Real external holds list; forced preview is not blocked by them.
-        let rows = vec![(
-            0u32,
-            "logind:vlc (block)".into(),
-            "playing video".into(),
-        )];
+        let rows = vec![(0u32, "logind:vlc (block)".into(), "playing video".into())];
         let s = format_inhibitors_report(true, &rows);
         assert!(s.contains("inhibited: true"));
         assert!(s.contains("logind:vlc"));

@@ -21,16 +21,8 @@ pub fn panel_expand_margins(
 ) -> (i32, i32, i32, i32) {
     let inset_x = native_w.saturating_sub(configured_w) / 2;
     let inset_y = native_h.saturating_sub(configured_h) / 2;
-    let m_y = if inset_y > 0 {
-        -(inset_y as i32)
-    } else {
-        0
-    };
-    let m_x = if inset_x > 0 {
-        -(inset_x as i32)
-    } else {
-        0
-    };
+    let m_y = if inset_y > 0 { -(inset_y as i32) } else { 0 };
+    let m_x = if inset_x > 0 { -(inset_x as i32) } else { 0 };
     (m_y, m_x, m_y, m_x)
 }
 

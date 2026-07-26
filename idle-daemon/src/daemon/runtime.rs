@@ -180,10 +180,7 @@ mod tests {
 
     #[test]
     fn classify_both_dead() {
-        assert_eq!(
-            classify_runtime(false, false),
-            Err(RuntimeFault::BothDead)
-        );
+        assert_eq!(classify_runtime(false, false), Err(RuntimeFault::BothDead));
     }
 
     #[test]
@@ -231,8 +228,8 @@ mod tests {
         assert_eq!(present_cooldown_after_fault(2), Duration::from_secs(10));
         assert_eq!(present_cooldown_after_fault(3), Duration::from_secs(20));
         assert_eq!(present_cooldown_after_fault(4), Duration::from_secs(40));
-        assert_eq!(present_cooldown_after_fault(5), Duration::from_secs(60));
-        assert_eq!(present_cooldown_after_fault(99), Duration::from_secs(60));
+        assert_eq!(present_cooldown_after_fault(5), Duration::from_mins(1));
+        assert_eq!(present_cooldown_after_fault(99), Duration::from_mins(1));
         assert_eq!(present_cooldown_after_fault(0), Duration::from_secs(5));
     }
 

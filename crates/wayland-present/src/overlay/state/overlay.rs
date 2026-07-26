@@ -109,10 +109,11 @@ impl SessionState {
             overlay.width = render_w;
             overlay.height = render_h;
 
-            if let Some(viewport) = &overlay.viewport {
-                if render_w > 0 && render_h > 0 {
-                    viewport.set_destination(render_w as i32, render_h as i32);
-                }
+            if let Some(viewport) = &overlay.viewport
+                && render_w > 0
+                && render_h > 0
+            {
+                viewport.set_destination(render_w as i32, render_h as i32);
             }
             (render_w, render_h)
         };

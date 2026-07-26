@@ -9,9 +9,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 
 use zbus::names::UniqueName;
 
-use external::{
-    check_logind_inhibited, check_mpris_playing, list_external,
-};
+use external::list_external;
 
 #[derive(Debug, Clone)]
 pub struct Inhibitor {

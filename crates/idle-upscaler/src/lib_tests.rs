@@ -32,15 +32,27 @@ fn render_scale_in_range() {
 #[test]
 fn filter_mode_from_name_recognizes_nearest() {
     // Pure — no env (env tests race under cargo test parallel).
-    assert!(matches!(FilterMode::from_name("nearest"), FilterMode::Nearest));
-    assert!(matches!(FilterMode::from_name("NEAREST"), FilterMode::Nearest));
-    assert!(matches!(FilterMode::from_name("point"), FilterMode::Nearest));
+    assert!(matches!(
+        FilterMode::from_name("nearest"),
+        FilterMode::Nearest
+    ));
+    assert!(matches!(
+        FilterMode::from_name("NEAREST"),
+        FilterMode::Nearest
+    ));
+    assert!(matches!(
+        FilterMode::from_name("point"),
+        FilterMode::Nearest
+    ));
 }
 
 #[test]
 fn filter_mode_from_name_defaults_to_linear() {
     assert!(matches!(FilterMode::from_name(""), FilterMode::Linear));
-    assert!(matches!(FilterMode::from_name("linear"), FilterMode::Linear));
+    assert!(matches!(
+        FilterMode::from_name("linear"),
+        FilterMode::Linear
+    ));
 }
 
 #[test]

@@ -198,7 +198,10 @@ mod ignore_tests {
         // Regression: Grok listed as inhibitor during agent turns.
         assert!(ignore_logind_idle_hold("grok", "agent turn in progress"));
         assert!(ignore_logind_idle_hold("Grok", "anything"));
-        assert!(ignore_logind_idle_hold("grok (block)", "agent turn in progress"));
+        assert!(ignore_logind_idle_hold(
+            "grok (block)",
+            "agent turn in progress"
+        ));
         assert!(ignore_logind_idle_hold("grok(block)", "idle"));
     }
 
@@ -222,7 +225,10 @@ mod ignore_tests {
         assert!(!ignore_logind_idle_hold("steam", "game running"));
         // grok sleep delay is not idle-what — who is still grok though:
         // who-based filter still drops it (intentional: agent session).
-        assert!(ignore_logind_idle_hold("grok", "Pause token refresh across sleep"));
+        assert!(ignore_logind_idle_hold(
+            "grok",
+            "Pause token refresh across sleep"
+        ));
     }
 
     #[test]
