@@ -1,3 +1,16 @@
+idle-cli (2.5.2-1) unstable; urgency=medium
+
+  * Stop shipping idlescreen.desktop (app launcher lives in idle-tui only).
+  * Avoids two "IdleScreen" icons in the application menu.
+
+ -- IdleScreen <jerydleuck@gmail.com>  Sat, 25 Jul 2026 00:00:00 +0000
+
+idle-cli (2.5.1-1) unstable; urgency=medium
+
+  * Do not install /usr/bin/idle (reserved for Fedora python3-idle).
+
+ -- IdleScreen <jerydleuck@gmail.com>  Fri, 25 Jul 2026 18:00:00 +0000
+
 idle-cli (2.5.0-1) unstable; urgency=medium
 
   * Hard cut: drop trance CLI bin; primary D-Bus only; doctor savers/TUI checks.

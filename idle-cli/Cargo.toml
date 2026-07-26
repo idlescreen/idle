@@ -1,6 +1,6 @@
 [package]
 name = "idle-cli"
-version = "2.5.1"
+version = "2.5.2"
 edition = "2024"
 description = "Command-line interface for the IdleScreen daemon"
 license = "Apache-2.0"
@@ -36,7 +36,7 @@ section = "utils"
 priority = "optional"
 assets = [
     ["target/release/idlescreen", "usr/bin/idlescreen", "755"],
-    ["assets/idlescreen.desktop", "usr/share/applications/idlescreen.desktop", "644"],
+    # No .desktop here — app launcher entry lives in idle-tui (avoids two "IdleScreen" icons).
     ["assets/idlescreen-beams.png", "usr/share/icons/hicolor/48x48/apps/idlescreen-beams.png", "644"],
     ["idle.1", "usr/share/man/man1/idlescreen.1", "644"],
 ]
@@ -50,7 +50,6 @@ description = "CLI for controlling the Idle daemon over D-Bus (command: idlescre
 license = "Apache-2.0"
 assets = [
     { source = "target/release/idlescreen", dest = "/usr/bin/idlescreen", mode = "755", user = "root", group = "root" },
-    { source = "assets/idlescreen.desktop", dest = "/usr/share/applications/idlescreen.desktop", mode = "644", user = "root", group = "root" },
     { source = "assets/idlescreen-beams.png", dest = "/usr/share/icons/hicolor/48x48/apps/idlescreen-beams.png", mode = "644", user = "root", group = "root" },
     { source = "idle.1", dest = "/usr/share/man/man1/idlescreen.1", mode = "644", user = "root", group = "root" },
 ]
