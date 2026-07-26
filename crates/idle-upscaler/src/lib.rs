@@ -66,8 +66,8 @@ pub fn render_scale_for_gpu(use_gpu: bool) -> f32 {
 /// Effective simulation grid scale: env `IDLE_RENDER_SCALE`, then config.
 #[tracing::instrument(skip_all, fields(use_gpu, configured))]
 pub fn resolve_render_scale(use_gpu: bool, configured: Option<f32>) -> f32 {
-    if let Some(scale) = idle_api::env_var_first(&["IDLE_RENDER_SCALE"])
-        .and_then(|v| v.parse::<f32>().ok())
+    if let Some(scale) =
+        idle_api::env_var_first(&["IDLE_RENDER_SCALE"]).and_then(|v| v.parse::<f32>().ok())
     {
         return scale.clamp(0.25, 1.0);
     }

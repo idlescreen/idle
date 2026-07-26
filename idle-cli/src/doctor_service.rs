@@ -70,17 +70,12 @@ pub fn check_savers() -> CheckResult {
 
     // Package presence is enough when plugins are not yet expanded on disk.
     if package_installed("idle-savers") || package_installed("idle-saver-beams") {
-        return chk(
-            "Savers",
-            true,
-            "idle-savers / idle-saver-* package present",
-        );
+        return chk("Savers", true, "idle-savers / idle-saver-* package present");
     }
 
     // User-local installs
     if let Ok(home) = std::env::var("HOME") {
-        let local = PathBuf::from(home)
-            .join(".local/share/idle/screensavers");
+        let local = PathBuf::from(home).join(".local/share/idle/screensavers");
         if local.is_dir()
             && fs::read_dir(&local)
                 .map(|rd| {
@@ -93,7 +88,11 @@ pub fn check_savers() -> CheckResult {
                 })
                 .unwrap_or(false)
         {
-            return chk("Savers", true, "plugins under ~/.local/share/idle/screensavers");
+            return chk(
+                "Savers",
+                true,
+                "plugins under ~/.local/share/idle/screensavers",
+            );
         }
     }
 

@@ -147,7 +147,14 @@ fn dbus_trust_all_env_only_in_debug_builds() {
 
 #[test]
 fn untrusted_basename_never_matches_comm_policy() {
-    for bad in ["sh", "curl", "systemd", "idle-daemon", "idle_daemon", "trance"] {
+    for bad in [
+        "sh",
+        "curl",
+        "systemd",
+        "idle-daemon",
+        "idle_daemon",
+        "trance",
+    ] {
         assert!(!comm_matches_trusted(bad), "{bad} must not be trusted");
     }
 }

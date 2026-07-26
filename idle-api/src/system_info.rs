@@ -39,20 +39,20 @@ impl Default for SystemInfo {
         });
 
         let logo_text = crate::env_var_first(&["IDLE_LOGO_TEXT"]).unwrap_or_else(|| {
-                let mut temp_logo = "Linux".to_string();
-                if let Ok(content) = std::fs::read_to_string("/etc/os-release") {
-                    for line in content.lines() {
-                        if line.starts_with("PRETTY_NAME=") {
-                            let val = line.split('=').nth(1).unwrap_or("").trim_matches('"');
-                            if !val.is_empty() {
-                                temp_logo = val.to_string();
-                                break;
-                            }
+            let mut temp_logo = "Linux".to_string();
+            if let Ok(content) = std::fs::read_to_string("/etc/os-release") {
+                for line in content.lines() {
+                    if line.starts_with("PRETTY_NAME=") {
+                        let val = line.split('=').nth(1).unwrap_or("").trim_matches('"');
+                        if !val.is_empty() {
+                            temp_logo = val.to_string();
+                            break;
                         }
                     }
                 }
-                temp_logo
-            });
+            }
+            temp_logo
+        });
 
         let hostname = std::env::var("HOSTNAME").unwrap_or_else(|_| "localhost".to_string());
 

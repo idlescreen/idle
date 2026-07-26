@@ -106,7 +106,8 @@ pub async fn emit_status_changes(
         match receiver.recv_timeout(Duration::from_millis(200)) {
             Ok(status) => {
                 let map = status.to_map();
-                if let Ok(emitter) = zbus::object_server::SignalEmitter::new(&connection, OBJECT_PATH)
+                if let Ok(emitter) =
+                    zbus::object_server::SignalEmitter::new(&connection, OBJECT_PATH)
                 {
                     let _ = TranceService::status_changed(&emitter, map).await;
                 }
