@@ -49,8 +49,8 @@ coverage:
     cargo llvm-cov --workspace --all-features --html
 
 # Build distribution packages (deb, rpm).
-# Default: runs qa-unit first (same gate as package.rs). Skip with SKIP_TESTS=1.
-package: qa-unit
+# Default: headless package gate first (same as package.rs). Skip with SKIP_TESTS=1.
+package: qa-package-gate
     ./package.rs
 
 # Verify formatting + lint + tests all pass
@@ -61,7 +61,11 @@ verify: fmt-check clippy test test-doc
 ci: fmt-check clippy test
     @echo "CI checks passed."
 
-# Host/preview regression units (no display; run in CI + before package cut)
+# Headless package gate (same as package.rs — no Wayland required)
+qa-package-gate:
+    ./scripts/qa_package_gate.sh
+
+# Host/preview regression units (no display; subset of package gate)
 qa-unit:
     cargo test -p idle-cli -p idle-daemon -p idle-ipc -p wayland-present
     @echo "QA unit regression suite passed."
@@ -73,14 +77,16 @@ qa-unit-named:
         recovery_plan present_cooldown thrash hold_idle exit_process \
         preview_starts idle_decision path_safety hw_scaling \
         frame_geometry layer_not would_block eagain exclusive_zone \
-        panel_expand fullscreen_expands geom_tests
+        panel_expand fullscreen_expands geom_tests battery_should \
+        format_status status_text status_json
     @echo "QA named regression filters passed."
 
 # Live preview smoke: NRestarts must not rise (needs active idle-daemon + Wayland)
+# NOT part of packaging — run after install on a real session.
 qa-smoke saver="beams":
     ./scripts/qa_preview_smoke.sh {{saver}}
 
-# Full local QA gate: units + named filters + live smoke
-qa: qa-unit qa-unit-named qa-smoke
-    @echo "QA unit + named + live smoke passed."
+# Full local QA: package gate + live smoke
+qa: qa-package-gate qa-smoke
+    @echo "QA package gate + live smoke passed."
 

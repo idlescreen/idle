@@ -2,8 +2,16 @@
 
 //! Battery / AC heuristics that force inhibit when on battery.
 
-/// True when the host looks like it is running on battery (AC offline or
-/// discharging). Used to treat power-as-inhibit so idle savers stay off.
+/// Pure policy: should idle presentation be treated as inhibited for power?
+///
+/// - AC present and offline → on battery
+/// - Battery reporting Discharging → on battery
+/// - No power_supply info → not inhibited by this path
+pub fn battery_should_inhibit(has_ac: bool, ac_online: bool, battery_discharging: bool) -> bool {
+    (has_ac && !ac_online) || battery_discharging
+}
+
+/// Read `/sys/class/power_supply` and apply [`battery_should_inhibit`].
 pub fn is_on_battery() -> bool {
     let path = std::path::Path::new("/sys/class/power_supply");
     let Ok(entries) = std::fs::read_dir(path) else {
@@ -33,5 +41,33 @@ pub fn is_on_battery() -> bool {
         }
     }
 
-    (has_ac && !ac_online) || battery_discharging
+    battery_should_inhibit(has_ac, ac_online, battery_discharging)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::battery_should_inhibit;
+
+    #[test]
+    fn ac_offline_inhibits() {
+        assert!(battery_should_inhibit(true, false, false));
+    }
+
+    #[test]
+    fn ac_online_does_not_inhibit() {
+        assert!(!battery_should_inhibit(true, true, false));
+    }
+
+    #[test]
+    fn discharging_battery_inhibits() {
+        assert!(battery_should_inhibit(false, true, true));
+        assert!(battery_should_inhibit(true, true, true));
+    }
+
+    #[test]
+    fn no_ac_no_discharge_does_not_inhibit() {
+        // Desktop without Mains node: do not invent inhibit.
+        assert!(!battery_should_inhibit(false, true, false));
+        assert!(!battery_should_inhibit(false, false, false));
+    }
 }

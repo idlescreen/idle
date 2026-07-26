@@ -32,10 +32,18 @@ pub enum FilterMode {
 }
 
 impl FilterMode {
+    /// Parse filter name (pure; unit-tested without env races).
+    pub fn from_name(s: &str) -> Self {
+        match s.trim().to_ascii_lowercase().as_str() {
+            "nearest" | "point" => Self::Nearest,
+            _ => Self::Linear,
+        }
+    }
+
     pub fn from_env() -> Self {
         match idle_api::env_var_first(&["IDLE_GPU_FILTER"]).as_deref() {
-            Some("nearest") => Self::Nearest,
-            _ => Self::Linear,
+            Some(s) => Self::from_name(s),
+            None => Self::Linear,
         }
     }
 }

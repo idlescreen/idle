@@ -42,11 +42,21 @@ fn skip_tests() -> bool {
     )
 }
 
-/// Host/preview regression units — must pass before shipping packages.
+/// Headless package gate — must pass before shipping packages.
+/// See `scripts/qa_package_gate.sh` and `docs/QA_REGRESSION.md`.
 /// Override: `SKIP_TESTS=1 ./package.rs` (emergency only).
 fn run_qa_unit_gate() -> Result<(), String> {
+    let script = Path::new("scripts/qa_package_gate.sh");
+    if script.is_file() {
+        println!("------------------------------------------");
+        println!("QA package gate (headless): scripts/qa_package_gate.sh");
+        println!("------------------------------------------");
+        run_cmd(Command::new("bash").arg(script))?;
+        return Ok(());
+    }
+    // Fallback if script missing (partial checkout).
     println!("------------------------------------------");
-    println!("QA gate: unit tests (idle-cli/daemon/ipc/wayland-present)");
+    println!("QA gate fallback: core host crates");
     println!("------------------------------------------");
     run_cmd(Command::new("cargo").args([
         "test",
@@ -57,7 +67,17 @@ fn run_qa_unit_gate() -> Result<(), String> {
         "-p",
         "idle-ipc",
         "-p",
+        "idle-dbus",
+        "-p",
+        "idle-upscaler",
+        "-p",
+        "idle-runner",
+        "-p",
+        "idle-api",
+        "-p",
         "wayland-present",
+        "-p",
+        "wayland-idle",
     ]))?;
     println!("QA unit gate passed.");
     Ok(())

@@ -23,10 +23,11 @@ just qa-unit-named
 # LOOPS=3 HOLD_SECS=4 ./scripts/qa_preview_smoke.sh cosmos
 ```
 
-**Packaging default:** `./package.rs` and `just package` run the **qa-unit** suite
+**Packaging default:** `./package.rs` and `just package` run the **headless
+package gate** (`scripts/qa_package_gate.sh` — see [`PACKAGE_GATE.md`](PACKAGE_GATE.md))
 before building RPMs/DEBs. Failures abort packaging. Emergency only:
 `SKIP_TESTS=1 ./package.rs`. Live smoke is **not** part of packaging (needs a
-Wayland session); run `just qa` or `./scripts/qa_preview_smoke.sh` after install.
+Wayland session); run `just qa-smoke` after install.
 
 | Gate | What it catches |
 |------|-----------------|

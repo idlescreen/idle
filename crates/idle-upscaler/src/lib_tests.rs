@@ -30,51 +30,22 @@ fn render_scale_in_range() {
 }
 
 #[test]
-fn filter_mode_from_env_recognizes_nearest() {
-    let prior = std::env::var("IDLE_GPU_FILTER").ok();
-    unsafe {
-        std::env::set_var("IDLE_GPU_FILTER", "nearest");
-    }
-    assert!(matches!(FilterMode::from_env(), FilterMode::Nearest));
-    match prior {
-        Some(v) => unsafe {
-            std::env::set_var("IDLE_GPU_FILTER", v);
-        },
-        None => unsafe {
-            std::env::remove_var("IDLE_GPU_FILTER");
-        },
-    }
+fn filter_mode_from_name_recognizes_nearest() {
+    // Pure — no env (env tests race under cargo test parallel).
+    assert!(matches!(FilterMode::from_name("nearest"), FilterMode::Nearest));
+    assert!(matches!(FilterMode::from_name("NEAREST"), FilterMode::Nearest));
+    assert!(matches!(FilterMode::from_name("point"), FilterMode::Nearest));
 }
 
 #[test]
-fn filter_mode_from_env_defaults_to_linear() {
-    let prior = std::env::var("IDLE_GPU_FILTER").ok();
-    unsafe {
-        std::env::remove_var("IDLE_GPU_FILTER");
-    }
-    assert!(matches!(FilterMode::from_env(), FilterMode::Linear));
-    if let Some(v) = prior {
-        unsafe {
-            std::env::set_var("IDLE_GPU_FILTER", v);
-        }
-    }
+fn filter_mode_from_name_defaults_to_linear() {
+    assert!(matches!(FilterMode::from_name(""), FilterMode::Linear));
+    assert!(matches!(FilterMode::from_name("linear"), FilterMode::Linear));
 }
 
 #[test]
-fn filter_mode_from_env_unknown_falls_back_to_linear() {
-    let prior = std::env::var("IDLE_GPU_FILTER").ok();
-    unsafe {
-        std::env::set_var("IDLE_GPU_FILTER", "bogus");
-    }
-    assert!(matches!(FilterMode::from_env(), FilterMode::Linear));
-    match prior {
-        Some(v) => unsafe {
-            std::env::set_var("IDLE_GPU_FILTER", v);
-        },
-        None => unsafe {
-            std::env::remove_var("IDLE_GPU_FILTER");
-        },
-    }
+fn filter_mode_from_name_unknown_falls_back_to_linear() {
+    assert!(matches!(FilterMode::from_name("bogus"), FilterMode::Linear));
 }
 
 #[test]

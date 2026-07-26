@@ -14,8 +14,46 @@ fn display_saver(name: &str) -> String {
     }
 }
 
-fn print_status_json(status: &idle_dbus::DaemonStatus) {
-    println!(
+/// Pure text status report (unit-tested; no D-Bus).
+pub fn format_status_text(status: &idle_dbus::DaemonStatus) -> String {
+    let scale = if status.render_scale.is_empty() {
+        "default"
+    } else {
+        status.render_scale.as_str()
+    };
+    format!(
+        "running:              {}\n\
+         idle_enabled:         {}\n\
+         idle_timeout_mins:    {}\n\
+         active_saver:         {}\n\
+         gpu_enabled:          {}\n\
+         show_fps_overlay:     {}\n\
+         render_scale:         {}\n\
+         presentation_active:  {}\n\
+         preview_active:       {}\n\
+         current_saver:        {}\n\
+         system_idle:          {}\n\
+         session_locked:       {}\n\
+         inhibited:            {}\n",
+        status.running,
+        status.idle_enabled,
+        status.idle_timeout_mins,
+        display_saver(&status.active_saver),
+        status.gpu_enabled,
+        status.show_fps_overlay,
+        scale,
+        status.presentation_active,
+        status.preview_active,
+        status.current_saver,
+        status.system_idle,
+        status.session_locked,
+        status.inhibited,
+    )
+}
+
+/// Pure JSON status line (unit-tested; no D-Bus).
+pub fn format_status_json(status: &idle_dbus::DaemonStatus) -> String {
+    format!(
         "{{\"running\":{},\"idle_enabled\":{},\"idle_timeout_mins\":{},\"active_saver\":\"{}\",\"gpu_enabled\":{},\"show_fps_overlay\":{},\"render_scale\":\"{}\",\"presentation_active\":{},\"preview_active\":{},\"current_saver\":\"{}\",\"system_idle\":{},\"session_locked\":{},\"inhibited\":{}}}",
         status.running,
         status.idle_enabled,
@@ -30,33 +68,16 @@ fn print_status_json(status: &idle_dbus::DaemonStatus) {
         status.system_idle,
         status.session_locked,
         status.inhibited
-    );
+    )
+}
+
+fn print_status_json(status: &idle_dbus::DaemonStatus) {
+    print!("{}", format_status_json(status));
+    println!();
 }
 
 fn print_status_text(status: &idle_dbus::DaemonStatus) {
-    println!("running:              {}", status.running);
-    println!("idle_enabled:         {}", status.idle_enabled);
-    println!("idle_timeout_mins:    {}", status.idle_timeout_mins);
-    println!(
-        "active_saver:         {}",
-        display_saver(&status.active_saver)
-    );
-    println!("gpu_enabled:          {}", status.gpu_enabled);
-    println!("show_fps_overlay:     {}", status.show_fps_overlay);
-    println!(
-        "render_scale:         {}",
-        if status.render_scale.is_empty() {
-            "default"
-        } else {
-            &status.render_scale
-        }
-    );
-    println!("presentation_active:  {}", status.presentation_active);
-    println!("preview_active:       {}", status.preview_active);
-    println!("current_saver:        {}", status.current_saver);
-    println!("system_idle:          {}", status.system_idle);
-    println!("session_locked:       {}", status.session_locked);
-    println!("inhibited:            {}", status.inhibited);
+    print!("{}", format_status_text(status));
 }
 
 pub fn cmd_status(client: &TranceClient, args: &[String]) -> Result<()> {
@@ -146,4 +167,58 @@ fn package_version_hint() -> Option<String> {
         }
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use idle_dbus::DaemonStatus;
+
+    fn sample() -> DaemonStatus {
+        DaemonStatus {
+            running: true,
+            idle_enabled: true,
+            idle_timeout_mins: 5,
+            active_saver: String::new(),
+            presentation_active: true,
+            preview_active: true,
+            system_idle: false,
+            session_locked: false,
+            inhibited: false,
+            current_saver: "beams".into(),
+            gpu_enabled: false,
+            show_fps_overlay: false,
+            render_scale: String::new(),
+        }
+    }
+
+    #[test]
+    fn status_text_shows_preview_and_random_saver() {
+        let s = format_status_text(&sample());
+        assert!(s.contains("preview_active:       true"));
+        assert!(s.contains("presentation_active:  true"));
+        assert!(s.contains("active_saver:         random"));
+        assert!(s.contains("current_saver:        beams"));
+        assert!(s.contains("render_scale:         default"));
+        assert!(s.contains("inhibited:            false"));
+    }
+
+    #[test]
+    fn status_json_includes_critical_flags() {
+        let j = format_status_json(&sample());
+        assert!(j.contains("\"preview_active\":true"));
+        assert!(j.contains("\"presentation_active\":true"));
+        assert!(j.contains("\"inhibited\":false"));
+        assert!(j.contains("\"current_saver\":\"beams\""));
+    }
+
+    #[test]
+    fn status_text_shows_inhibited_when_blocked() {
+        let mut st = sample();
+        st.inhibited = true;
+        st.preview_active = false;
+        let s = format_status_text(&st);
+        assert!(s.contains("inhibited:            true"));
+        assert!(s.contains("preview_active:       false"));
+    }
 }
