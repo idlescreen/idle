@@ -7,16 +7,36 @@ use std::sync::OnceLock;
 use fontdue::Font;
 
 const FONT_SIZE: f32 = 20.0;
+
+/// Monospace TTF paths across Fedora/RHEL package layouts and Debian/Ubuntu.
+/// Order prefers high-quality fixed-width faces already common on desktops.
 const FONT_CANDIDATES: &[&str] = &[
+    // Fedora / RHEL package dirs (dejavu-sans-mono-fonts, liberation-mono-fonts, …)
+    "/usr/share/fonts/dejavu-sans-mono-fonts/DejaVuSansMono.ttf",
+    "/usr/share/fonts/liberation-mono-fonts/LiberationMono-Regular.ttf",
+    "/usr/share/fonts/adwaita-mono-fonts/AdwaitaMono-Regular.ttf",
+    "/usr/share/fonts/google-noto/NotoSansMono-Regular.ttf",
+    "/usr/share/fonts/google-noto-vf/NotoSansMono[wght].ttf",
+    // Debian / Ubuntu
     "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
-    "/usr/share/fonts/truetype/ubuntu/UbuntuMono-R.ttf",
     "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
+    "/usr/share/fonts/truetype/ubuntu/UbuntuMono-R.ttf",
+    "/usr/share/fonts/truetype/noto/NotoSansMono-Regular.ttf",
+    // Flat / legacy multi-distro locations
+    "/usr/share/fonts/TTF/DejaVuSansMono.ttf",
+    "/usr/share/fonts/dejavu/DejaVuSansMono.ttf",
+    "/usr/share/fonts/liberation/LiberationMono-Regular.ttf",
 ];
 
 static FONT: OnceLock<Option<Font>> = OnceLock::new();
 
 pub fn init_font() {
     let _ = font();
+}
+
+/// Paths tried for the caption overlay (for tests / diagnostics).
+pub fn caption_font_candidates() -> &'static [&'static str] {
+    FONT_CANDIDATES
 }
 
 fn font() -> Option<&'static Font> {
@@ -36,6 +56,32 @@ fn font() -> Option<&'static Font> {
         None
     })
     .as_ref()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn font_candidates_include_fedora_and_debian_layouts() {
+        let c = caption_font_candidates();
+        assert!(c.iter().any(|p| p.contains("dejavu-sans-mono-fonts")));
+        assert!(c.iter().any(|p| p.contains("truetype/dejavu")));
+        assert!(c.iter().any(|p| p.contains("LiberationMono")));
+    }
+
+    #[test]
+    fn font_init_succeeds_when_system_mono_present() {
+        // On CI without fonts this may be None; on a desktop with DejaVu it loads.
+        init_font();
+        let any_present = FONT_CANDIDATES.iter().any(|p| std::path::Path::new(p).is_file());
+        if any_present {
+            assert!(
+                font().is_some(),
+                "expected a caption font when a candidate file exists on disk"
+            );
+        }
+    }
 }
 
 /// Draw a readable bottom-centered caption bar at native monitor resolution.

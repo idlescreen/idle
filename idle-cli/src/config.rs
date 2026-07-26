@@ -84,7 +84,11 @@ fn cmd_config_set(client: &TranceClient, key: &str, val: &str) -> Result<()> {
         "idle_enabled" | "enabled" => set_idle_enabled(client, val)?,
         "idle_timeout_mins" | "timeout" => set_idle_timeout(client, val)?,
         "active_saver" | "saver" => set_active_saver(client, val)?,
-        "gpu_enabled" | "gpu" => set_gpu_enabled(client, val)?,
+        "gpu_enabled" | "gpu" => {
+            // GPU upscaler removed (2026); do not claim the set succeeded.
+            set_gpu_enabled_deprecated(client, val)?;
+            return Ok(());
+        }
         "show_fps_overlay" | "fps" => set_fps_overlay(client, val)?,
         "render_scale" | "scale" => set_render_scale(client, val)?,
         _ => return Err(anyhow!("unknown configuration key: {key}")),
@@ -123,13 +127,18 @@ fn set_active_saver(client: &TranceClient, val: &str) -> Result<()> {
     Ok(())
 }
 
-fn set_gpu_enabled(client: &TranceClient, val: &str) -> Result<()> {
-    let b = val
+/// GPU upscaler was removed; D-Bus `SetGpuEnabled` is a no-op. Be honest in the CLI.
+fn set_gpu_enabled_deprecated(client: &TranceClient, val: &str) -> Result<()> {
+    let _b = val
         .parse::<bool>()
         .map_err(|_| anyhow!("value must be true or false"))?;
-    client
-        .set_gpu_enabled(b)
-        .context("toggling gpu upscaler via d-bus")?;
+    // Still ping the daemon so old scripts do not hard-fail on AccessDenied paths
+    // when the peer is trusted; ignore transport errors after messaging the user.
+    let _ = client.set_gpu_enabled(false);
+    println!(
+        "gpu_enabled is deprecated and always off (GPU frame upscaler removed).\n\
+         Cell raster may still use wgpu automatically when available; no action needed."
+    );
     Ok(())
 }
 

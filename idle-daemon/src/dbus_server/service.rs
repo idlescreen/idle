@@ -167,6 +167,7 @@ impl TranceService {
     }
 
     /// DEPRECATED (2026) — no-op method retained for D-Bus client compatibility.
+    /// GPU frame upscaler is gone; wgpu cell raster is automatic when available.
     #[deprecated(note = "GPU upscaler removed; this method is a no-op")]
     #[allow(deprecated)]
     async fn set_gpu_enabled(
@@ -175,7 +176,8 @@ impl TranceService {
         #[zbus(header)] header: zbus::message::Header<'_>,
     ) -> zbus::fdo::Result<()> {
         authorize_control(&self.controller, &header).await?;
-        tracing::warn!(target: "idle_daemon::deprecation", "set_gpu_enabled called; GPU upscaler removed in 2026");
+        // debug: old clients still call this; do not warn-spam the journal.
+        tracing::debug!(target: "idle_daemon::deprecation", "set_gpu_enabled ignored (GPU upscaler removed)");
         Ok(())
     }
 

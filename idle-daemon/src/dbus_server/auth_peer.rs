@@ -40,8 +40,12 @@ pub(super) fn check_peer_exe(pid: u32) -> PeerExeCheck {
         Ok(t) => t,
         Err(e) => {
             // EACCES/EPERM: hardened services often cannot ptrace-read peer
-            // `/proc/<pid>/exe`. ENOENT: peer already exited.
-            tracing::warn!("D-Bus auth check: failed to canonicalize /proc/{pid}/exe: {e:?}");
+            // `/proc/<pid>/exe` (Yama / ProtectProc). ENOENT: peer already exited.
+            // Expected path — fall through to same-UID + /proc/pid/comm. Do not
+            // warn; that spams journal on every control call from CLI/TUI.
+            tracing::debug!(
+                "D-Bus auth check: /proc/{pid}/exe unreadable ({e}); will try peer comm"
+            );
             return PeerExeCheck::Unreadable;
         }
     };

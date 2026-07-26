@@ -69,8 +69,9 @@ fn is_trusted_control_peer(pid: u32, peer_uid: Option<u32>, peer_name: &str) -> 
             // remains readable under typical Yama/systemd hardening when `exe` is not.
             match peer_comm(pid) {
                 Some(comm) if comm_matches_trusted(&comm) => {
-                    tracing::warn!(
-                        "D-Bus auth: peer {peer_name} (pid {pid}, comm {comm}) accepted via same-UID + trusted comm (peer exe unreadable)"
+                    // Normal path under systemd hardening — not a security incident.
+                    tracing::debug!(
+                        "D-Bus auth: peer {peer_name} (pid {pid}, comm {comm}) accepted via same-UID + trusted comm"
                     );
                     true
                 }
