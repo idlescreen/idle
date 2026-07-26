@@ -1,3 +1,13 @@
+idle-daemon (2.5.5-1) unstable; urgency=medium
+
+  * Never exit the process when Wayland presenter dies mid-preview; stop
+    presentation, clear preview, recreate presenter, keep daemon running.
+  * Disable wp_viewporter hw scaling by default (IDLE_HW_VIEWPORT=1 to enable);
+    viewporter commits were disconnecting the client on COSMIC.
+  * Richer wayland-present error logging for future diagnosis.
+
+ -- IdleScreen <jerydleuck@gmail.com>  Sat, 26 Jul 2026 16:00:00 +0000
+
 idle-daemon (2.5.4-1) unstable; urgency=medium
 
   * Explicit preview (TUI p / idlescreen preview) works while inhibited

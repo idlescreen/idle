@@ -10,6 +10,62 @@ use wayland_present::OverlayPresenter;
 
 use crate::controller::DaemonController;
 
+/// Which Wayland subsystems are unhealthy (never fatal to the process by itself).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RuntimeFault {
+    IdleMonitorDead,
+    PresenterDead,
+    BothDead,
+}
+
+/// Recovery plan when a Wayland subsystem dies mid-session.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RecoveryPlan {
+    pub stop_presentation: bool,
+    pub clear_preview: bool,
+    pub recreate_idle_monitor: bool,
+    pub recreate_presenter: bool,
+    /// Must always be false — presenter death must not kill idle-daemon.
+    pub exit_process: bool,
+}
+
+/// Classify liveness of idle monitor + overlay presenter.
+pub fn classify_runtime(idle_alive: bool, presenter_alive: bool) -> Result<(), RuntimeFault> {
+    match (idle_alive, presenter_alive) {
+        (true, true) => Ok(()),
+        (false, true) => Err(RuntimeFault::IdleMonitorDead),
+        (true, false) => Err(RuntimeFault::PresenterDead),
+        (false, false) => Err(RuntimeFault::BothDead),
+    }
+}
+
+/// Pure recovery policy (unit-tested).
+pub fn recovery_plan(fault: RuntimeFault) -> RecoveryPlan {
+    match fault {
+        RuntimeFault::PresenterDead => RecoveryPlan {
+            stop_presentation: true,
+            clear_preview: true,
+            recreate_idle_monitor: false,
+            recreate_presenter: true,
+            exit_process: false,
+        },
+        RuntimeFault::IdleMonitorDead => RecoveryPlan {
+            stop_presentation: true,
+            clear_preview: true,
+            recreate_idle_monitor: true,
+            recreate_presenter: false,
+            exit_process: false,
+        },
+        RuntimeFault::BothDead => RecoveryPlan {
+            stop_presentation: true,
+            clear_preview: true,
+            recreate_idle_monitor: true,
+            recreate_presenter: true,
+            exit_process: false,
+        },
+    }
+}
+
 pub fn initialize_runtime(
     controller: &DaemonController,
 ) -> anyhow::Result<(IdleMonitor, Arc<OverlayPresenter>)> {
@@ -46,12 +102,58 @@ pub fn initialize_runtime(
 pub fn check_runtime_alive(
     idle_monitor: &IdleMonitor,
     overlay_presenter: &OverlayPresenter,
-) -> anyhow::Result<()> {
-    if !idle_monitor.is_alive() {
-        return Err(anyhow!("Wayland idle monitor connection lost"));
+) -> Result<(), RuntimeFault> {
+    classify_runtime(idle_monitor.is_alive(), overlay_presenter.is_alive())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn presenter_death_does_not_exit_process() {
+        // Regression: TUI `p` killed idle-daemon when wayland-present died.
+        let plan = recovery_plan(RuntimeFault::PresenterDead);
+        assert!(!plan.exit_process);
+        assert!(plan.stop_presentation);
+        assert!(plan.clear_preview);
+        assert!(plan.recreate_presenter);
+        assert!(!plan.recreate_idle_monitor);
     }
-    if !overlay_presenter.is_alive() {
-        return Err(anyhow!("Wayland presenter connection lost"));
+
+    #[test]
+    fn idle_monitor_death_does_not_exit_process() {
+        let plan = recovery_plan(RuntimeFault::IdleMonitorDead);
+        assert!(!plan.exit_process);
+        assert!(plan.recreate_idle_monitor);
     }
-    Ok(())
+
+    #[test]
+    fn both_dead_still_stays_alive() {
+        let plan = recovery_plan(RuntimeFault::BothDead);
+        assert!(!plan.exit_process);
+        assert!(plan.recreate_idle_monitor);
+        assert!(plan.recreate_presenter);
+    }
+
+    #[test]
+    fn classify_ok_when_both_alive() {
+        assert!(classify_runtime(true, true).is_ok());
+    }
+
+    #[test]
+    fn classify_presenter_dead() {
+        assert_eq!(
+            classify_runtime(true, false),
+            Err(RuntimeFault::PresenterDead)
+        );
+    }
+
+    #[test]
+    fn classify_idle_dead() {
+        assert_eq!(
+            classify_runtime(false, true),
+            Err(RuntimeFault::IdleMonitorDead)
+        );
+    }
 }

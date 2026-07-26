@@ -46,9 +46,13 @@ pub fn spawn_event_thread(
             outputs,
             supports_scaling,
         ) {
-            tracing::warn!("wayland-present: {message}");
+            tracing::error!(
+                fault = message,
+                "wayland-present: event thread exiting — is_alive=false (daemon should recover without process exit)"
+            );
         }
         is_alive.store(false, Ordering::SeqCst);
+        tracing::warn!("wayland-present: event thread stopped (is_alive=false)");
     });
 }
 
@@ -145,21 +149,32 @@ fn dispatch_pending_events(
             }
 
             if poll_fd.revents & libc::POLLIN != 0 {
-                guard.read().map_err(|_| "failed to read Wayland events")?;
-                event_queue
-                    .dispatch_pending(state)
-                    .map_err(|_| "failed to dispatch Wayland events")?;
+                if let Err(e) = guard.read() {
+                    // Include underlying error — protocol violations often appear here.
+                    tracing::error!(
+                        error = %e,
+                        revents = poll_fd.revents,
+                        "wayland-present: failed to read Wayland events (compositor may have closed the connection; often a protocol error on the previous commit)"
+                    );
+                    return Err("failed to read Wayland events");
+                }
+                if let Err(e) = event_queue.dispatch_pending(state) {
+                    tracing::error!(error = %e, "wayland-present: failed to dispatch Wayland events");
+                    return Err("failed to dispatch Wayland events");
+                }
             }
         } else if poll_result < 0 {
             let err = std::io::Error::last_os_error();
             if err.kind() != std::io::ErrorKind::Interrupted {
+                tracing::error!(error = %err, "wayland-present: poll failed");
                 return Err("poll failed");
             }
         }
     } else {
-        event_queue
-            .dispatch_pending(state)
-            .map_err(|_| "failed to dispatch Wayland events")?;
+        if let Err(e) = event_queue.dispatch_pending(state) {
+            tracing::error!(error = %e, "wayland-present: failed to dispatch Wayland events");
+            return Err("failed to dispatch Wayland events");
+        }
     }
 
     Ok(())

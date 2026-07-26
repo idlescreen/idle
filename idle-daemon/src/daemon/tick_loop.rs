@@ -5,13 +5,21 @@
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
+use wayland_idle::IdleMonitor;
+use wayland_present::OverlayPresenter;
+
 use super::idle_logic::update_presentation_state;
-use super::presentation::ActivePresentation;
-use super::runtime::check_runtime_alive;
+use super::presentation::{
+    ActivePresentation, stop_presentation,
+};
+use super::runtime::{
+    check_runtime_alive, recovery_plan, RuntimeFault,
+};
 use crate::controller::{DaemonCommand, DaemonController, MAIN_LOOP_INTERVAL};
 
 pub fn tick_loop_until_shutdown(controller: Arc<DaemonController>) -> anyhow::Result<()> {
-    let (mut idle_monitor, overlay_presenter) = super::runtime::initialize_runtime(&controller)?;
+    let (mut idle_monitor, mut overlay_presenter) =
+        super::runtime::initialize_runtime(&controller)?;
     let mut presentation = ActivePresentation::None;
     let mut preview_name: Option<String> = None;
     let mut current_saver = String::new();
@@ -21,7 +29,20 @@ pub fn tick_loop_until_shutdown(controller: Arc<DaemonController>) -> anyhow::Re
         std::thread::sleep(MAIN_LOOP_INTERVAL);
         tick_counter = tick_counter.saturating_add(1);
 
-        check_runtime_alive(&idle_monitor, &overlay_presenter)?;
+        if let Err(fault) = check_runtime_alive(&idle_monitor, &overlay_presenter) {
+            recover_runtime(
+                fault,
+                &controller,
+                &mut idle_monitor,
+                &mut overlay_presenter,
+                &mut presentation,
+                &mut preview_name,
+                &mut current_saver,
+            );
+            // Skip the rest of this tick; next tick uses recovered runtimes if any.
+            continue;
+        }
+
         dispatch_tick_commands(
             &controller,
             &overlay_presenter,
@@ -48,19 +69,20 @@ pub fn tick_loop_until_shutdown(controller: Arc<DaemonController>) -> anyhow::Re
             inhibited = true;
         }
 
-        update_presentation_state(
-            &overlay_presenter,
-            &mut presentation,
-            &mut preview_name,
-            &mut current_saver,
-            &config,
-            system_idle,
-            session_locked,
-            inhibited,
-        );
+        // Skip presentation updates if presenter is dead (recovery pending).
+        if overlay_presenter.is_alive() {
+            update_presentation_state(
+                &overlay_presenter,
+                &mut presentation,
+                &mut preview_name,
+                &mut current_saver,
+                &config,
+                system_idle,
+                session_locked,
+                inhibited,
+            );
+        }
 
-        // Reuses a fresh config lock inside update_live_state (status may need
-        // values that changed via D-Bus mid-tick).
         controller.update_live_state(
             system_idle,
             presentation.is_active(),
@@ -70,14 +92,86 @@ pub fn tick_loop_until_shutdown(controller: Arc<DaemonController>) -> anyhow::Re
         controller.publish_status_if_dirty();
     }
 
-    super::presentation::stop_presentation(Some(&overlay_presenter), &mut presentation);
+    stop_presentation(Some(&overlay_presenter), &mut presentation);
     Ok(())
+}
+
+/// Handle Wayland subsystem death without exiting the daemon process.
+#[tracing::instrument(skip_all, fields(?fault))]
+fn recover_runtime(
+    fault: RuntimeFault,
+    controller: &DaemonController,
+    idle_monitor: &mut IdleMonitor,
+    overlay_presenter: &mut Arc<OverlayPresenter>,
+    presentation: &mut ActivePresentation,
+    preview_name: &mut Option<String>,
+    current_saver: &mut String,
+) {
+    let plan = recovery_plan(fault);
+    tracing::error!(
+        ?fault,
+        stop_presentation = plan.stop_presentation,
+        clear_preview = plan.clear_preview,
+        recreate_presenter = plan.recreate_presenter,
+        recreate_idle_monitor = plan.recreate_idle_monitor,
+        exit_process = plan.exit_process,
+        "wayland runtime fault — recovering without exiting the daemon"
+    );
+
+    if plan.stop_presentation {
+        stop_presentation(Some(overlay_presenter), presentation);
+        current_saver.clear();
+    }
+    if plan.clear_preview {
+        if let Some(name) = preview_name.take() {
+            tracing::warn!(
+                preview = %name,
+                "cleared preview after wayland fault (try preview again after recovery)"
+            );
+        }
+    }
+
+    if plan.recreate_presenter {
+        match OverlayPresenter::new() {
+            Some(p) => {
+                *overlay_presenter = Arc::new(p);
+                tracing::info!("overlay presenter recreated successfully");
+            }
+            None => {
+                tracing::error!(
+                    "failed to recreate overlay presenter; previews/idle visuals unavailable until restart"
+                );
+            }
+        }
+    }
+
+    if plan.recreate_idle_monitor {
+        let mins = controller
+            .config
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .idle_timeout_mins;
+        match IdleMonitor::new(mins) {
+            Some(m) => {
+                *idle_monitor = m;
+                tracing::info!("idle monitor recreated successfully");
+            }
+            None => {
+                tracing::error!(
+                    "failed to recreate idle monitor; idle detection unavailable until restart"
+                );
+            }
+        }
+    }
+
+    // Never exit the process — systemd would bounce us, but we must stay up.
+    debug_assert!(!plan.exit_process);
 }
 
 fn dispatch_tick_commands(
     controller: &DaemonController,
-    overlay_presenter: &Arc<wayland_present::OverlayPresenter>,
-    idle_monitor: &mut wayland_idle::IdleMonitor,
+    overlay_presenter: &Arc<OverlayPresenter>,
+    idle_monitor: &mut IdleMonitor,
     presentation: &mut ActivePresentation,
     preview_name: &mut Option<String>,
     current_saver: &mut String,
@@ -85,11 +179,13 @@ fn dispatch_tick_commands(
     for command in controller.drain_commands() {
         match command {
             DaemonCommand::Preview(name) => {
+                tracing::info!(saver = %name, "queued preview command");
                 *preview_name = Some(name);
             }
             DaemonCommand::StopPresentation => {
+                tracing::info!("queued stop-presentation command");
                 *preview_name = None;
-                super::presentation::stop_presentation(Some(overlay_presenter), presentation);
+                stop_presentation(Some(overlay_presenter), presentation);
                 current_saver.clear();
             }
             DaemonCommand::SetTimeout(minutes) => {
@@ -132,7 +228,6 @@ fn is_on_battery() -> bool {
             }
         }
 
-        // If AC is present but offline, or a battery is discharging, we're on battery
         if (has_ac && !ac_online) || battery_discharging {
             return true;
         }

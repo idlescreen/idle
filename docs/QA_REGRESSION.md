@@ -29,6 +29,8 @@ daemon/cli upgrades or before a release cut.
 | P2 | TUI: select saver, press `p` | Same as P1 |
 | P3 | Inhibited (e.g. Grok logind): `idlescreen preview beams` | Preview **still starts**; inhibitors list names the block; idle savers remain blocked |
 | P4 | After stop: `idlescreen stop`; preview_active false |
+| P5 | TUI `p` then watch `systemctl --user status idle-daemon` | **Must stay active** — no `Main process exited` / restart counter bump |
+| P6 | If presenter dies: journal shows `recovering without exiting` + recreate; service stays active |
 
 ## Packaging / dual icons / applet
 

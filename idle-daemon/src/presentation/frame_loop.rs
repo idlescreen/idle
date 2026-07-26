@@ -57,12 +57,22 @@ pub fn run_frame_loop(
     fps_report: &mut Instant,
     achieved_fps: &mut f32,
 ) -> Result<(), String> {
-    let use_hw_scaling = presenter.supports_scaling() && !sessions[0].session.using_gpu_upscale();
+    // COSMIC (and some other compositors) have disconnected the Wayland client
+    // when wp_viewporter set_destination is used during screensaver preview.
+    // That used to kill the whole daemon via check_runtime_alive. Opt-in only.
+    let force_hw = std::env::var_os("IDLE_HW_VIEWPORT").is_some();
+    let use_hw_scaling = force_hw
+        && presenter.supports_scaling()
+        && !sessions[0].session.using_gpu_upscale();
     for s in sessions.iter_mut() {
         s.session.set_hardware_scaling(use_hw_scaling);
     }
     if use_hw_scaling {
-        tracing::info!("wayland-present: hardware scaling enabled via wp_viewporter");
+        tracing::info!("wayland-present: hardware scaling enabled via wp_viewporter (IDLE_HW_VIEWPORT)");
+    } else if presenter.supports_scaling() {
+        tracing::debug!(
+            "wayland-present: wp_viewporter available but disabled (set IDLE_HW_VIEWPORT=1 to enable)"
+        );
     }
 
     let mut state = FrameLoopState {
