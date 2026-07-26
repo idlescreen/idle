@@ -7,6 +7,37 @@ use crate::output::OutputLayout;
 
 use super::types::{MonitorOverlay, SessionState};
 
+/// Safe geometry for attaching a frame (and optional viewport destination).
+///
+/// Zero-size destination or buffer is a Wayland protocol error and has been
+/// observed to disconnect the client (killing the presenter thread).
+pub fn frame_geometry_ok(buffer_w: u32, buffer_h: u32, dst_w: u32, dst_h: u32) -> bool {
+    buffer_w > 0 && buffer_h > 0 && dst_w > 0 && dst_h > 0
+}
+
+#[cfg(test)]
+mod geometry_tests {
+    use super::frame_geometry_ok;
+
+    #[test]
+    fn rejects_zero_buffer() {
+        assert!(!frame_geometry_ok(0, 1080, 1920, 1080));
+        assert!(!frame_geometry_ok(1920, 0, 1920, 1080));
+    }
+
+    #[test]
+    fn rejects_zero_destination() {
+        assert!(!frame_geometry_ok(1920, 1080, 0, 1080));
+        assert!(!frame_geometry_ok(1920, 1080, 1920, 0));
+    }
+
+    #[test]
+    fn accepts_positive() {
+        assert!(frame_geometry_ok(960, 540, 1920, 1080));
+        assert!(frame_geometry_ok(1920, 1080, 1920, 1080));
+    }
+}
+
 impl SessionState {
     /// Publish configured size into the output registry used by presenters.
     pub(super) fn register_configured_output(
@@ -90,9 +121,31 @@ impl SessionState {
         } else {
             height
         };
+
+        if !frame_geometry_ok(width, height, dst_w, dst_h) {
+            tracing::error!(
+                buffer_w = width,
+                buffer_h = height,
+                dst_w,
+                dst_h,
+                "wayland-present: refuse frame with zero geometry (protocol risk)"
+            );
+            return false;
+        }
+
+        // Never set_destination(0,0) — protocol error / client disconnect.
         if let Some(viewport) = &overlay.viewport {
             viewport.set_destination(dst_w as i32, dst_h as i32);
         }
+
+        tracing::debug!(
+            buffer_w = width,
+            buffer_h = height,
+            surface_w = dst_w,
+            surface_h = dst_h,
+            has_viewport = overlay.viewport.is_some(),
+            "wayland-present: commit frame"
+        );
 
         overlay.surface.attach(Some(&buffer.wl_buffer), 0, 0);
         overlay

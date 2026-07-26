@@ -1,3 +1,12 @@
+idle-daemon (2.5.6-1) unstable; urgency=medium
+
+  * Preview stability: do not create wp_viewport unless IDLE_HW_VIEWPORT=1;
+    OnDemand keyboard (not Exclusive); refuse zero-size frame geometry;
+    layer namespace idlescreen. Daemon stays up (2.5.5 recovery) and preview
+    is less likely to kill the presenter thread.
+
+ -- IdleScreen <jerydleuck@gmail.com>  Sat, 26 Jul 2026 16:30:00 +0000
+
 idle-daemon (2.5.5-1) unstable; urgency=medium
 
   * Never exit the process when Wayland presenter dies mid-preview; stop

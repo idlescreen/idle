@@ -30,15 +30,21 @@ impl SessionState {
             &surface,
             Some(output),
             zwlr_layer_shell_v1::Layer::Overlay,
-            "trance".to_string(),
+            "idlescreen".to_string(),
             &self.queue,
             output_id,
         );
 
-        let viewport = self
-            .viewporter
-            .as_ref()
-            .map(|vp| vp.get_viewport(&surface, &self.queue, ()));
+        // Viewport is opt-in: creating wp_viewport + set_destination without a
+        // careful buffer path has disconnected the Wayland client on COSMIC
+        // (see idle-daemon recovery logs: failed to read Wayland events).
+        let viewport = if std::env::var_os("IDLE_HW_VIEWPORT").is_some() {
+            self.viewporter
+                .as_ref()
+                .map(|vp| vp.get_viewport(&surface, &self.queue, ()))
+        } else {
+            None
+        };
 
         layer_surface.set_anchor(
             zwlr_layer_surface_v1::Anchor::Top
@@ -48,8 +54,10 @@ impl SessionState {
         );
         layer_surface.set_exclusive_zone(-1);
         layer_surface.set_margin(0, 0, 0, 0);
+        // OnDemand: Exclusive fought terminal focus during TUI preview and
+        // contributed to unstable sessions. Pointer/keyboard still dismiss after grace.
         layer_surface
-            .set_keyboard_interactivity(zwlr_layer_surface_v1::KeyboardInteractivity::Exclusive);
+            .set_keyboard_interactivity(zwlr_layer_surface_v1::KeyboardInteractivity::OnDemand);
         layer_surface.set_size(0, 0);
         surface.commit();
 
@@ -87,8 +95,11 @@ impl SessionState {
             overlay.width = render_w;
             overlay.height = render_h;
 
+            // Only set destination when we have a viewport *and* nonzero size.
             if let Some(viewport) = &overlay.viewport {
-                viewport.set_destination(render_w as i32, render_h as i32);
+                if render_w > 0 && render_h > 0 {
+                    viewport.set_destination(render_w as i32, render_h as i32);
+                }
             }
             (render_w, render_h)
         };
