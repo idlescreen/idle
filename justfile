@@ -48,8 +48,9 @@ udeps:
 coverage:
     cargo llvm-cov --workspace --all-features --html
 
-# Build distribution packages (deb, rpm)
-package:
+# Build distribution packages (deb, rpm).
+# Default: runs qa-unit first (same gate as package.rs). Skip with SKIP_TESTS=1.
+package: qa-unit
     ./package.rs
 
 # Verify formatting + lint + tests all pass

@@ -35,6 +35,34 @@ fn get_version() -> Result<String, String> {
     Err("Could not find version in idle-daemon/Cargo.toml".to_string())
 }
 
+fn skip_tests() -> bool {
+    matches!(
+        std::env::var("SKIP_TESTS").as_deref(),
+        Ok("1") | Ok("true") | Ok("yes") | Ok("TRUE") | Ok("YES")
+    )
+}
+
+/// Host/preview regression units — must pass before shipping packages.
+/// Override: `SKIP_TESTS=1 ./package.rs` (emergency only).
+fn run_qa_unit_gate() -> Result<(), String> {
+    println!("------------------------------------------");
+    println!("QA gate: unit tests (idle-cli/daemon/ipc/wayland-present)");
+    println!("------------------------------------------");
+    run_cmd(Command::new("cargo").args([
+        "test",
+        "-p",
+        "idle-cli",
+        "-p",
+        "idle-daemon",
+        "-p",
+        "idle-ipc",
+        "-p",
+        "wayland-present",
+    ]))?;
+    println!("QA unit gate passed.");
+    Ok(())
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("==========================================");
     println!("Building All IdleScreen Packages via Rust...");
@@ -50,6 +78,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cargo_bin = format!("{}/.cargo/bin", home);
     if !path.contains(&cargo_bin) {
         std::env::set_var("PATH", format!("{}:{}", cargo_bin, path));
+    }
+
+    if skip_tests() {
+        println!("SKIP_TESTS set — skipping QA unit gate (not for release cuts).");
+    } else {
+        run_qa_unit_gate()?;
     }
 
     println!("Compiling release binaries...");

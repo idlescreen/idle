@@ -23,11 +23,17 @@ just qa-unit-named
 # LOOPS=3 HOLD_SECS=4 ./scripts/qa_preview_smoke.sh cosmos
 ```
 
+**Packaging default:** `./package.rs` and `just package` run the **qa-unit** suite
+before building RPMs/DEBs. Failures abort packaging. Emergency only:
+`SKIP_TESTS=1 ./package.rs`. Live smoke is **not** part of packaging (needs a
+Wayland session); run `just qa` or `./scripts/qa_preview_smoke.sh` after install.
+
 | Gate | What it catches |
 |------|-----------------|
-| `just qa-unit` | Full package unit suites for cli/daemon/ipc/wayland-present |
+| `just qa-unit` / **package gate** | Full package unit suites for cli/daemon/ipc/wayland-present |
 | `just qa-unit-named` | Doctor, inhibitors, recovery, cooldown, preview policy, fullscreen geom, EAGAIN, SHM |
 | `scripts/qa_preview_smoke.sh` | Live NRestarts/MainPID, Grok not listed, multi-p, multi-saver, thrash bound, fullscreen log |
+| `just package` / `./package.rs` | qa-unit then release build + deb/rpm |
 
 ## Issue → test map (must not regress)
 
