@@ -1,3 +1,9 @@
+idle-cli (2.5.6-1) unstable; urgency=medium
+
+  * config set gpu: honest deprecation (GPU upscaler removed; always off).
+
+ -- IdleScreen <jerydleuck@gmail.com>  Sun, 26 Jul 2026 16:05:00 -0700
+
 idle-cli (2.5.5-1) unstable; urgency=medium
 
   * inhibitors: wording — forced preview ignores listed holds (idle only blocked).
