@@ -15,9 +15,10 @@ Website: [https://idlescreen.github.io](https://idlescreen.github.io)
 
 ```bash
 curl -fsSL https://idlescreen.github.io/packages/install.sh | sh
+# or after repo setup:  sudo dnf install idlescreen   /   sudo apt install idlescreen
 ```
 
-Installs `idle-daemon`, `idle-cli`, `idle-savers`, `idle-tui`, and on COSMIC also `idle-cosmic`.
+Installs the product metapackage **`idlescreen`** (depends on `idle-daemon`, `idle-cli`, `idle-savers`, `idle-tui`), and on COSMIC also **`idle-cosmic`**. Remove with `sudo dnf remove idlescreen` / `sudo apt remove idlescreen`.
 
 ---
 
@@ -73,8 +74,9 @@ Ten procedural **cell-grid plugins** (separate packages / repos). The host raste
 sudo curl -fsSL https://idlescreen.github.io/packages/rpm/idlescreen.repo \
   -o /etc/yum.repos.d/idlescreen.repo
 sudo dnf check-update
-sudo dnf install idle-daemon idle-cli idle-savers idle-tui
+sudo dnf install idlescreen
 # COSMIC: sudo dnf install idle-cosmic
+# Remove: sudo dnf remove idlescreen
 ```
 </details>
 
@@ -88,8 +90,9 @@ curl -fsSL https://idlescreen.github.io/packages/apt/idlescreen-keyring.gpg \
 echo "deb [signed-by=/etc/apt/keyrings/idlescreen-keyring.gpg] https://idlescreen.github.io/packages/apt stable main" \
   | sudo tee /etc/apt/sources.list.d/idlescreen.list >/dev/null
 sudo apt update
-sudo apt install idle-daemon idle-cli idle-savers idle-tui
+sudo apt install idlescreen
 # COSMIC: sudo apt install idle-cosmic
+# Remove: sudo apt remove idlescreen
 ```
 </details>
 
