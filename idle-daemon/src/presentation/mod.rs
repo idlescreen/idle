@@ -8,6 +8,7 @@
 
 mod frame_loop;
 mod frame_pacing;
+mod hw_scaling;
 mod ipc_init;
 mod ipc_lifecycle;
 mod ipc_raster;

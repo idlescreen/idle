@@ -656,7 +656,7 @@ dependencies = [
 
 [[package]]
 name = "idle-daemon"
-version = "2.5.5"
+version = "2.5.6"
 dependencies = [
  "anyhow",
  "futures-lite",
@@ -2043,7 +2043,7 @@ dependencies = [
 
 [[package]]
 name = "wayland-present"
-version = "0.3.63"
+version = "0.3.64"
 dependencies = [
  "libc",
  "tracing",

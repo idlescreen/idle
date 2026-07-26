@@ -1,43 +1,105 @@
-# QA regression checklist (morning issues)
+# QA regression checklist (host / preview)
 
 Manual / integration checks that unit tests cannot fully cover. Run after
 daemon/cli upgrades or before a release cut.
+
+**Critical rule:** TUI **`p` must never stop `idle-daemon`**.  
+`systemctl --user show idle-daemon -p NRestarts` must not increase on preview.
+
+## Quick smoke (5 minutes)
+
+```bash
+# 0. Version
+rpm -q idle-daemon idle-cli
+# expect idle-daemon >= 2.5.6
+
+# 1. Baseline
+systemctl --user is-active idle-daemon
+R0=$(systemctl --user show idle-daemon -p NRestarts --value)
+echo "NRestarts=$R0"
+
+# 2. Preview from CLI
+idlescreen preview beams
+sleep 3
+idlescreen status | grep -E 'preview|presentation|running'
+# Prefer preview_active=true while overlay is up
+
+# 3. Daemon must not have bounced
+R1=$(systemctl --user show idle-daemon -p NRestarts --value)
+test "$R0" = "$R1" && echo PASS: no restart || echo FAIL: NRestarts $R0 '->' $R1
+systemctl --user is-active idle-daemon   # must be active
+
+# 4. Stop
+idlescreen stop
+
+# 5. TUI: open idle-tui, select a saver, press p — same NRestarts check
+```
 
 ## Doctor honesty
 
 | ID | Steps | Pass criteria |
 |----|--------|----------------|
 | D1 | `systemctl --user stop idle-daemon` then `idlescreen doctor` | Exit ≠ 0; **FAIL** D-Bus + systemd + inhibitor; **not** “ALL SYSTEMS NOMINAL” |
-| D2 | Start daemon; force inhibit (play media with MPRIS, or hold logind idle) then `idlescreen doctor` | **FAIL** Inhibitor Status; not NOMINAL |
-| D3 | Clear inhibit; daemon active; idle enabled | Can reach NOMINAL only if uninhibited |
+| D2 | Start daemon; force inhibit (MPRIS or logind idle) then doctor | **FAIL** Inhibitor Status; not NOMINAL |
+| D3 | Clear inhibit; daemon active; idle enabled | NOMINAL only if uninhibited |
 | D4 | `idlescreen disable` then doctor | **FAIL** D-Bus (idle DISABLED) |
 
 ## Inhibitors list
 
 | ID | Steps | Pass criteria |
 |----|--------|----------------|
-| I1 | While Grok/agent holds logind idle: `idlescreen inhibitors` | Shows `logind:…` and reason text (e.g. agent turn) |
+| I1 | While Grok/agent holds logind idle: `idlescreen inhibitors` | Shows `logind:…` and reason (e.g. agent turn) |
 | I2 | Play MPRIS media: `idlescreen inhibitors` | Shows `mpris:…` with Playing |
 | I3 | No external blocks, no cookies | `inhibited: false` + No active inhibitors |
-| I4 | `status` inhibited=true ⇔ inhibitors list non-empty **or** honest “unknown external” |
+| I4 | `status` inhibited=true ⇔ list names sources **or** honest “unknown external” |
 
-## Preview / TUI `p`
+## Preview / TUI `p` (critical)
 
 | ID | Steps | Pass criteria |
 |----|--------|----------------|
-| P1 | Uninhibited: `idlescreen preview beams` | Overlay appears; journal has **no** `invalid shm name` |
-| P2 | TUI: select saver, press `p` | Same as P1 |
-| P3 | Inhibited (e.g. Grok logind): `idlescreen preview beams` | Preview **still starts**; inhibitors list names the block; idle savers remain blocked |
-| P4 | After stop: `idlescreen stop`; preview_active false |
-| P5 | TUI `p` then watch `systemctl --user status idle-daemon` | **Must stay active** — no `Main process exited` / restart counter bump |
-| P6 | If presenter dies: journal shows `recovering without exiting` + recreate; service stays active |
+| P1 | Uninhibited: `idlescreen preview beams` | Overlay visible; **no** `invalid shm name` |
+| P2 | TUI: select saver, press `p` | Overlay visible (or brief flash + recovery, never process exit) |
+| P3 | Inhibited (Grok logind): still preview | Preview **allowed**; inhibitors still list the block; idle savers blocked |
+| P4 | `idlescreen stop` | `preview_active` false |
+| **P5** | Note `NRestarts` before/after TUI `p` | **Unchanged** — no `Main process exited` / `Failed with result` |
+| **P6** | If presenter dies | Journal: `recovering without exiting` + `presenter recreated`; **service stays active** |
+| P7 | Journal after `p` | Prefer **no** `failed to read Wayland events`; if present, still P5/P6 |
+| P8 | Without `IDLE_HW_VIEWPORT` | No log line enabling viewporter; scaling stays CPU |
+| P9 | Press `p` twice in a row | Second preview works; daemon still active |
+
+### Journal watch recipe
+
+```bash
+# terminal A
+journalctl --user -u idle-daemon -f
+
+# terminal B — or use TUI p
+idlescreen preview cosmos
+```
+
+**FAIL signals (old bug):**
+```text
+Error: Wayland presenter connection lost
+Main process exited, code=exited, status=1/FAILURE
+Scheduled restart job, restart counter is at N
+```
+
+**PASS signals (2.5.5+):**
+```text
+queued preview command
+starting Wayland screensaver '…' (preview)...
+# optional recovery without death:
+wayland runtime fault — recovering without exiting the daemon
+overlay presenter recreated successfully
+# NRestarts unchanged
+```
 
 ## Packaging / dual icons / applet
 
 | ID | Steps | Pass criteria |
 |----|--------|----------------|
 | A1 | `which -a idlescreen-applet` | Prefer `/usr/bin`; no stale `~/.local/bin` with trance bus |
-| A2 | Packaged applet strings / bus | `io.github.idlescreen.Idle` only for control plane |
+| A2 | Packaged applet | Speaks `io.github.idlescreen.Idle` |
 | A3 | App menu | Single IdleScreen launcher (tui); CosmicApplet `NoDisplay` |
 | A4 | No orphan `com.system76.CosmicAppletIdle.desktop` |
 
@@ -45,23 +107,36 @@ daemon/cli upgrades or before a release cut.
 
 | ID | Steps | Pass criteria |
 |----|--------|----------------|
-| U1 | Ship signed RPM; `dnf list idle-daemon` | Available version matches ship |
-| U2 | `install.sh` or `dnf upgrade idle-daemon` | Installed version rises; service restarts |
-| U3 | `rpm -K` on pool package | `signatures OK` |
+| U1 | `dnf list idle-daemon` | Available ≥ shipped |
+| U2 | `dnf upgrade idle-daemon` / install.sh | Version rises; service active after |
+| U3 | `rpm -K` on pool RPM | `signatures OK` |
 
 ## Automated coverage map
 
-| Issue | Code tests |
-|-------|------------|
-| Doctor false NOMINAL | `idle-cli` `doctor_rules::tests` |
-| Inhibitors empty vs inhibited | `idle-cli` `inhibitors_fmt::tests`; `idle-daemon` `inhibit::tests` merge |
-| Preview shm invalid | `idle-ipc` `path_safety` unit + proptest |
-| Inhibit clears preview | `idle-daemon` `idle_decision_tests` |
-| Job file (render) | `render` `job_spec::tests` |
+| Issue | Code tests | Run |
+|-------|------------|-----|
+| Doctor false NOMINAL | `idle-cli` `doctor_rules` | `cargo test -p idle-cli doctor_rules` |
+| Inhibitors empty vs blocked | `inhibitors_fmt` + `merge_inhibitor_rows` | `cargo test -p idle-cli inhibitors_fmt` |
+| Preview shm invalid | `idle-ipc` path_safety unit + proptest | `cargo test -p idle-ipc path_safety` |
+| Preview while inhibited | `idle_decision` preview_starts_even_when_inhibited | `cargo test -p idle-daemon idle_decision` |
+| **Presenter death ≠ process exit** | `runtime::recovery_plan` exit_process=false | `cargo test -p idle-daemon runtime` |
+| **Viewporter default off** | `hw_scaling::should_use_hw_viewport` | `cargo test -p idle-daemon hw_scaling` |
+| Zero frame geometry | `wayland-present` frame_geometry_ok | `cargo test -p wayland-present geometry` |
+| Bare `idle` not trusted | `auth_tests` | `cargo test -p idle-daemon auth` |
 
-Run unit suite:
+### Full unit suite
 
 ```bash
 cd idle
-cargo test -p idle-cli -p idle-daemon -p idle-ipc
+cargo test -p idle-cli -p idle-daemon -p idle-ipc -p wayland-present
+```
+
+### Post-release one-liner
+
+```bash
+R0=$(systemctl --user show idle-daemon -p NRestarts --value)
+idlescreen preview beams; sleep 2
+idlescreen stop
+R1=$(systemctl --user show idle-daemon -p NRestarts --value)
+test "$R0" = "$R1" && systemctl --user is-active --quiet idle-daemon && echo QA_P5_PASS || echo QA_P5_FAIL
 ```

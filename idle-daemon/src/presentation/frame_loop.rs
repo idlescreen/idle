@@ -60,9 +60,11 @@ pub fn run_frame_loop(
     // COSMIC (and some other compositors) have disconnected the Wayland client
     // when wp_viewporter set_destination is used during screensaver preview.
     // That used to kill the whole daemon via check_runtime_alive. Opt-in only.
-    let force_hw = std::env::var_os("IDLE_HW_VIEWPORT").is_some();
-    let use_hw_scaling =
-        force_hw && presenter.supports_scaling() && !sessions[0].session.using_gpu_upscale();
+    let use_hw_scaling = super::hw_scaling::should_use_hw_viewport(
+        super::hw_scaling::hw_viewport_env_force(),
+        presenter.supports_scaling(),
+        sessions[0].session.using_gpu_upscale(),
+    );
     for s in sessions.iter_mut() {
         s.session.set_hardware_scaling(use_hw_scaling);
     }
