@@ -50,6 +50,19 @@ mod tests {
     }
 
     #[test]
+    fn shm_name_accepts_live_daemon_preview_format() {
+        // Regression: hard-cut create uses /idle-shm-{pid}-{idx}; old allowlist
+        // only accepted /trance-shm-* → preview aborted with "invalid shm name".
+        assert!(is_valid_shm_name("/idle-shm-249870-0"));
+        assert!(is_valid_shm_name("/idle-shm-249870-1"));
+        assert!(is_valid_shm_name(&format!(
+            "/idle-shm-{}-{}",
+            std::process::id(),
+            0
+        )));
+    }
+
+    #[test]
     fn shm_name_rejects_traversal_and_oddities() {
         assert!(!is_valid_shm_name("idle-shm-1-0"));
         assert!(!is_valid_shm_name("/other-1-0"));
@@ -97,5 +110,36 @@ mod tests {
     fn socket_path_rejects_dotdot_middle_segment() {
         assert!(!is_plausible_socket_path("/run/../user/x.sock"));
         assert!(!is_plausible_socket_path("/a/b/../c.sock"));
+    }
+}
+
+#[cfg(test)]
+mod proptests {
+    use super::is_valid_shm_name;
+    use proptest::prelude::*;
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(64))]
+
+        #[test]
+        fn idle_shm_pid_idx_always_valid(
+            pid in 1u32..=u32::MAX,
+            idx in 0u32..1000u32,
+        ) {
+            let name = format!("/idle-shm-{pid}-{idx}");
+            prop_assert!(
+                is_valid_shm_name(&name),
+                "daemon format must be valid: {name}"
+            );
+        }
+
+        #[test]
+        fn trance_legacy_pid_idx_always_valid(
+            pid in 1u32..=u32::MAX,
+            idx in 0u32..1000u32,
+        ) {
+            let name = format!("/trance-shm-{pid}-{idx}");
+            prop_assert!(is_valid_shm_name(&name));
+        }
     }
 }

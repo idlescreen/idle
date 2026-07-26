@@ -100,3 +100,58 @@ fn add_rejects_when_at_capacity_for_one_client() {
     // 33rd should be rejected (per-cap of 32)
     assert!(s.add("a".to_string(), "r".to_string(), c.clone()).is_err());
 }
+
+#[test]
+fn list_all_includes_local_cookies() {
+    let s = InhibitorState::new();
+    let c = client(":test.app.List");
+    let cookie = s
+        .add("myapp".into(), "fullscreen".into(), c)
+        .expect("add");
+    let rows = s.list_all();
+    assert!(
+        rows.iter()
+            .any(|(k, app, why)| *k == cookie && app == "myapp" && why == "fullscreen"),
+        "local cookie missing from list_all: {rows:?}"
+    );
+}
+
+#[test]
+fn merge_includes_logind_grok_style_external() {
+    // Regression: status.inhibited true while CLI showed empty list.
+    use super::external::ExternalInhibitor;
+    use super::merge_inhibitor_rows;
+
+    let local = vec![(1u32, "app".into(), "reason".into())];
+    let external = vec![ExternalInhibitor {
+        source: "logind".into(),
+        who: "grok (block)".into(),
+        why: "agent turn in progress".into(),
+    }];
+    let rows = merge_inhibitor_rows(local, &external);
+    assert_eq!(rows.len(), 2);
+    assert!(
+        rows.iter().any(|(k, app, why)| {
+            *k == 0 && app == "logind:grok (block)" && why == "agent turn in progress"
+        }),
+        "grok logind row missing: {rows:?}"
+    );
+}
+
+#[test]
+fn merge_external_only_not_empty() {
+    use super::external::ExternalInhibitor;
+    use super::merge_inhibitor_rows;
+
+    let rows = merge_inhibitor_rows(
+        vec![],
+        &[ExternalInhibitor {
+            source: "mpris".into(),
+            who: "firefox".into(),
+            why: "PlaybackStatus=Playing".into(),
+        }],
+    );
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].0, 0);
+    assert!(rows[0].1.starts_with("mpris:"));
+}

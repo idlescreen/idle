@@ -9,36 +9,18 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 pub fn check_dbus() -> CheckResult {
+    use super::doctor_rules::{dbus_disconnected_check, dbus_status_check};
     if let Ok(client) = TranceClient::connect() {
         match client.get_status() {
-            Ok(status) => {
-                if !status.idle_enabled {
-                    return chk(
-                        "D-Bus Service",
-                        false,
-                        format!(
-                            "connected but idle is DISABLED — savers will not start (timeout={}m saver='{}'); enable with: idlescreen enable",
-                            status.idle_timeout_mins, status.active_saver
-                        ),
-                    );
-                }
-                chk(
-                    "D-Bus Service",
-                    true,
-                    format!(
-                        "connected (io.github.idlescreen.Idle) idle_enabled=true timeout={}m saver='{}'",
-                        status.idle_timeout_mins, status.active_saver
-                    ),
-                )
-            }
+            Ok(status) => dbus_status_check(
+                status.idle_enabled,
+                status.idle_timeout_mins,
+                &status.active_saver,
+            ),
             Err(e) => chk("D-Bus Service", false, format!("GetStatus error: {e}")),
         }
     } else {
-        chk(
-            "D-Bus Service",
-            false,
-            "cannot connect — idle-daemon is not running; start it: systemctl --user start idle-daemon  (or: idlescreen doctor --fix)",
-        )
+        dbus_disconnected_check()
     }
 }
 
@@ -198,29 +180,13 @@ pub fn check_running_pid() -> CheckResult {
 }
 
 pub fn check_inhibitor() -> CheckResult {
+    use super::doctor_rules::inhibitor_status_check;
     if let Ok(client) = TranceClient::connect()
         && let Ok(status) = client.get_status()
     {
-        if status.inhibited {
-            // Not "ok" — inhibited means savers will not appear.
-            return chk(
-                "Inhibitor Status",
-                false,
-                "INHIBITED — an app/system is blocking idle; savers will not start (try: idlescreen inhibitors)",
-            );
-        }
-        return chk(
-            "Inhibitor Status",
-            true,
-            "uninhibited (idle can trigger savers)",
-        );
+        return inhibitor_status_check(true, status.inhibited);
     }
-    // Cannot claim nominal idle path without a live daemon.
-    chk(
-        "Inhibitor Status",
-        false,
-        "cannot check — idle-daemon not connected (start the daemon first)",
-    )
+    inhibitor_status_check(false, false)
 }
 
 fn pid_file_path() -> PathBuf {

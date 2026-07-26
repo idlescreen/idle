@@ -81,6 +81,33 @@ fn inhibit_stops() {
 }
 
 #[test]
+fn inhibit_clears_pending_preview_before_start() {
+    // Regression: TUI `p` accepted then nothing plays — next tick clears preview
+    // when inhibited (e.g. logind grok / MPRIS) without ever starting.
+    let mut i = base();
+    i.is_active = false;
+    i.preview_name = Some("beams");
+    i.inhibited = true;
+    assert_eq!(
+        decide_presentation(i, "ripple"),
+        PresentationDecision::Stop {
+            clear_preview: true,
+        }
+    );
+}
+
+#[test]
+fn inhibit_does_not_start_idle_saver() {
+    let mut i = base();
+    i.system_idle = true;
+    i.inhibited = true;
+    assert_eq!(
+        decide_presentation(i, "beams"),
+        PresentationDecision::Hold
+    );
+}
+
+#[test]
 fn preview_overrides_idle() {
     let mut i = base();
     i.system_idle = true;

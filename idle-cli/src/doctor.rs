@@ -4,6 +4,7 @@ use std::process::Command;
 use super::doctor_checks::CheckResult;
 use super::doctor_env::{check_protocol_hints, check_wayland};
 use super::doctor_fs::{check_config_parses, check_shm_permissions, check_yaml_syntax};
+use super::doctor_rules::all_systems_nominal;
 use super::doctor_service::{
     check_dbus, check_inhibitor, check_running_pid, check_savers, check_systemd_service,
     check_tui_optional,
@@ -45,7 +46,7 @@ pub fn run_doctor(fix: bool, json: bool) -> Result<()> {
         println!("IdleScreen System Diagnostics (Doctor)");
         println!("==========================================");
         print_results(&results);
-        if !results.iter().all(|r| r.passed) {
+        if !all_systems_nominal(&results) {
             if !fix {
                 println!("Hint: try  idlescreen doctor --fix  to reload/enable the user service.");
             }
@@ -53,7 +54,7 @@ pub fn run_doctor(fix: bool, json: bool) -> Result<()> {
         }
     }
 
-    if json && !results.iter().all(|r| r.passed) {
+    if json && !all_systems_nominal(&results) {
         std::process::exit(1);
     }
     Ok(())
@@ -122,7 +123,7 @@ fn print_results(results: &[CheckResult]) {
         println!("  [{marker}] {}: {}", result.name, result.detail);
     }
     println!("==========================================");
-    if results.iter().all(|r| r.passed) {
+    if all_systems_nominal(results) {
         println!("Diagnostics complete: ALL SYSTEMS NOMINAL.");
         println!("Daemon is up and idle is free to run savers.");
     } else {
@@ -134,7 +135,7 @@ fn print_results(results: &[CheckResult]) {
 
 fn print_json(results: &[CheckResult]) {
     let mut out = String::from("{\n  \"ok\": ");
-    out.push_str(if results.iter().all(|r| r.passed) {
+    out.push_str(if all_systems_nominal(results) {
         "true"
     } else {
         "false"

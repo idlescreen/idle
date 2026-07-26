@@ -71,12 +71,15 @@ fn missing_uid_denied_even_for_self_pid() {
 
 #[test]
 fn comm_matches_trusted_exact_and_truncated() {
-    assert!(comm_matches_trusted("idle"));
     assert!(comm_matches_trusted("idlescreen"));
-    assert!(comm_matches_trusted("idlescreen-tui"));
-    assert!(comm_matches_trusted("  idle  "));
+    assert!(comm_matches_trusted("idle-tui"));
+    assert!(comm_matches_trusted("  idlescreen  "));
     // idlescreen-applet is 17 chars → kernel comm is first 15.
     assert!(comm_matches_trusted("idlescreen-appl"));
+    // Bare "idle" is Fedora python3-idle — must NOT be a control peer.
+    assert!(!comm_matches_trusted("idle"));
+    assert!(!comm_matches_trusted("  idle  "));
+    assert!(!comm_matches_trusted("idlescreen-tui")); // wrong basename (real is idle-tui)
     assert!(!comm_matches_trusted("trance"));
     assert!(!comm_matches_trusted("trance-applet"));
     assert!(!comm_matches_trusted("bash"));

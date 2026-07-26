@@ -4,6 +4,7 @@
 //! CLI command handlers. Public surface is re-exported for `main` stability.
 
 mod control;
+mod inhibitors_fmt;
 mod status;
 
 pub use control::{
