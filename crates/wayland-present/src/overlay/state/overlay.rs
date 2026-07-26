@@ -52,7 +52,9 @@ impl SessionState {
                 | zwlr_layer_surface_v1::Anchor::Left
                 | zwlr_layer_surface_v1::Anchor::Right,
         );
-        layer_surface.set_exclusive_zone(-1);
+        // 0 = no exclusive zone. -1 (full surface exclusive) has caused unstable
+        // sessions / disconnects on some compositors (COSMIC).
+        layer_surface.set_exclusive_zone(0);
         layer_surface.set_margin(0, 0, 0, 0);
         // OnDemand: Exclusive fought terminal focus during TUI preview and
         // contributed to unstable sessions. Pointer/keyboard still dismiss after grace.
@@ -81,6 +83,8 @@ impl SessionState {
                 return;
             };
 
+            // Layer-shell order: set state → ack_configure → (buffer) → one commit.
+            // Never commit between set_margin and ack (protocol / COSMIC disconnect).
             Self::apply_tiling_margins(
                 &overlay.layer_surface,
                 &overlay.surface,
@@ -107,6 +111,11 @@ impl SessionState {
         self.register_configured_output(output_id, render_w, render_h);
 
         if self.screensaver_mode {
+            // Frames arrive via update_frame after this configure; no buffer yet.
+            // A null commit after ack is required so the surface is configured.
+            if let Some(overlay) = self.overlays.get(&output_id) {
+                overlay.surface.commit();
+            }
             return;
         }
         self.attach_solid_buffer(output_id, render_w, render_h);
@@ -131,6 +140,13 @@ impl SessionState {
         let Some(overlay) = self.overlays.get_mut(&output_id) else {
             return;
         };
+
+        // Layer-shell protocol: do not attach a buffer until the first
+        // `configure` has been acked. Committing early is a protocol error and
+        // disconnects the client (seen as "failed to read Wayland events").
+        if overlay.width == 0 || overlay.height == 0 {
+            return;
+        }
 
         if !super::super::buffer::ensure_frame_buffer(
             &mut overlay.buffer,

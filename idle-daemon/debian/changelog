@@ -1,3 +1,11 @@
+idle-daemon (2.5.8-1) unstable; urgency=medium
+
+  * wayland-present: never attach buffer before layer-shell configure (protocol disconnect).
+  * exclusive_zone 0 instead of -1 for COSMIC stability.
+  * After Wayland fault: cooldown before idle auto-restart (stop thrash); forced preview still OK.
+
+ -- IdleScreen <noreply@idlescreen.github.io>  Sat, 26 Jul 2026 08:25:00 -0700
+
 idle-daemon (2.5.7-1) unstable; urgency=medium
 
   * Ignore Grok/agent-turn logind idle holds in inhibitors list and idle block.

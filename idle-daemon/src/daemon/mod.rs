@@ -5,6 +5,7 @@
 //! `run_daemon` is the orchestrator; setup helpers stay here and the runtime
 //! tick loop lives in sibling modules.
 
+mod battery;
 mod idle_decision;
 mod idle_logic;
 mod presentation;

@@ -4,13 +4,18 @@
 
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
+use std::time::Instant;
 
 use wayland_idle::IdleMonitor;
 use wayland_present::OverlayPresenter;
 
+use super::battery::is_on_battery;
 use super::idle_logic::update_presentation_state;
 use super::presentation::{ActivePresentation, stop_presentation};
-use super::runtime::{RuntimeFault, check_runtime_alive, recovery_plan};
+use super::runtime::{
+    RuntimeFault, check_runtime_alive, present_cooldown_after_fault, recovery_plan,
+    should_hold_idle_presentation,
+};
 use crate::controller::{DaemonCommand, DaemonController, MAIN_LOOP_INTERVAL};
 
 pub fn tick_loop_until_shutdown(controller: Arc<DaemonController>) -> anyhow::Result<()> {
@@ -20,12 +25,22 @@ pub fn tick_loop_until_shutdown(controller: Arc<DaemonController>) -> anyhow::Re
     let mut preview_name: Option<String> = None;
     let mut current_saver = String::new();
     let mut tick_counter = 0u32;
+    let mut consecutive_faults = 0u32;
+    let mut present_cooldown_until: Option<Instant> = None;
 
     while !controller.shutdown.load(Ordering::Relaxed) {
         std::thread::sleep(MAIN_LOOP_INTERVAL);
         tick_counter = tick_counter.saturating_add(1);
 
         if let Err(fault) = check_runtime_alive(&idle_monitor, &overlay_presenter) {
+            consecutive_faults = consecutive_faults.saturating_add(1);
+            let cooldown = present_cooldown_after_fault(consecutive_faults);
+            present_cooldown_until = Some(Instant::now() + cooldown);
+            tracing::warn!(
+                consecutive_faults,
+                cooldown_secs = cooldown.as_secs(),
+                "holding idle auto-start after Wayland fault (forced preview still allowed)"
+            );
             recover_runtime(
                 fault,
                 &controller,
@@ -46,6 +61,8 @@ pub fn tick_loop_until_shutdown(controller: Arc<DaemonController>) -> anyhow::Re
             &mut presentation,
             &mut preview_name,
             &mut current_saver,
+            &mut present_cooldown_until,
+            &mut consecutive_faults,
         );
         if let Some(timeout) = controller.reload_config_if_due(tick_counter) {
             idle_monitor.set_timeout(timeout);
@@ -63,6 +80,24 @@ pub fn tick_loop_until_shutdown(controller: Arc<DaemonController>) -> anyhow::Re
 
         if is_on_battery() {
             inhibited = true;
+        }
+
+        // After a presenter fault, treat as inhibited for *idle* only so we
+        // do not thrash start→fault→recover. Forced preview still starts
+        // (decide_presentation ignores inhibit for preview).
+        let cooldown_active = present_cooldown_until
+            .map(|until| Instant::now() < until)
+            .unwrap_or(false);
+        if !cooldown_active {
+            present_cooldown_until = None;
+        }
+        if should_hold_idle_presentation(cooldown_active) {
+            inhibited = true;
+        }
+
+        // User activity clears fault streak so the next idle period can try once.
+        if !system_idle {
+            consecutive_faults = 0;
         }
 
         // Skip presentation updates if presenter is dead (recovery pending).
@@ -171,11 +206,16 @@ fn dispatch_tick_commands(
     presentation: &mut ActivePresentation,
     preview_name: &mut Option<String>,
     current_saver: &mut String,
+    present_cooldown_until: &mut Option<Instant>,
+    consecutive_faults: &mut u32,
 ) {
     for command in controller.drain_commands() {
         match command {
             DaemonCommand::Preview(name) => {
                 tracing::info!(saver = %name, "queued preview command");
+                // User-forced preview: clear idle cooldown so `p` can try now.
+                *present_cooldown_until = None;
+                *consecutive_faults = 0;
                 *preview_name = Some(name);
             }
             DaemonCommand::StopPresentation => {
@@ -197,36 +237,4 @@ fn dispatch_tick_commands(
             }
         }
     }
-}
-
-fn is_on_battery() -> bool {
-    let path = std::path::Path::new("/sys/class/power_supply");
-    if let Ok(entries) = std::fs::read_dir(path) {
-        let mut has_ac = false;
-        let mut ac_online = true;
-        let mut battery_discharging = false;
-
-        for entry in entries.flatten() {
-            let p = entry.path();
-            if let Ok(t) = std::fs::read_to_string(p.join("type")) {
-                let type_str = t.trim();
-                if type_str == "Mains" {
-                    has_ac = true;
-                    if let Ok(o) = std::fs::read_to_string(p.join("online")) {
-                        ac_online = o.trim() != "0";
-                    }
-                } else if type_str == "Battery"
-                    && let Ok(s) = std::fs::read_to_string(p.join("status"))
-                    && s.trim() == "Discharging"
-                {
-                    battery_discharging = true;
-                }
-            }
-        }
-
-        if (has_ac && !ac_online) || battery_discharging {
-            return true;
-        }
-    }
-    false
 }

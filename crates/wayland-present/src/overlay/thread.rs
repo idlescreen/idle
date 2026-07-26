@@ -149,14 +149,24 @@ fn dispatch_pending_events(
             }
 
             if poll_fd.revents & libc::POLLIN != 0 {
-                if let Err(e) = guard.read() {
-                    // Include underlying error — protocol violations often appear here.
-                    tracing::error!(
-                        error = %e,
-                        revents = poll_fd.revents,
-                        "wayland-present: failed to read Wayland events (compositor may have closed the connection; often a protocol error on the previous commit)"
-                    );
-                    return Err("failed to read Wayland events");
+                match guard.read() {
+                    Ok(_) => {}
+                    Err(e) if is_wayland_would_block(&e) => {
+                        // Another path already drained the socket, or nothing left
+                        // to read. Not fatal — dispatch whatever is pending.
+                        tracing::trace!(
+                            error = %e,
+                            "wayland-present: read WouldBlock/EAGAIN; continuing"
+                        );
+                    }
+                    Err(e) => {
+                        tracing::error!(
+                            error = %e,
+                            revents = poll_fd.revents,
+                            "wayland-present: failed to read Wayland events (compositor may have closed the connection; often a protocol error on the previous commit)"
+                        );
+                        return Err("failed to read Wayland events");
+                    }
                 }
                 if let Err(e) = event_queue.dispatch_pending(state) {
                     tracing::error!(error = %e, "wayland-present: failed to dispatch Wayland events");
@@ -191,5 +201,39 @@ fn apply_commands(state: &mut SessionState, command_rx: &Receiver<PresenterComma
             } => state.update_frame(output_id, width, height, pixels),
             PresenterCommand::Hide => state.hide(),
         }
+    }
+}
+
+/// `prepare_read`/`read` can return WouldBlock (EAGAIN) when the socket was
+/// already drained — that must not kill the presenter thread.
+fn is_wayland_would_block(err: &wayland_client::backend::WaylandError) -> bool {
+    match err {
+        wayland_client::backend::WaylandError::Io(io) => {
+            matches!(
+                io.kind(),
+                std::io::ErrorKind::WouldBlock | std::io::ErrorKind::Interrupted
+            )
+        }
+        _ => false,
+    }
+}
+
+#[cfg(test)]
+mod would_block_tests {
+    use super::is_wayland_would_block;
+    use wayland_client::backend::WaylandError;
+
+    #[test]
+    fn eagain_is_would_block() {
+        let err = WaylandError::Io(std::io::Error::from(std::io::ErrorKind::WouldBlock));
+        assert!(is_wayland_would_block(&err));
+    }
+
+    #[test]
+    fn protocol_error_is_fatal() {
+        // Non-Io errors must still tear down the thread.
+        // Construct via a real Io ConnectionAborted as a stand-in for non-WouldBlock.
+        let err = WaylandError::Io(std::io::Error::from(std::io::ErrorKind::ConnectionAborted));
+        assert!(!is_wayland_would_block(&err));
     }
 }

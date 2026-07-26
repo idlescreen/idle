@@ -15,9 +15,16 @@ pub fn frame_geometry_ok(buffer_w: u32, buffer_h: u32, dst_w: u32, dst_h: u32) -
     buffer_w > 0 && buffer_h > 0 && dst_w > 0 && dst_h > 0
 }
 
+/// Layer surface has received (and applied) its first configure.
+///
+/// Until this is true, attaching a buffer is a protocol error.
+pub fn layer_surface_configured(surface_w: u32, surface_h: u32) -> bool {
+    surface_w > 0 && surface_h > 0
+}
+
 #[cfg(test)]
 mod geometry_tests {
-    use super::frame_geometry_ok;
+    use super::{frame_geometry_ok, layer_surface_configured};
 
     #[test]
     fn rejects_zero_buffer() {
@@ -35,6 +42,14 @@ mod geometry_tests {
     fn accepts_positive() {
         assert!(frame_geometry_ok(960, 540, 1920, 1080));
         assert!(frame_geometry_ok(1920, 1080, 1920, 1080));
+    }
+
+    #[test]
+    fn layer_not_configured_until_positive_size() {
+        assert!(!layer_surface_configured(0, 0));
+        assert!(!layer_surface_configured(1920, 0));
+        assert!(!layer_surface_configured(0, 1080));
+        assert!(layer_surface_configured(1920, 1080));
     }
 }
 
@@ -111,16 +126,18 @@ impl SessionState {
             return false;
         };
 
-        let dst_w = if overlay.width > 0 {
-            overlay.width
-        } else {
-            width
-        };
-        let dst_h = if overlay.height > 0 {
-            overlay.height
-        } else {
-            height
-        };
+        // Prefer configured surface size; never invent a destination for an
+        // unconfigured layer surface (would race the first configure).
+        if !layer_surface_configured(overlay.width, overlay.height) {
+            tracing::debug!(
+                buffer_w = width,
+                buffer_h = height,
+                "wayland-present: skip frame — layer surface not configured yet"
+            );
+            return false;
+        }
+        let dst_w = overlay.width;
+        let dst_h = overlay.height;
 
         if !frame_geometry_ok(width, height, dst_w, dst_h) {
             tracing::error!(

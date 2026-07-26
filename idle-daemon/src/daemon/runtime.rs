@@ -3,6 +3,7 @@
 //! Wayland runtime initialization and liveness checks.
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::anyhow;
 use wayland_idle::IdleMonitor;
@@ -64,6 +65,26 @@ pub fn recovery_plan(fault: RuntimeFault) -> RecoveryPlan {
             exit_process: false,
         },
     }
+}
+
+/// Cooldown after a Wayland fault before auto-restarting idle presentation.
+///
+/// Without this, `system_idle` stays true and the tick loop immediately
+/// restarts the saver → fault → recover thrash (~1 Hz).
+///
+/// `consecutive_faults` is 1-based (first fault → shortest wait).
+pub fn present_cooldown_after_fault(consecutive_faults: u32) -> Duration {
+    let n = consecutive_faults.max(1);
+    // 5s, 10s, 20s, 40s, cap 60s
+    let exp = n.saturating_sub(1).min(4);
+    let secs = 5u64.saturating_mul(1u64 << exp).min(60);
+    Duration::from_secs(secs)
+}
+
+/// Whether new idle presentations should be held (preview still allowed via
+/// `decide_presentation` inhibit override).
+pub fn should_hold_idle_presentation(cooldown_remaining: bool) -> bool {
+    cooldown_remaining
 }
 
 pub fn initialize_runtime(
@@ -202,5 +223,22 @@ mod tests {
         let plan = recovery_plan(RuntimeFault::IdleMonitorDead);
         assert!(plan.recreate_idle_monitor);
         assert!(!plan.recreate_presenter);
+    }
+
+    #[test]
+    fn present_cooldown_grows_then_caps() {
+        assert_eq!(present_cooldown_after_fault(1), Duration::from_secs(5));
+        assert_eq!(present_cooldown_after_fault(2), Duration::from_secs(10));
+        assert_eq!(present_cooldown_after_fault(3), Duration::from_secs(20));
+        assert_eq!(present_cooldown_after_fault(4), Duration::from_secs(40));
+        assert_eq!(present_cooldown_after_fault(5), Duration::from_secs(60));
+        assert_eq!(present_cooldown_after_fault(99), Duration::from_secs(60));
+        assert_eq!(present_cooldown_after_fault(0), Duration::from_secs(5));
+    }
+
+    #[test]
+    fn hold_idle_only_while_cooldown_active() {
+        assert!(should_hold_idle_presentation(true));
+        assert!(!should_hold_idle_presentation(false));
     }
 }
