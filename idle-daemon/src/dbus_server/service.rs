@@ -162,7 +162,8 @@ impl TranceService {
         &self,
         #[zbus(header)] _header: zbus::message::Header<'_>,
     ) -> zbus::fdo::Result<Vec<(u32, String, String)>> {
-        Ok(self.controller.inhibitors.list())
+        // Include logind idle + MPRIS so CLI matches status.inhibited.
+        Ok(self.controller.inhibitors.list_all())
     }
 
     /// DEPRECATED (2026) — no-op method retained for D-Bus client compatibility.

@@ -1,9 +1,15 @@
 // SPDX-License-Identifier: MIT
 
+//! Idle inhibitors: IdleScreen cookies + external (logind idle / MPRIS).
+
+mod external;
+
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use zbus::names::UniqueName;
+
+use external::{check_logind_inhibited, check_mpris_playing, list_external};
 
 #[derive(Debug, Clone)]
 pub struct Inhibitor {
@@ -134,6 +140,7 @@ impl InhibitorState {
         inhibitors.retain(|entry| entry.client != *client);
     }
 
+    /// IdleScreen cookies only (D-Bus UnInhibit targets these).
     pub fn list(&self) -> Vec<(u32, String, String)> {
         let inhibitors = self.inhibitors.lock().unwrap_or_else(|e| e.into_inner());
         inhibitors
@@ -147,92 +154,24 @@ impl InhibitorState {
             })
             .collect()
     }
-}
 
-#[cfg(all(target_os = "linux", not(test)))]
-type LogindInhibitorInfo = (String, String, String, String, u32, u32);
-
-#[cfg(all(target_os = "linux", not(test)))]
-fn check_logind_inhibited() -> bool {
-    let run_blocking = || {
-        let Ok(conn) = zbus::blocking::Connection::system() else {
-            return false;
-        };
-        let Ok(reply) = conn.call_method(
-            Some("org.freedesktop.login1"),
-            "/org/freedesktop/login1",
-            Some("org.freedesktop.login1.Manager"),
-            "ListInhibitors",
-            &(),
-        ) else {
-            return false;
-        };
-        let Ok(inhibitors): Result<Vec<LogindInhibitorInfo>, _> = reply.body().deserialize() else {
-            return false;
-        };
-        for (what, _, _, _, _, _) in inhibitors {
-            if what.split(':').any(|w| w == "idle") {
-                return true;
-            }
+    /// Full picture for `idlescreen inhibitors`: cookies + logind idle + MPRIS.
+    ///
+    /// External rows use cookie `0` and `application` prefixed with source
+    /// (`logind:…`, `mpris:…`) so the CLI can print them clearly.
+    pub fn list_all(&self) -> Vec<(u32, String, String)> {
+        let mut out = self.list();
+        for ext in list_external() {
+            out.push((
+                0,
+                format!("{}:{}", ext.source, ext.who),
+                ext.why,
+            ));
         }
-        false
-    };
-
-    if tokio::runtime::Handle::try_current().is_ok() {
-        tokio::task::block_in_place(run_blocking)
-    } else {
-        run_blocking()
+        out
     }
-}
-
-#[cfg(all(target_os = "linux", not(test)))]
-fn check_mpris_playing() -> bool {
-    let run_blocking = || {
-        let Ok(conn) = zbus::blocking::Connection::session() else {
-            return false;
-        };
-        let Ok(names_reply) = conn.call_method(
-            Some("org.freedesktop.DBus"),
-            "/org/freedesktop/DBus",
-            Some("org.freedesktop.DBus"),
-            "ListNames",
-            &(),
-        ) else {
-            return false;
-        };
-        let Ok(names): Result<Vec<String>, _> = names_reply.body().deserialize() else {
-            return false;
-        };
-        for name in names {
-            if name.starts_with("org.mpris.MediaPlayer2.")
-                && let Ok(prop_reply) = conn.call_method(
-                    Some(name.as_str()),
-                    "/org/mpris/MediaPlayer2",
-                    Some("org.freedesktop.DBus.Properties"),
-                    "Get",
-                    &("org.mpris.MediaPlayer2.Player", "PlaybackStatus"),
-                )
-                && let Ok(val) = prop_reply.body().deserialize::<zbus::zvariant::Value>()
-                && let Ok(status) = val.downcast::<String>()
-                && status == "Playing"
-            {
-                return true;
-            }
-        }
-        false
-    };
-
-    if tokio::runtime::Handle::try_current().is_ok() {
-        tokio::task::block_in_place(run_blocking)
-    } else {
-        run_blocking()
-    }
-}
-
-#[cfg(all(not(target_os = "linux"), not(test)))]
-fn check_mpris_playing() -> bool {
-    false
 }
 
 #[cfg(test)]
+#[path = "inhibit/tests.rs"]
 mod tests;

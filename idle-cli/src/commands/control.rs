@@ -43,12 +43,32 @@ pub fn cmd_inhibitors(client: &TranceClient) -> Result<()> {
     let inhibitors = client
         .list_inhibitors()
         .context("listing active inhibitors via d-bus")?;
+    let status = client.get_status().context("querying daemon status")?;
+
     if inhibitors.is_empty() {
-        println!("No active inhibitors.");
-    } else {
-        println!("Active inhibitors:");
-        for (cookie, app, reason) in inhibitors {
-            println!("  [{cookie}] {app}: {reason}");
+        if status.inhibited {
+            println!("inhibited: true");
+            println!("No listed inhibitors (unknown external block — see doctor).");
+        } else {
+            println!("inhibited: false");
+            println!("No active inhibitors.");
+        }
+        return Ok(());
+    }
+
+    println!(
+        "inhibited: {}  ({} source{})",
+        status.inhibited,
+        inhibitors.len(),
+        if inhibitors.len() == 1 { "" } else { "s" }
+    );
+    println!("Active inhibitors (block idle / can clear preview):");
+    for (cookie, app, reason) in inhibitors {
+        if cookie == 0 {
+            // External: application is "logind:who" or "mpris:player"
+            println!("  [{app}] {reason}");
+        } else {
+            println!("  [idlescreen cookie {cookie}] {app}: {reason}");
         }
     }
     Ok(())

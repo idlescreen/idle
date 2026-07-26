@@ -1,3 +1,9 @@
+idle-cli (2.5.4-1) unstable; urgency=medium
+
+  * inhibitors: print logind/mpris rows from daemon list_all + inhibited line.
+
+ -- IdleScreen <jerydleuck@gmail.com>  Sat, 26 Jul 2026 12:00:00 +0000
+
 idle-cli (2.5.3-1) unstable; urgency=medium
 
   * Doctor: inhibitor active or daemon down is FAIL (not ok/nominal).
