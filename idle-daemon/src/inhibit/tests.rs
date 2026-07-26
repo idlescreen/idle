@@ -153,3 +153,40 @@ fn merge_external_only_not_empty() {
     assert_eq!(rows[0].0, 0);
     assert!(rows[0].1.starts_with("mpris:"));
 }
+
+#[test]
+fn merge_preserves_local_then_external_order() {
+    use super::external::ExternalInhibitor;
+    use super::merge_inhibitor_rows;
+
+    let rows = merge_inhibitor_rows(
+        vec![
+            (2u32, "app-a".into(), "r1".into()),
+            (5u32, "app-b".into(), "r2".into()),
+        ],
+        &[
+            ExternalInhibitor {
+                source: "logind".into(),
+                who: "agent".into(),
+                why: "busy".into(),
+            },
+            ExternalInhibitor {
+                source: "mpris".into(),
+                who: "player".into(),
+                why: "Playing".into(),
+            },
+        ],
+    );
+    assert_eq!(rows.len(), 4);
+    assert_eq!(rows[0].0, 2);
+    assert_eq!(rows[1].0, 5);
+    assert_eq!(rows[2].1, "logind:agent");
+    assert_eq!(rows[3].1, "mpris:player");
+}
+
+#[test]
+fn merge_empty_local_and_external_is_empty() {
+    use super::merge_inhibitor_rows;
+    let rows = merge_inhibitor_rows(vec![], &[]);
+    assert!(rows.is_empty());
+}

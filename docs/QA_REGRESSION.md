@@ -6,6 +6,28 @@ daemon/cli upgrades or before a release cut.
 **Critical rule:** TUI **`p` must never stop `idle-daemon`**.  
 `systemctl --user show idle-daemon -p NRestarts` must not increase on preview.
 
+**Minimum shipped daemon for this checklist:** `idle-daemon >= 2.5.6`.
+
+## Automated gates (run first)
+
+```bash
+cd idle
+
+# Pure unit regression suite (no display required)
+just qa-unit
+# equivalent:
+# cargo test -p idle-cli -p idle-daemon -p idle-ipc -p wayland-present
+
+# Live smoke against the user service (Wayland session required)
+./scripts/qa_preview_smoke.sh beams
+# LOOPS=3 HOLD_SECS=3 ./scripts/qa_preview_smoke.sh cosmos
+```
+
+| Gate | What it catches |
+|------|-----------------|
+| `just qa-unit` | Doctor false NOMINAL, inhibitors merge/fmt, SHM allowlist, recovery never exits, preview-while-inhibited, viewporter default off |
+| `scripts/qa_preview_smoke.sh` | **P5**: NRestarts / MainPID stable across multi-preview + double-preview; no systemd process exit |
+
 ## Quick smoke (5 minutes)
 
 ```bash
@@ -33,6 +55,7 @@ systemctl --user is-active idle-daemon   # must be active
 idlescreen stop
 
 # 5. TUI: open idle-tui, select a saver, press p — same NRestarts check
+# Or: ./scripts/qa_preview_smoke.sh
 ```
 
 ## Doctor honesty
@@ -66,6 +89,9 @@ idlescreen stop
 | P7 | Journal after `p` | Prefer **no** `failed to read Wayland events`; if present, still P5/P6 |
 | P8 | Without `IDLE_HW_VIEWPORT` | No log line enabling viewporter; scaling stays CPU |
 | P9 | Press `p` twice in a row | Second preview works; daemon still active |
+| **P10** | After recovery (fault log), press `p` again | Second queue starts; NRestarts still unchanged |
+| P11 | Preview three different savers back-to-back | No restart; stop leaves daemon active |
+| P12 | `./scripts/qa_preview_smoke.sh` | Prints `QA_PREVIEW_SMOKE_PASS` |
 
 ### Journal watch recipe
 
@@ -110,25 +136,30 @@ overlay presenter recreated successfully
 | U1 | `dnf list idle-daemon` | Available ≥ shipped |
 | U2 | `dnf upgrade idle-daemon` / install.sh | Version rises; service active after |
 | U3 | `rpm -K` on pool RPM | `signatures OK` |
+| U4 | After upgrade: `./scripts/qa_preview_smoke.sh` | Pass before calling the cut good |
 
 ## Automated coverage map
 
 | Issue | Code tests | Run |
 |-------|------------|-----|
-| Doctor false NOMINAL | `idle-cli` `doctor_rules` | `cargo test -p idle-cli doctor_rules` |
-| Inhibitors empty vs blocked | `inhibitors_fmt` + `merge_inhibitor_rows` | `cargo test -p idle-cli inhibitors_fmt` |
+| Doctor false NOMINAL | `idle-cli` `doctor_rules` (+ composite inhibited) | `cargo test -p idle-cli doctor_rules` |
+| Inhibitors empty vs blocked | `inhibitors_fmt` + `merge_inhibitor_rows` | `cargo test -p idle-cli inhibitors_fmt` / `cargo test -p idle-daemon inhibit` |
 | Preview shm invalid | `idle-ipc` path_safety unit + proptest | `cargo test -p idle-ipc path_safety` |
 | Preview while inhibited | `idle_decision` preview_starts_even_when_inhibited | `cargo test -p idle-daemon idle_decision` |
-| **Presenter death ≠ process exit** | `runtime::recovery_plan` exit_process=false | `cargo test -p idle-daemon runtime` |
+| **Presenter death ≠ process exit** | `runtime::recovery_plan` exit_process=false (all faults) | `cargo test -p idle-daemon runtime` |
+| **Re-queue after recovery clear** | `idle_decision` after_preview_cleared / requeued | `cargo test -p idle-daemon idle_decision` |
 | **Viewporter default off** | `hw_scaling::should_use_hw_viewport` | `cargo test -p idle-daemon hw_scaling` |
 | Zero frame geometry | `wayland-present` frame_geometry_ok | `cargo test -p wayland-present geometry` |
 | Bare `idle` not trusted | `auth_tests` | `cargo test -p idle-daemon auth` |
+| **Live NRestarts / multi-p** | `scripts/qa_preview_smoke.sh` | `./scripts/qa_preview_smoke.sh` |
 
 ### Full unit suite
 
 ```bash
 cd idle
 cargo test -p idle-cli -p idle-daemon -p idle-ipc -p wayland-present
+# or
+just qa-unit
 ```
 
 ### Post-release one-liner
@@ -139,4 +170,11 @@ idlescreen preview beams; sleep 2
 idlescreen stop
 R1=$(systemctl --user show idle-daemon -p NRestarts --value)
 test "$R0" = "$R1" && systemctl --user is-active --quiet idle-daemon && echo QA_P5_PASS || echo QA_P5_FAIL
+```
+
+### Preferred post-upgrade
+
+```bash
+cd ~/Jeryd/Documents/Workspace/idlescreen/idle
+just qa-unit && ./scripts/qa_preview_smoke.sh
 ```

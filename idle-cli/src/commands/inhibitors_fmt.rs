@@ -94,4 +94,25 @@ mod tests {
         assert!(s.contains("2 sources"));
         assert!(s.contains("mpris:firefox"));
     }
+
+    #[test]
+    fn single_source_singular_label() {
+        let rows = vec![(
+            0u32,
+            "logind:grok (block)".into(),
+            "agent turn in progress".into(),
+        )];
+        let s = format_inhibitors_report(true, &rows);
+        assert!(s.contains("1 source"));
+        assert!(!s.contains("1 sources"));
+    }
+
+    #[test]
+    fn inhibited_false_with_stale_row_still_lists() {
+        // Defensive: list truth even if inhibited flag disagrees.
+        let rows = vec![(1u32, "app".into(), "why".into())];
+        let s = format_inhibitors_report(false, &rows);
+        assert!(s.contains("inhibited: false"));
+        assert!(s.contains("idlescreen cookie 1"));
+    }
 }

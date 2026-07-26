@@ -156,4 +156,51 @@ mod tests {
             Err(RuntimeFault::IdleMonitorDead)
         );
     }
+
+    #[test]
+    fn classify_both_dead() {
+        assert_eq!(
+            classify_runtime(false, false),
+            Err(RuntimeFault::BothDead)
+        );
+    }
+
+    #[test]
+    fn every_fault_recovery_plan_never_exits_process() {
+        // Exhaustive guard: adding a new RuntimeFault must keep exit_process=false.
+        let faults = [
+            RuntimeFault::PresenterDead,
+            RuntimeFault::IdleMonitorDead,
+            RuntimeFault::BothDead,
+        ];
+        for fault in faults {
+            let plan = recovery_plan(fault);
+            assert!(
+                !plan.exit_process,
+                "{fault:?} must not exit the daemon process (TUI p / Wayland fault)"
+            );
+            assert!(
+                plan.stop_presentation,
+                "{fault:?} should stop active presentation before recreate"
+            );
+            assert!(
+                plan.clear_preview,
+                "{fault:?} should clear sticky preview so a new `p` re-queues cleanly"
+            );
+        }
+    }
+
+    #[test]
+    fn presenter_death_recreates_only_presenter() {
+        let plan = recovery_plan(RuntimeFault::PresenterDead);
+        assert!(plan.recreate_presenter);
+        assert!(!plan.recreate_idle_monitor);
+    }
+
+    #[test]
+    fn idle_monitor_death_recreates_only_idle_monitor() {
+        let plan = recovery_plan(RuntimeFault::IdleMonitorDead);
+        assert!(plan.recreate_idle_monitor);
+        assert!(!plan.recreate_presenter);
+    }
 }

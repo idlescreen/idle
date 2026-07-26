@@ -131,4 +131,42 @@ mod tests {
         assert!(all_systems_nominal(&[ok.clone()]));
         assert!(!all_systems_nominal(&[ok, bad]));
     }
+
+    #[test]
+    fn inhibited_alone_blocks_nominal_footer() {
+        // Regression: morning bug — doctor printed ALL SYSTEMS NOMINAL while
+        // inhibited (Grok logind / media) because inhibitor check was [ok].
+        let results = [
+            dbus_status_check(true, 5, "beams"),
+            inhibitor_status_check(true, true),
+            chk("Wayland", true, "ok"),
+            chk("systemd", true, "active"),
+        ];
+        assert!(results[0].passed);
+        assert!(!results[1].passed);
+        assert!(
+            !all_systems_nominal(&results),
+            "must not claim NOMINAL while inhibited"
+        );
+    }
+
+    #[test]
+    fn daemon_down_blocks_nominal_even_if_other_ok() {
+        let results = [
+            dbus_disconnected_check(),
+            inhibitor_status_check(false, false),
+            chk("Package", true, "installed"),
+        ];
+        assert!(!all_systems_nominal(&results));
+    }
+
+    #[test]
+    fn healthy_uninhibited_can_be_nominal() {
+        let results = [
+            dbus_status_check(true, 10, "ripple"),
+            inhibitor_status_check(true, false),
+            chk("Wayland", true, "session"),
+        ];
+        assert!(all_systems_nominal(&results));
+    }
 }

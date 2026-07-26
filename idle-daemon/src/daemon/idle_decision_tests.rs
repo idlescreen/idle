@@ -217,3 +217,45 @@ fn hold_when_not_idle_and_inactive() {
     let i = base();
     assert_eq!(decide_presentation(i, "beams"), PresentationDecision::Hold);
 }
+
+#[test]
+fn after_preview_cleared_by_recovery_must_requeue() {
+    // Recovery plan clear_preview → preview_name=None. Without a new D-Bus
+    // Preview command, policy must Hold (not auto-restart idle/preview).
+    let mut i = base();
+    i.is_active = false;
+    i.preview_name = None;
+    i.inhibited = true;
+    i.system_idle = true;
+    assert_eq!(
+        decide_presentation(i, "beams"),
+        PresentationDecision::Hold,
+        "after fault recovery, preview is sticky only if re-queued"
+    );
+}
+
+#[test]
+fn requeued_preview_starts_after_recovery_clear() {
+    // Second TUI `p` after recovery: preview_name set again → Start.
+    let mut i = base();
+    i.is_active = false;
+    i.preview_name = Some("bursts");
+    i.inhibited = true;
+    assert_eq!(
+        decide_presentation(i, "beams"),
+        PresentationDecision::Start {
+            name: "bursts".into(),
+            reason: "preview",
+        }
+    );
+}
+
+#[test]
+fn preview_stop_clears_without_starting_idle() {
+    // idlescreen stop: preview_name gone, not idle → Hold.
+    let mut i = base();
+    i.is_active = false;
+    i.preview_name = None;
+    i.system_idle = false;
+    assert_eq!(decide_presentation(i, "beams"), PresentationDecision::Hold);
+}

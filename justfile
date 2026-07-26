@@ -59,3 +59,16 @@ verify: fmt-check clippy test test-doc
 # Quick CI mirror: lint + test only
 ci: fmt-check clippy test
     @echo "CI checks passed."
+
+# Host/preview regression units (no display; run in CI + before package cut)
+qa-unit:
+    cargo test -p idle-cli -p idle-daemon -p idle-ipc -p wayland-present
+    @echo "QA unit regression suite passed."
+
+# Live preview smoke: NRestarts must not rise (needs active idle-daemon + Wayland)
+qa-smoke saver="beams":
+    ./scripts/qa_preview_smoke.sh {{saver}}
+
+# Full local QA gate: units + live smoke
+qa: qa-unit qa-smoke
+    @echo "QA unit + live smoke passed."
