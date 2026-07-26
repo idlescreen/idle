@@ -52,12 +52,12 @@ impl SessionState {
                 | zwlr_layer_surface_v1::Anchor::Left
                 | zwlr_layer_surface_v1::Anchor::Right,
         );
-        // 0 = no exclusive zone. -1 (full surface exclusive) has caused unstable
-        // sessions / disconnects on some compositors (COSMIC).
-        layer_surface.set_exclusive_zone(0);
+        // Screensaver/preview must cover the panel (exclusive_zone -1). Solid
+        // dim overlays keep 0. Safe configure/ack order is enforced in
+        // configure_overlay (no commit before ack).
+        layer_surface.set_exclusive_zone(Self::exclusive_zone_for(self.screensaver_mode));
         layer_surface.set_margin(0, 0, 0, 0);
-        // OnDemand: Exclusive fought terminal focus during TUI preview and
-        // contributed to unstable sessions. Pointer/keyboard still dismiss after grace.
+        // OnDemand: keyboard Exclusive fought terminal focus during TUI preview.
         layer_surface
             .set_keyboard_interactivity(zwlr_layer_surface_v1::KeyboardInteractivity::OnDemand);
         layer_surface.set_size(0, 0);
@@ -78,13 +78,17 @@ impl SessionState {
 
     #[allow(clippy::cast_possible_wrap)]
     pub fn configure_overlay(&mut self, output_id: u32, serial: u32, width: u32, height: u32) {
+        let fullscreen = self.screensaver_mode;
         let (render_w, render_h) = {
             let Some(overlay) = self.overlays.get_mut(&output_id) else {
                 return;
             };
 
             // Layer-shell order: set state → ack_configure → (buffer) → one commit.
-            // Never commit between set_margin and ack (protocol / COSMIC disconnect).
+            // Never commit between set_margin and ack (that caused COSMIC disconnects).
+            overlay
+                .layer_surface
+                .set_exclusive_zone(Self::exclusive_zone_for(fullscreen));
             Self::apply_tiling_margins(
                 &overlay.layer_surface,
                 &overlay.surface,
@@ -92,14 +96,19 @@ impl SessionState {
                 width,
                 height,
                 &self.output_mode_size,
+                fullscreen,
             );
             overlay.layer_surface.ack_configure(serial);
-            let (render_w, render_h) =
-                Self::render_dimensions(output_id, width, height, &self.output_mode_size);
+            let (render_w, render_h) = Self::render_dimensions(
+                output_id,
+                width,
+                height,
+                &self.output_mode_size,
+                fullscreen,
+            );
             overlay.width = render_w;
             overlay.height = render_h;
 
-            // Only set destination when we have a viewport *and* nonzero size.
             if let Some(viewport) = &overlay.viewport {
                 if render_w > 0 && render_h > 0 {
                     viewport.set_destination(render_w as i32, render_h as i32);
@@ -109,10 +118,19 @@ impl SessionState {
         };
 
         self.register_configured_output(output_id, render_w, render_h);
+        if fullscreen {
+            tracing::info!(
+                output_id,
+                configured_w = width,
+                configured_h = height,
+                render_w,
+                render_h,
+                "wayland-present: fullscreen saver geometry (covers panel when mode > configure)"
+            );
+        }
 
         if self.screensaver_mode {
-            // Frames arrive via update_frame after this configure; no buffer yet.
-            // A null commit after ack is required so the surface is configured.
+            // Frames arrive via update_frame; null commit completes configure.
             if let Some(overlay) = self.overlays.get(&output_id) {
                 overlay.surface.commit();
             }

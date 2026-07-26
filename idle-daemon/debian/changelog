@@ -1,3 +1,10 @@
+idle-daemon (2.5.9-1) unstable; urgency=medium
+
+  * Preview/idle fullscreen again: exclusive_zone -1 + expand to native mode under panel.
+  * Keep safe layer-shell order (no commit before ack_configure).
+
+ -- IdleScreen <noreply@idlescreen.github.io>  Sat, 26 Jul 2026 08:50:00 -0700
+
 idle-daemon (2.5.8-1) unstable; urgency=medium
 
   * wayland-present: never attach buffer before layer-shell configure (protocol disconnect).
