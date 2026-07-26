@@ -124,8 +124,10 @@ fn print_results(results: &[CheckResult]) {
     println!("==========================================");
     if results.iter().all(|r| r.passed) {
         println!("Diagnostics complete: ALL SYSTEMS NOMINAL.");
+        println!("Daemon is up and idle is free to run savers.");
     } else {
         println!("Diagnostics complete: PROBLEMS DETECTED.");
+        println!("Savers will not run reliably until every [FAIL] is fixed.");
         println!("Resolve issues marked FAIL. See docs/BOUNDARIES.md for platform limits.");
     }
 }

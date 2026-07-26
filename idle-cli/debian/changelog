@@ -1,3 +1,10 @@
+idle-cli (2.5.3-1) unstable; urgency=medium
+
+  * Doctor: inhibitor active or daemon down is FAIL (not ok/nominal).
+  * Doctor: idle_enabled=false fails D-Bus check with enable hint.
+
+ -- IdleScreen <jerydleuck@gmail.com>  Sat, 26 Jul 2026 00:00:00 +0000
+
 idle-cli (2.5.2-1) unstable; urgency=medium
 
   * Stop shipping idlescreen.desktop (app launcher lives in idle-tui only).
