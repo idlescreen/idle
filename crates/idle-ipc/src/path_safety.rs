@@ -65,9 +65,7 @@ mod tests {
 
     #[test]
     fn socket_path_rejects_relative_and_dots() {
-        assert!(is_plausible_socket_path(
-            "/run/user/1000/idle-uds-1-0.sock"
-        ));
+        assert!(is_plausible_socket_path("/run/user/1000/idle-uds-1-0.sock"));
         assert!(!is_plausible_socket_path("relative.sock"));
         assert!(!is_plausible_socket_path("/tmp/../etc/passwd.sock"));
         assert!(!is_plausible_socket_path("/tmp/foo"));
