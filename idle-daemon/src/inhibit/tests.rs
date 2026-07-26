@@ -105,9 +105,7 @@ fn add_rejects_when_at_capacity_for_one_client() {
 fn list_all_includes_local_cookies() {
     let s = InhibitorState::new();
     let c = client(":test.app.List");
-    let cookie = s
-        .add("myapp".into(), "fullscreen".into(), c)
-        .expect("add");
+    let cookie = s.add("myapp".into(), "fullscreen".into(), c).expect("add");
     let rows = s.list_all();
     assert!(
         rows.iter()

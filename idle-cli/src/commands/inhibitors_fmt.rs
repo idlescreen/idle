@@ -7,10 +7,7 @@
 ///
 /// Rows: `(cookie, application, reason)`. Cookie `0` means external
 /// (`logind:…` / `mpris:…` prefixes in `application`).
-pub fn format_inhibitors_report(
-    inhibited: bool,
-    rows: &[(u32, String, String)],
-) -> String {
+pub fn format_inhibitors_report(inhibited: bool, rows: &[(u32, String, String)]) -> String {
     let mut out = String::new();
     if rows.is_empty() {
         if inhibited {
@@ -87,7 +84,11 @@ mod tests {
     fn mixed_sources_plural() {
         let rows = vec![
             (1u32, "app".into(), "r".into()),
-            (0u32, "mpris:firefox".into(), "PlaybackStatus=Playing".into()),
+            (
+                0u32,
+                "mpris:firefox".into(),
+                "PlaybackStatus=Playing".into(),
+            ),
         ];
         let s = format_inhibitors_report(true, &rows);
         assert!(s.contains("2 sources"));

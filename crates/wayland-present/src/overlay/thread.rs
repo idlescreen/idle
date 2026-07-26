@@ -170,11 +170,9 @@ fn dispatch_pending_events(
                 return Err("poll failed");
             }
         }
-    } else {
-        if let Err(e) = event_queue.dispatch_pending(state) {
-            tracing::error!(error = %e, "wayland-present: failed to dispatch Wayland events");
-            return Err("failed to dispatch Wayland events");
-        }
+    } else if let Err(e) = event_queue.dispatch_pending(state) {
+        tracing::error!(error = %e, "wayland-present: failed to dispatch Wayland events");
+        return Err("failed to dispatch Wayland events");
     }
 
     Ok(())

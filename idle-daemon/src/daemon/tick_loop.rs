@@ -9,12 +9,8 @@ use wayland_idle::IdleMonitor;
 use wayland_present::OverlayPresenter;
 
 use super::idle_logic::update_presentation_state;
-use super::presentation::{
-    ActivePresentation, stop_presentation,
-};
-use super::runtime::{
-    check_runtime_alive, recovery_plan, RuntimeFault,
-};
+use super::presentation::{ActivePresentation, stop_presentation};
+use super::runtime::{RuntimeFault, check_runtime_alive, recovery_plan};
 use crate::controller::{DaemonCommand, DaemonController, MAIN_LOOP_INTERVAL};
 
 pub fn tick_loop_until_shutdown(controller: Arc<DaemonController>) -> anyhow::Result<()> {
@@ -122,13 +118,13 @@ fn recover_runtime(
         stop_presentation(Some(overlay_presenter), presentation);
         current_saver.clear();
     }
-    if plan.clear_preview {
-        if let Some(name) = preview_name.take() {
-            tracing::warn!(
-                preview = %name,
-                "cleared preview after wayland fault (try preview again after recovery)"
-            );
-        }
+    if plan.clear_preview
+        && let Some(name) = preview_name.take()
+    {
+        tracing::warn!(
+            preview = %name,
+            "cleared preview after wayland fault (try preview again after recovery)"
+        );
     }
 
     if plan.recreate_presenter {
