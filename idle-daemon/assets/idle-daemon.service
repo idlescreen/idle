@@ -9,7 +9,6 @@ Type=dbus
 BusName=io.github.idlescreen.Idle
 ExecStartPre=/usr/bin/mkdir -p %h/.config/idle
 ExecStart=/usr/bin/idle-daemon daemon
-# Also claims legacy io.github.ubermetroid.trance at runtime for upgrades.
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=10

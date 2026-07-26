@@ -20,18 +20,13 @@ pub(crate) fn plugin_candidate_names(clean: &str) -> [String; 3] {
 /// True when local development plugin trees may be searched.
 ///
 /// Enabled automatically in debug builds. In release builds only when
-/// `IDLE_DEV_PLUGINS=1` or legacy `TRANCE_DEV_PLUGINS=1` is set (Preview mode
-/// still gates whether these dirs enter the search path).
+/// `IDLE_DEV_PLUGINS=1` is set (Preview mode still gates whether these dirs
+/// enter the search path).
 fn dev_plugins_env_enabled() -> bool {
     if cfg!(debug_assertions) {
         return true;
     }
-    for key in ["IDLE_DEV_PLUGINS", "TRANCE_DEV_PLUGINS"] {
-        if std::env::var(key).ok().as_deref() == Some("1") {
-            return true;
-        }
-    }
-    false
+    std::env::var("IDLE_DEV_PLUGINS").ok().as_deref() == Some("1")
 }
 
 pub(crate) fn dev_plugin_dirs(clean: &str) -> Vec<PathBuf> {

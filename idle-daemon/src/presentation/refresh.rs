@@ -10,9 +10,9 @@ use wayland_present::{OutputLayout, OverlayPresenter};
 /// Multi-monitor span uses the **primary** display refresh (e.g. 144 Hz on display 1),
 /// not the lowest. One frame loop drives all outputs; the secondary (e.g. 60 Hz) may
 /// skip or hold frames, which is fine for spillover content. Physics tick rate stays
-/// independent (`TRANCE_TICK_HZ`, default 60).
+/// independent (`IDLE_TICK_HZ`, default 60).
 ///
-/// Override sync policy with `TRANCE_PRESENT_SYNC=min|primary|max` (default: primary).
+/// Override sync policy with `IDLE_PRESENT_SYNC=min|primary|max` (default: primary).
 pub fn presentation_refresh_hz(layouts: &[OutputLayout], primary: OutputLayout) -> u32 {
     if layouts.len() <= 1 {
         return layouts
@@ -36,7 +36,7 @@ pub fn presentation_refresh_hz(layouts: &[OutputLayout], primary: OutputLayout) 
         .max(60);
     let primary_hz = primary.refresh_rate_hz.max(60);
 
-    match idle_api::env_var_first(&["IDLE_PRESENT_SYNC", "TRANCE_PRESENT_SYNC"]).as_deref() {
+    match idle_api::env_var_first(&["IDLE_PRESENT_SYNC"]).as_deref() {
         Some("min") => min_hz,
         Some("max") => max_hz,
         _ => primary_hz,
@@ -99,35 +99,35 @@ mod tests {
         // Sequential env mutations in one test avoid races with parallel test threads.
         let layouts = vec![layout(1, 60), layout(2, 144)];
         let primary = layouts[1];
-        let prior = std::env::var("TRANCE_PRESENT_SYNC").ok();
+        let prior = std::env::var("IDLE_PRESENT_SYNC").ok();
 
         unsafe {
-            std::env::set_var("TRANCE_PRESENT_SYNC", "min");
+            std::env::set_var("IDLE_PRESENT_SYNC", "min");
         }
         assert_eq!(presentation_refresh_hz(&layouts, primary), 60);
 
         unsafe {
-            std::env::set_var("TRANCE_PRESENT_SYNC", "max");
+            std::env::set_var("IDLE_PRESENT_SYNC", "max");
         }
         assert_eq!(presentation_refresh_hz(&layouts, primary), 144);
 
         unsafe {
-            std::env::set_var("TRANCE_PRESENT_SYNC", "primary");
+            std::env::set_var("IDLE_PRESENT_SYNC", "primary");
         }
         assert_eq!(presentation_refresh_hz(&layouts, primary), 144);
 
         // Unknown / empty → primary path.
         unsafe {
-            std::env::set_var("TRANCE_PRESENT_SYNC", "other");
+            std::env::set_var("IDLE_PRESENT_SYNC", "other");
         }
         assert_eq!(presentation_refresh_hz(&layouts, layouts[0]), 60);
 
         match prior {
             Some(v) => unsafe {
-                std::env::set_var("TRANCE_PRESENT_SYNC", v);
+                std::env::set_var("IDLE_PRESENT_SYNC", v);
             },
             None => unsafe {
-                std::env::remove_var("TRANCE_PRESENT_SYNC");
+                std::env::remove_var("IDLE_PRESENT_SYNC");
             },
         }
     }

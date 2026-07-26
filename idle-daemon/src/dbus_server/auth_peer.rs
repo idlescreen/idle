@@ -4,17 +4,11 @@
 
 /// Basenames of processes allowed to call control methods on the daemon.
 pub(super) const TRUSTED_CONTROL_PEERS: &[&str] = &[
-    // Current product binaries
     "idle",
     "idlescreen",
     "idle-tui",
     "idlescreen-tui",
     "idlescreen-applet",
-    // Transitional aliases still shipped for upgrades (deprecated)
-    "trance",
-    "trance-applet",
-    "trance-tui",
-    "app-tui",
 ];
 
 /// Linux `TASK_COMM_LEN` is 16 bytes including NUL → 15 visible chars in `/proc/pid/comm`.

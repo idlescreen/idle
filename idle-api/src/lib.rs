@@ -26,7 +26,8 @@
 //! let _ = rng.next_u64();
 //! ```
 
-/// Host/plugin API major version. Plugins may export `trance_api_version() -> u32`.
+/// Host/plugin API major version. Plugins may export `idle_api_version() -> u32`
+/// (legacy `trance_api_version` still accepted by the loader when present).
 pub const API_VERSION: u32 = 1;
 
 mod callbacks;
@@ -40,7 +41,7 @@ mod palette;
 mod rng;
 mod screensaver;
 
-pub use env_dual::{env_is_set, env_truthy, env_var_first, set_var_dual};
+pub use env_dual::{env_is_set, env_truthy, env_var_first, set_env};
 mod system_info;
 mod terminal_cell;
 

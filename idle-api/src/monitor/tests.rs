@@ -55,10 +55,10 @@ fn bounds_centers() {
 fn get_primary_monitor_bounds_default_is_full_grid() {
     // No callback set and no env vars in test by default
     unsafe {
-        std::env::remove_var("TRANCE_PRIMARY_START_COL");
-        std::env::remove_var("TRANCE_PRIMARY_END_COL");
-        std::env::remove_var("TRANCE_PRIMARY_START_ROW");
-        std::env::remove_var("TRANCE_PRIMARY_END_ROW");
+        std::env::remove_var("IDLE_PRIMARY_START_COL");
+        std::env::remove_var("IDLE_PRIMARY_END_COL");
+        std::env::remove_var("IDLE_PRIMARY_START_ROW");
+        std::env::remove_var("IDLE_PRIMARY_END_ROW");
     }
     clear_primary_bounds();
     let b = get_primary_monitor_bounds(80, 24);
@@ -84,7 +84,7 @@ fn publish_then_get_primary_bounds_round_trip() {
 #[test]
 fn is_secondary_monitor_default_false() {
     unsafe {
-        std::env::remove_var("TRANCE_SECONDARY_MONITOR");
+        std::env::remove_var("IDLE_SECONDARY_MONITOR");
     }
     assert!(!is_secondary_monitor());
 }

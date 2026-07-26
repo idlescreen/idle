@@ -11,7 +11,7 @@ use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use anyhow::Context;
-use idle_dbus::{OBJECT_PATH, OBJECT_PATH_LEGACY, SERVICE_NAME, SERVICE_NAME_LEGACY};
+use idle_dbus::{OBJECT_PATH, SERVICE_NAME};
 
 use crate::controller::DaemonController;
 use crate::lock_monitor;
@@ -51,13 +51,6 @@ async fn serve(controller: Arc<DaemonController>) -> anyhow::Result<()> {
         )
         .with_context(|| format!("serving object at {OBJECT_PATH}"))?
         .serve_at(
-            OBJECT_PATH_LEGACY,
-            TranceService {
-                controller: controller.clone(),
-            },
-        )
-        .with_context(|| format!("serving legacy object at {OBJECT_PATH_LEGACY}"))?
-        .serve_at(
             "/org/freedesktop/ScreenSaver",
             screensaver::ScreenSaverService {
                 controller: controller.clone(),
@@ -68,16 +61,11 @@ async fn serve(controller: Arc<DaemonController>) -> anyhow::Result<()> {
         .await
         .context("building D-Bus connection")?;
 
-    // Dual well-known name for upgrade window (legacy clients / Type=dbus).
-    match connection.request_name(SERVICE_NAME_LEGACY).await {
-        Ok(_) => tracing::info!("also claiming legacy D-Bus name {SERVICE_NAME_LEGACY}"),
-        Err(e) => tracing::warn!("could not claim legacy D-Bus name {SERVICE_NAME_LEGACY}: {e}"),
-    }
     let _ = connection.request_name("org.freedesktop.ScreenSaver").await;
 
     controller.set_dbus_connection(connection.clone());
 
-    tracing::info!("exporting D-Bus service {SERVICE_NAME} (+ legacy {SERVICE_NAME_LEGACY})");
+    tracing::info!("exporting D-Bus service {SERVICE_NAME}");
 
     tokio::spawn(lock_monitor::watch_session_lock(
         controller.session_locked.clone(),
@@ -118,11 +106,9 @@ pub async fn emit_status_changes(
         match receiver.recv_timeout(Duration::from_millis(200)) {
             Ok(status) => {
                 let map = status.to_map();
-                for path in [OBJECT_PATH, OBJECT_PATH_LEGACY] {
-                    if let Ok(emitter) = zbus::object_server::SignalEmitter::new(&connection, path)
-                    {
-                        let _ = TranceService::status_changed(&emitter, map.clone()).await;
-                    }
+                if let Ok(emitter) = zbus::object_server::SignalEmitter::new(&connection, OBJECT_PATH)
+                {
+                    let _ = TranceService::status_changed(&emitter, map).await;
                 }
             }
             Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}

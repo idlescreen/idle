@@ -5,7 +5,7 @@
 use super::doctor_checks::{CheckResult, chk};
 use idle_dbus::TranceClient;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 pub fn check_dbus() -> CheckResult {
@@ -15,11 +15,8 @@ pub fn check_dbus() -> CheckResult {
                 "D-Bus Service",
                 true,
                 format!(
-                    "connected ({}) idle_enabled={} timeout={}m saver='{}'",
-                    client.endpoint_label(),
-                    status.idle_enabled,
-                    status.idle_timeout_mins,
-                    status.active_saver
+                    "connected (io.github.idlescreen.Idle) idle_enabled={} timeout={}m saver='{}'",
+                    status.idle_enabled, status.idle_timeout_mins, status.active_saver
                 ),
             ),
             Err(e) => chk("D-Bus Service", false, format!("GetStatus error: {e}")),
@@ -31,6 +28,117 @@ pub fn check_dbus() -> CheckResult {
             "cannot connect to IdleScreen D-Bus service; start idle-daemon (systemctl --user start idle-daemon)",
         )
     }
+}
+
+/// Savers on disk or via `idle-savers` / modular `idle-saver-*` packages.
+pub fn check_savers() -> CheckResult {
+    const DIRS: &[&str] = &[
+        "/usr/libexec/idle/screensavers",
+        "/usr/local/libexec/idle/screensavers",
+    ];
+    let mut found_so = 0usize;
+    let mut found_dir: Option<&str> = None;
+    for dir in DIRS {
+        let path = Path::new(dir);
+        if !path.is_dir() {
+            continue;
+        }
+        found_dir = Some(dir);
+        if let Ok(rd) = fs::read_dir(path) {
+            found_so += rd
+                .filter_map(|e| e.ok())
+                .filter(|e| {
+                    e.path()
+                        .extension()
+                        .and_then(|x| x.to_str())
+                        .is_some_and(|ext| ext == "so")
+                })
+                .count();
+        }
+    }
+
+    if found_so > 0 {
+        return chk(
+            "Savers",
+            true,
+            format!(
+                "{found_so} plugin(s) under {}",
+                found_dir.unwrap_or("libexec")
+            ),
+        );
+    }
+
+    // Package presence is enough when plugins are not yet expanded on disk.
+    if package_installed("idle-savers") || package_installed("idle-saver-beams") {
+        return chk(
+            "Savers",
+            true,
+            "idle-savers / idle-saver-* package present",
+        );
+    }
+
+    // User-local installs
+    if let Ok(home) = std::env::var("HOME") {
+        let local = PathBuf::from(home)
+            .join(".local/share/idle/screensavers");
+        if local.is_dir()
+            && fs::read_dir(&local)
+                .map(|rd| {
+                    rd.filter_map(|e| e.ok()).any(|e| {
+                        e.path()
+                            .extension()
+                            .and_then(|x| x.to_str())
+                            .is_some_and(|ext| ext == "so")
+                    })
+                })
+                .unwrap_or(false)
+        {
+            return chk("Savers", true, "plugins under ~/.local/share/idle/screensavers");
+        }
+    }
+
+    chk(
+        "Savers",
+        false,
+        "no screensaver plugins found — install idle-savers or idle-saver-* packages",
+    )
+}
+
+/// Optional TUI binary (product front-end, not required for daemon).
+pub fn check_tui_optional() -> CheckResult {
+    if which_exists("idle-tui") || which_exists("idlescreen-tui") {
+        chk("TUI", true, "idle-tui available on PATH")
+    } else {
+        chk(
+            "TUI",
+            true,
+            "optional — install idle-tui for terminal control UI",
+        )
+    }
+}
+
+fn which_exists(name: &str) -> bool {
+    Command::new("sh")
+        .args(["-c", &format!("command -v {name}")])
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
+}
+
+fn package_installed(pkg: &str) -> bool {
+    if Command::new("rpm")
+        .args(["-q", pkg])
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
+    {
+        return true;
+    }
+    Command::new("dpkg-query")
+        .args(["-W", pkg])
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
 }
 
 pub fn check_systemd_service() -> CheckResult {

@@ -29,11 +29,8 @@ pub fn check_package_install() -> CheckResult {
         "idle-tui",
         "idle-cosmic",
         "idle-studio",
-        // Legacy / meta names that may still appear on older installs.
+        // Meta product package from packages repo (optional).
         "idlescreen",
-        "idlescreen-cli",
-        "idle",
-        "trance",
     ];
 
     // Binaries that imply an IdleScreen install when owned by a package.
@@ -69,9 +66,8 @@ pub fn check_package_install() -> CheckResult {
         }
     }
 
-    // 3) Virtual Provides (e.g. idle-daemon Provides: idlescreen) — name-only
-    // `rpm -q <capability>` can miss these; `--whatprovides` does not.
-    for capability in ["idlescreen", "idle", "trance", "idlescreen-cli"] {
+    // 3) Meta / modular product package capabilities.
+    for capability in ["idlescreen", "idle-savers"] {
         if let Some(ver) = query_rpm_whatprovides(capability) {
             push_unique(&mut found, ver);
         }

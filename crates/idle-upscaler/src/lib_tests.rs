@@ -31,77 +31,77 @@ fn render_scale_in_range() {
 
 #[test]
 fn filter_mode_from_env_recognizes_nearest() {
-    let prior = std::env::var("TRANCE_GPU_FILTER").ok();
+    let prior = std::env::var("IDLE_GPU_FILTER").ok();
     unsafe {
-        std::env::set_var("TRANCE_GPU_FILTER", "nearest");
+        std::env::set_var("IDLE_GPU_FILTER", "nearest");
     }
     assert!(matches!(FilterMode::from_env(), FilterMode::Nearest));
     match prior {
         Some(v) => unsafe {
-            std::env::set_var("TRANCE_GPU_FILTER", v);
+            std::env::set_var("IDLE_GPU_FILTER", v);
         },
         None => unsafe {
-            std::env::remove_var("TRANCE_GPU_FILTER");
+            std::env::remove_var("IDLE_GPU_FILTER");
         },
     }
 }
 
 #[test]
 fn filter_mode_from_env_defaults_to_linear() {
-    let prior = std::env::var("TRANCE_GPU_FILTER").ok();
+    let prior = std::env::var("IDLE_GPU_FILTER").ok();
     unsafe {
-        std::env::remove_var("TRANCE_GPU_FILTER");
+        std::env::remove_var("IDLE_GPU_FILTER");
     }
     assert!(matches!(FilterMode::from_env(), FilterMode::Linear));
     if let Some(v) = prior {
         unsafe {
-            std::env::set_var("TRANCE_GPU_FILTER", v);
+            std::env::set_var("IDLE_GPU_FILTER", v);
         }
     }
 }
 
 #[test]
 fn filter_mode_from_env_unknown_falls_back_to_linear() {
-    let prior = std::env::var("TRANCE_GPU_FILTER").ok();
+    let prior = std::env::var("IDLE_GPU_FILTER").ok();
     unsafe {
-        std::env::set_var("TRANCE_GPU_FILTER", "bogus");
+        std::env::set_var("IDLE_GPU_FILTER", "bogus");
     }
     assert!(matches!(FilterMode::from_env(), FilterMode::Linear));
     match prior {
         Some(v) => unsafe {
-            std::env::set_var("TRANCE_GPU_FILTER", v);
+            std::env::set_var("IDLE_GPU_FILTER", v);
         },
         None => unsafe {
-            std::env::remove_var("TRANCE_GPU_FILTER");
+            std::env::remove_var("IDLE_GPU_FILTER");
         },
     }
 }
 
 #[test]
 fn max_fps_zero_when_unset() {
-    let prior = std::env::var("TRANCE_MAX_FPS").ok();
+    let prior = std::env::var("IDLE_MAX_FPS").ok();
     unsafe {
-        std::env::remove_var("TRANCE_MAX_FPS");
+        std::env::remove_var("IDLE_MAX_FPS");
     }
     assert_eq!(max_fps(), 0);
     if let Some(v) = prior {
         unsafe {
-            std::env::set_var("TRANCE_MAX_FPS", v);
+            std::env::set_var("IDLE_MAX_FPS", v);
         }
     }
 }
 
 #[test]
 fn simulation_tick_hz_default_in_range() {
-    let prior = std::env::var("TRANCE_TICK_HZ").ok();
+    let prior = std::env::var("IDLE_TICK_HZ").ok();
     unsafe {
-        std::env::remove_var("TRANCE_TICK_HZ");
+        std::env::remove_var("IDLE_TICK_HZ");
     }
     let hz = simulation_tick_hz();
     assert!((15.0..=240.0).contains(&hz));
     if let Some(v) = prior {
         unsafe {
-            std::env::set_var("TRANCE_TICK_HZ", v);
+            std::env::set_var("IDLE_TICK_HZ", v);
         }
     }
 }
@@ -109,24 +109,24 @@ fn simulation_tick_hz_default_in_range() {
 #[test]
 fn target_fps_matches_detected_when_unset() {
     let detected = 144;
-    let prior = std::env::var("TRANCE_MAX_FPS").ok();
+    let prior = std::env::var("IDLE_MAX_FPS").ok();
     unsafe {
-        std::env::remove_var("TRANCE_MAX_FPS");
+        std::env::remove_var("IDLE_MAX_FPS");
     }
     let fps = target_fps(detected);
     assert!((fps - detected as f32).abs() < f32::EPSILON);
     if let Some(v) = prior {
         unsafe {
-            std::env::set_var("TRANCE_MAX_FPS", v);
+            std::env::set_var("IDLE_MAX_FPS", v);
         }
     }
 }
 
 #[test]
 fn target_fps_floors_detected_at_60() {
-    let prior = std::env::var("TRANCE_MAX_FPS").ok();
+    let prior = std::env::var("IDLE_MAX_FPS").ok();
     unsafe {
-        std::env::remove_var("TRANCE_MAX_FPS");
+        std::env::remove_var("IDLE_MAX_FPS");
     }
     assert!((target_fps(30) - (60.0)).abs() < 1e-3);
     assert!((target_fps(0) - (60.0)).abs() < 1e-3);
@@ -136,9 +136,9 @@ fn target_fps_floors_detected_at_60() {
 
 #[test]
 fn target_fps_respects_max_cap() {
-    let prior = std::env::var("TRANCE_MAX_FPS").ok();
+    let prior = std::env::var("IDLE_MAX_FPS").ok();
     unsafe {
-        std::env::set_var("TRANCE_MAX_FPS", "90");
+        std::env::set_var("IDLE_MAX_FPS", "90");
     }
     assert!((target_fps(144) - (90.0)).abs() < 1e-3);
     assert!((target_fps(60) - (60.0)).abs() < 1e-3);
@@ -147,21 +147,21 @@ fn target_fps_respects_max_cap() {
 
 #[test]
 fn simulation_tick_hz_clamps_env_outliers() {
-    let prior = std::env::var("TRANCE_TICK_HZ").ok();
+    let prior = std::env::var("IDLE_TICK_HZ").ok();
     unsafe {
-        std::env::set_var("TRANCE_TICK_HZ", "1");
+        std::env::set_var("IDLE_TICK_HZ", "1");
     }
     assert!((simulation_tick_hz() - (15.0)).abs() < 1e-3);
     unsafe {
-        std::env::set_var("TRANCE_TICK_HZ", "9999");
+        std::env::set_var("IDLE_TICK_HZ", "9999");
     }
     assert!((simulation_tick_hz() - (240.0)).abs() < 1e-3);
     match prior {
         Some(v) => unsafe {
-            std::env::set_var("TRANCE_TICK_HZ", v);
+            std::env::set_var("IDLE_TICK_HZ", v);
         },
         None => unsafe {
-            std::env::remove_var("TRANCE_TICK_HZ");
+            std::env::remove_var("IDLE_TICK_HZ");
         },
     }
 }
@@ -169,10 +169,10 @@ fn simulation_tick_hz_clamps_env_outliers() {
 fn restore_max_fps(prior: Option<String>) {
     match prior {
         Some(v) => unsafe {
-            std::env::set_var("TRANCE_MAX_FPS", v);
+            std::env::set_var("IDLE_MAX_FPS", v);
         },
         None => unsafe {
-            std::env::remove_var("TRANCE_MAX_FPS");
+            std::env::remove_var("IDLE_MAX_FPS");
         },
     }
 }

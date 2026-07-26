@@ -36,7 +36,7 @@ Not a user install unit.
 
 ## Frozen ABI
 
-- D-Bus: `io.github.ubermetroid.trance`
+- D-Bus service/path/interface: `io.github.idlescreen.Idle` / `/io/github/idlescreen/Idle`
 - Plugin stem: `libscreensaver_<name>.so`
 
 ## Engine crates (workspace)
@@ -47,7 +47,7 @@ Not a user install unit.
 | `idle-runner` | Plugin load, raster, launcher |
 | `idle-daemon` | Background host binary crate |
 | `idle-cli` | CLI binary crate (`idle`) |
-| `idle-dbus` | D-Bus client/types (wire names historical) |
+| `idle-dbus` | D-Bus client/types (`io.github.idlescreen.Idle`) |
 | `idle-ipc` | SHM/UDS out-of-process IPC |
 | `idle-upscaler` | CPU frame upscaling |
 | `idle-plugins-all` | Meta package → ships as `idle-savers` |

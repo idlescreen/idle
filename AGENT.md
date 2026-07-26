@@ -25,9 +25,8 @@ Enforce on every change in this repository.
 ## Product identity
 
 - GitHub org and product brand: **IdleScreen** (`idlescreen`).
-- Historical D-Bus wire names and CLI binary aliases (`trance`, `trance-daemon`); Cargo crates are `idle-*`
-  remain for API and install stability until a coordinated major rename.
-- Historical D-Bus well-known names stay for ABI continuity.
+- Cargo crates and shipped bins are `idle-*` / `idlescreen*` only (legacy `trance*` hard-cut in 2.5.0).
+- D-Bus primary only: `io.github.idlescreen.Idle` (see `docs/DBUS.md`).
 
 ## Git edges
 

@@ -94,9 +94,6 @@ fn package_version_line() -> Option<String> {
         "idle-tui",
         "idle-cosmic",
         "idlescreen",
-        "idlescreen-cli",
-        "idle",
-        "trance",
     ] {
         if let Ok(o) = Command::new("rpm")
             .args(["-q", pkg, "--qf", "%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}"])

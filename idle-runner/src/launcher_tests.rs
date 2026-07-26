@@ -208,21 +208,12 @@ fn test_dev_plugin_dirs_env_behavior() {
     use crate::launcher_resolve::dev_plugin_dirs;
 
     unsafe {
-        std::env::set_var("TRANCE_DEV_PLUGINS", "1");
-        std::env::remove_var("IDLE_DEV_PLUGINS");
-    }
-    let dirs_with_env = dev_plugin_dirs("beams");
-    assert!(!dirs_with_env.is_empty());
-
-    unsafe {
-        std::env::remove_var("TRANCE_DEV_PLUGINS");
         std::env::set_var("IDLE_DEV_PLUGINS", "1");
     }
     let dirs_idle_env = dev_plugin_dirs("beams");
     assert!(!dirs_idle_env.is_empty());
 
     unsafe {
-        std::env::remove_var("TRANCE_DEV_PLUGINS");
         std::env::remove_var("IDLE_DEV_PLUGINS");
     }
     let dirs_no_env = dev_plugin_dirs("beams");

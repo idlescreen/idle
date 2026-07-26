@@ -26,7 +26,7 @@ Installs `idle-daemon`, `idle-cli`, `idle-savers`, `idle-tui`, and on COSMIC als
 | Crate / area | Role |
 |--------------|------|
 | `idle-daemon` | Idle policy, plugin host, Wayland presentation, user systemd unit |
-| `idle-cli` | CLI binaries `idlescreen` / `idle` (and legacy `trance`) |
+| `idle-cli` | CLI binaries `idlescreen` / `idle` |
 | `idle-api` | Plugin trait / cell-grid ABI for savers |
 | `idle-runner` | Shared host helpers (cell raster, sys info, plugin session) |
 | `crates/wayland-present` | Layer-shell overlay presentation |

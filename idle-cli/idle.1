@@ -1,45 +1,83 @@
-.TH IDLE 1 "June 2026" "idle" "IdleScreen CLI"
+.TH IDLESCREEN 1 "July 2026" "idlescreen" "IdleScreen CLI"
 .SH NAME
-idle \- control interface for the IdleScreen daemon
+idlescreen, idle \- control the IdleScreen daemon
 .SH SYNOPSIS
+.B idlescreen
+[\fICOMMAND\fR] [\fIARGS\fR...]
+.br
 .B idle
-[\fICOMMAND\fR]
+[\fICOMMAND\fR] [\fIARGS\fR...]
 .SH DESCRIPTION
-.B idle
-is the CLI for controlling the idle-daemon screensaver monitoring service. It allows query of status, forcing transitions, toggling options, and previewing effects.
+.B idlescreen
+(alias
+.BR idle )
+is the CLI for the IdleScreen user daemon
+.BR idle-daemon (1).
+It controls idle presentation, previews plugins, and runs diagnostics over D-Bus.
 .SH COMMANDS
 .TP
+.B tui
+Launch the live TUI dashboard (
+.BR idle-tui ).
+.TP
 .B status
-Print the active configuration and daemon status.
+[\fB--json\fR]
+Show daemon state.
 .TP
-.B enable
-Enable the idle-saver triggers.
+.B on\fR, \fBenable
+Enable idle screensaver.
 .TP
-.B disable
-Disable the idle-saver triggers.
+.B off\fR, \fBdisable
+Disable idle screensaver.
 .TP
-.B start
-Trigger the idle saver now.
+.BI timeout " <minutes>"
+Set idle timeout (1–240 minutes).
+.TP
+.B list\fR, \fBsaver list
+List installed savers.
+.TP
+.BI saver " set <name|random>"
+Choose active saver.
+.TP
+.BI preview " <saver>"
+Preview a saver now.
 .TP
 .B stop
-Deactivate any active fullscreen screensaver presentation.
+Stop preview or idle presentation.
 .TP
-.BI preview " <saver> [--timeout N]"
-Launch a plugin presentation preview in fullscreen. Pass \fB--timeout N\fR to auto-stop after N seconds.
+.B inhibitors
+List active inhibitors.
 .TP
-.BI saver " set <name|random|shuffle>"
-Set active screensaver plugin or enable randomizer shuffle mode.
+.BI fps-overlay " on|off|status"
+FPS overlay control.
 .TP
-.BI set-timeout " <minutes>"
-Set the idle timeout in minutes.
+.BI render-scale " <0.25-1.0>|default|status"
+Simulation render scale.
 .TP
-.BI set-fps " <on|off>"
-Enable or disable the FPS counter overlay.
+.B doctor
+[\fB--fix\fR] [\fB--json\fR]
+System diagnostics. \fB--fix\fR reloads/enables the user unit.
 .TP
-.BI set-scale " <percentage>"
-Set render scaling filter grid size (e.g. 50, 75, 100).
+.B config
+\fBget\fR|\fBset\fR|\fBlist\fR
+Read or write daemon config keys.
 .TP
-.B doctor [--fix] [--json]
-Run system diagnostics on D-Bus, systemd, fonts, and active inhibitors. Pass \fB--fix\fR to auto-repair user units and directories.
+.B self-update
+Check package updates (dnf/apt).
+.TP
+.B interactive
+Simple console menu.
+.TP
+.B version\fR, \fBabout
+Version and project info.
+.SH FILES
+.TP
+.I ~/.config/idle/config.yaml
+Daemon configuration.
+.SH SEE ALSO
+.BR idle-daemon (1),
+.BR idle-tui (1)
 .SH AUTHOR
 IdleScreen <jerydleuck@gmail.com>
+.SH WWW
+https://idlescreen.github.io

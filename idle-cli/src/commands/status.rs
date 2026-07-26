@@ -131,7 +131,7 @@ fn package_hint_from_command(
 }
 
 fn package_version_hint() -> Option<String> {
-    for pkg in ["idle-cli", "idle-daemon", "idlescreen", "idle", "trance"] {
+    for pkg in ["idle-cli", "idle-daemon", "idlescreen"] {
         if let Some(s) = package_hint_from_command(
             "rpm",
             &["-q", pkg, "--qf", "%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}"],

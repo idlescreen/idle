@@ -45,10 +45,6 @@ impl PluginSession {
         let use_gpu = gpu_enabled.unwrap_or_else(idle_upscaler::gpu_enabled);
         let render_scale = resolve_render_scale(use_gpu, render_scale);
         let upscaler = FrameUpscaler::new(use_gpu, FilterMode::from_env());
-        // Note: TRANCE_GPU_ACTIVE was previously set/removed here. This ran from
-        // a non-main worker thread, which is undefined behavior on edition 2024
-        // (and a soundness footgun even before that). The env var is unread, so
-        // the setter is removed entirely.
         if upscaler.using_gpu() {
             tracing::info!(
                 "GPU upscale enabled (render scale {:.0}%, adapter: {})",
@@ -69,15 +65,15 @@ impl PluginSession {
                 || std::env::var_os("RENDER_SEED").is_some()
                 || std::env::var_os("IDLE_RENDER_SEED").is_some()
             {
-                idle_api::set_var_dual("IDLE_EXPORT_MODE", "TRANCE_EXPORT_MODE", "1");
+                idle_api::set_env("IDLE_EXPORT_MODE", "1");
             }
             let sys_info = if idle_api::SystemInfo::export_mode_enabled() {
                 idle_api::SystemInfo::export_fixture()
             } else {
                 crate::toolkit::sys_info::get_system_info()
             };
-            idle_api::set_var_dual("IDLE_OS_NAME", "TRANCE_OS_NAME", &sys_info.os);
-            idle_api::set_var_dual("IDLE_LOGO_TEXT", "TRANCE_LOGO_TEXT", &sys_info.logo_text);
+            idle_api::set_env("IDLE_OS_NAME", &sys_info.os);
+            idle_api::set_env("IDLE_LOGO_TEXT", &sys_info.logo_text);
 
             // Eagerly load caption font before filesystem is locked
             crate::caption_overlay::init_font();

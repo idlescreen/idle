@@ -10,9 +10,6 @@ pub const PKG_CANDIDATES: &[&str] = &[
     "idle-tui",
     "idle-cosmic",
     "idlescreen",
-    "idlescreen-cli",
-    "idle",
-    "trance",
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

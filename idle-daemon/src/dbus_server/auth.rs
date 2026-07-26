@@ -32,19 +32,14 @@ fn dbus_trust_all_enabled() -> bool {
     if !cfg!(debug_assertions) {
         return false;
     }
-    for key in ["IDLE_DBUS_TRUST_ALL", "TRANCE_DBUS_TRUST_ALL"] {
-        if std::env::var(key).ok().as_deref() == Some("1") {
-            return true;
-        }
-    }
-    false
+    std::env::var("IDLE_DBUS_TRUST_ALL").ok().as_deref() == Some("1")
 }
 
 fn is_trusted_control_peer(pid: u32, peer_uid: Option<u32>, peer_name: &str) -> bool {
     // Escape hatch is debug-only so release builds cannot be opened with
-    // `TRANCE_DBUS_TRUST_ALL=1` / `IDLE_DBUS_TRUST_ALL=1` by a local attacker.
+    // `IDLE_DBUS_TRUST_ALL=1` by a local attacker.
     if dbus_trust_all_enabled() {
-        tracing::warn!("D-Bus auth: *_DBUS_TRUST_ALL=1 (debug build only)");
+        tracing::warn!("D-Bus auth: IDLE_DBUS_TRUST_ALL=1 (debug build only)");
         return true;
     }
 
@@ -94,7 +89,7 @@ fn is_trusted_control_peer(pid: u32, peer_uid: Option<u32>, peer_name: &str) -> 
     }
 }
 
-/// Control methods (preview, config writes) require idle/trance CLI or applet.
+/// Control methods (preview, config writes) require idle CLI, TUI, or applet.
 pub async fn require_control_peer(
     connection: &Connection,
     header: &Header<'_>,
@@ -121,7 +116,7 @@ pub async fn require_control_peer(
     } else {
         tracing::info!("D-Bus control peer rejected (pid {pid})");
         Err(zbus::fdo::Error::AccessDenied(
-            "control methods require the trance CLI or panel applet".into(),
+            "control methods require idle CLI, TUI, or panel applet".into(),
         ))
     }
 }

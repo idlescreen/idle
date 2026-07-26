@@ -26,16 +26,16 @@ pub(crate) fn cached_primary_bounds_from_env() -> Option<MonitorCellBounds> {
 }
 
 fn read_primary_bounds_from_env() -> Option<MonitorCellBounds> {
-    let start_col = crate::env_var_first(&["IDLE_PRIMARY_START_COL", "TRANCE_PRIMARY_START_COL"])?
+    let start_col = crate::env_var_first(&["IDLE_PRIMARY_START_COL"])?
         .parse()
         .ok()?;
-    let end_col = crate::env_var_first(&["IDLE_PRIMARY_END_COL", "TRANCE_PRIMARY_END_COL"])?
+    let end_col = crate::env_var_first(&["IDLE_PRIMARY_END_COL"])?
         .parse()
         .ok()?;
-    let start_row = crate::env_var_first(&["IDLE_PRIMARY_START_ROW", "TRANCE_PRIMARY_START_ROW"])?
+    let start_row = crate::env_var_first(&["IDLE_PRIMARY_START_ROW"])?
         .parse()
         .ok()?;
-    let end_row = crate::env_var_first(&["IDLE_PRIMARY_END_ROW", "TRANCE_PRIMARY_END_ROW"])?
+    let end_row = crate::env_var_first(&["IDLE_PRIMARY_END_ROW"])?
         .parse()
         .ok()?;
     if end_col <= start_col || end_row <= start_row {
@@ -61,26 +61,10 @@ pub(crate) fn store_primary_bounds(bounds: MonitorCellBounds) {
     // on the daemon crate will replace this IPC mechanism with a thread-safe channel,
     // at which point these `unsafe` blocks and the env-var fallback in
     // `read_primary_bounds_from_env` can be removed entirely. Do not remove them yet.
-    crate::set_var_dual(
-        "IDLE_PRIMARY_START_COL",
-        "TRANCE_PRIMARY_START_COL",
-        bounds.start_col.to_string(),
-    );
-    crate::set_var_dual(
-        "IDLE_PRIMARY_END_COL",
-        "TRANCE_PRIMARY_END_COL",
-        bounds.end_col.to_string(),
-    );
-    crate::set_var_dual(
-        "IDLE_PRIMARY_START_ROW",
-        "TRANCE_PRIMARY_START_ROW",
-        bounds.start_row.to_string(),
-    );
-    crate::set_var_dual(
-        "IDLE_PRIMARY_END_ROW",
-        "TRANCE_PRIMARY_END_ROW",
-        bounds.end_row.to_string(),
-    );
+    crate::set_env("IDLE_PRIMARY_START_COL", bounds.start_col.to_string());
+    crate::set_env("IDLE_PRIMARY_END_COL", bounds.end_col.to_string());
+    crate::set_env("IDLE_PRIMARY_START_ROW", bounds.start_row.to_string());
+    crate::set_env("IDLE_PRIMARY_END_ROW", bounds.end_row.to_string());
     *env_bounds_cache()
         .write()
         .unwrap_or_else(|e| e.into_inner()) = Some(bounds);
@@ -92,13 +76,9 @@ pub(crate) fn clear_stored_primary_bounds() {
     unsafe {
         for k in [
             "IDLE_PRIMARY_START_COL",
-            "TRANCE_PRIMARY_START_COL",
             "IDLE_PRIMARY_END_COL",
-            "TRANCE_PRIMARY_END_COL",
             "IDLE_PRIMARY_START_ROW",
-            "TRANCE_PRIMARY_START_ROW",
             "IDLE_PRIMARY_END_ROW",
-            "TRANCE_PRIMARY_END_ROW",
         ] {
             std::env::remove_var(k);
         }

@@ -1,3 +1,10 @@
+idle-daemon (2.5.0-1) unstable; urgency=medium
+
+  * Hard cut: primary D-Bus only (io.github.idlescreen.Idle), drop trance-daemon,
+    legacy bus activation, and TRANCE_* dual env.
+
+ -- IdleScreen <jerydleuck@gmail.com>  Fri, 25 Jul 2026 00:00:00 +0000
+
 idle-daemon (2.3.1-1) unstable; urgency=medium
 
   * Fix duplicate packaging assets after crate rename.

@@ -113,7 +113,7 @@ pub fn get_primary_monitor_bounds(cols: usize, rows: usize) -> MonitorCellBounds
 }
 
 pub fn is_secondary_monitor() -> bool {
-    idle_api::env_is_set(&["IDLE_SECONDARY_MONITOR", "TRANCE_SECONDARY_MONITOR"])
+    idle_api::env_is_set(&["IDLE_SECONDARY_MONITOR"])
 }
 
 type XrandrMonitorInfo = (bool, u32, u32, i32, i32);

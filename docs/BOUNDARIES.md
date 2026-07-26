@@ -5,8 +5,8 @@ repos (engines, apps, savers, export tools) should respect these lanes.
 
 Human brand: **IdleScreen**.  
 GitHub org: **idlescreen**.  
-Historical package/crate/binary names may remain `trance*` for install and ABI
-stability. Historical D-Bus names may remain for ABI continuity. Those names do
+Shipped package/crate/binary names are `idle-*` / `idlescreen*`. D-Bus is
+`io.github.idlescreen.Idle` only (hard cut from 2.5.0). Those product names do
 not change the boundaries below.
 
 ## Mental model

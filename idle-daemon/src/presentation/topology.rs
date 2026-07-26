@@ -23,17 +23,13 @@ pub struct DisplayTopologyMap {
 
 impl DisplayTopologyMap {
     pub fn build(layouts: &[OutputLayout]) -> Self {
-        let independent_rendering = idle_api::env_var_first(&[
-            "IDLE_INDEPENDENT_RENDERING",
-            "TRANCE_INDEPENDENT_RENDERING",
-        ])
-        .map(|val| val == "1" || val.eq_ignore_ascii_case("true"))
-        .unwrap_or(false);
+        let independent_rendering = idle_api::env_var_first(&["IDLE_INDEPENDENT_RENDERING"])
+            .map(|val| val == "1" || val.eq_ignore_ascii_case("true"))
+            .unwrap_or(false);
 
-        let custom_layouts =
-            idle_api::env_var_first(&["IDLE_CUSTOM_LAYOUTS", "TRANCE_CUSTOM_LAYOUTS"])
-                .map(|s| parse_custom_layouts(&s))
-                .unwrap_or_default();
+        let custom_layouts = idle_api::env_var_first(&["IDLE_CUSTOM_LAYOUTS"])
+            .map(|s| parse_custom_layouts(&s))
+            .unwrap_or_default();
 
         let mut monitors = Vec::new();
         for layout in layouts {

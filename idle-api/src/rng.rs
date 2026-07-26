@@ -1,10 +1,5 @@
 /// Environment keys for deterministic offline export (`render`).
-pub const SEED_ENV_KEYS: &[&str] = &[
-    "RENDER_SEED",
-    "IDLE_RENDER_SEED",
-    "IDLE_SEED",
-    "TRANCE_SEED",
-];
+pub const SEED_ENV_KEYS: &[&str] = &["RENDER_SEED", "IDLE_RENDER_SEED", "IDLE_SEED"];
 
 /// Parse a seed from the process environment, if set and valid.
 pub fn seed_from_env() -> Option<u64> {
@@ -53,7 +48,7 @@ impl LcgRng {
         Self::new(seed)
     }
 
-    /// Prefer `RENDER_SEED` / `IDLE_RENDER_SEED` / `TRANCE_SEED` (decimal or 0x-hex); else random.
+    /// Prefer `RENDER_SEED` / `IDLE_RENDER_SEED` / `IDLE_SEED` (decimal or 0x-hex); else random.
     pub fn from_env_or_random() -> Self {
         match seed_from_env() {
             Some(s) => Self::new(s),
@@ -218,11 +213,11 @@ mod seed_env_tests {
     #[test]
     fn seed_from_env_hex() {
         unsafe {
-            std::env::set_var("TRANCE_SEED", "0x10");
+            std::env::set_var("IDLE_SEED", "0x10");
         }
         assert_eq!(seed_from_env(), Some(16));
         unsafe {
-            std::env::remove_var("TRANCE_SEED");
+            std::env::remove_var("IDLE_SEED");
         }
     }
 }
