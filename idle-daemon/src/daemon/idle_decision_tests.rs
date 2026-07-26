@@ -68,32 +68,44 @@ fn lock_stops_and_clears_preview() {
 }
 
 #[test]
-fn inhibit_stops() {
+fn inhibit_stops_idle_presentation_not_preview_flag() {
+    // Idle presentation without preview_name is stopped by inhibit.
     let mut i = base();
     i.is_active = true;
+    i.current_saver = "beams";
     i.inhibited = true;
     assert_eq!(
         decide_presentation(i, "beams"),
         PresentationDecision::Stop {
-            clear_preview: true,
+            clear_preview: false,
         }
     );
 }
 
 #[test]
-fn inhibit_clears_pending_preview_before_start() {
-    // Regression: TUI `p` accepted then nothing plays — next tick clears preview
-    // when inhibited (e.g. logind grok / MPRIS) without ever starting.
+fn preview_starts_even_when_inhibited() {
+    // Regression: Grok logind idle / MPRIS used to clear TUI `p` before start.
     let mut i = base();
     i.is_active = false;
     i.preview_name = Some("beams");
     i.inhibited = true;
     assert_eq!(
         decide_presentation(i, "ripple"),
-        PresentationDecision::Stop {
-            clear_preview: true,
+        PresentationDecision::Start {
+            name: "beams".into(),
+            reason: "preview",
         }
     );
+}
+
+#[test]
+fn preview_holds_when_active_and_inhibited() {
+    let mut i = base();
+    i.is_active = true;
+    i.current_saver = "beams";
+    i.preview_name = Some("beams");
+    i.inhibited = true;
+    assert_eq!(decide_presentation(i, "ripple"), PresentationDecision::Hold);
 }
 
 #[test]
@@ -101,10 +113,7 @@ fn inhibit_does_not_start_idle_saver() {
     let mut i = base();
     i.system_idle = true;
     i.inhibited = true;
-    assert_eq!(
-        decide_presentation(i, "beams"),
-        PresentationDecision::Hold
-    );
+    assert_eq!(decide_presentation(i, "beams"), PresentationDecision::Hold);
 }
 
 #[test]

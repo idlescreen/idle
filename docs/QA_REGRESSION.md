@@ -27,7 +27,7 @@ daemon/cli upgrades or before a release cut.
 |----|--------|----------------|
 | P1 | Uninhibited: `idlescreen preview beams` | Overlay appears; journal has **no** `invalid shm name` |
 | P2 | TUI: select saver, press `p` | Same as P1 |
-| P3 | Inhibited: preview may clear (current policy); inhibitors must name the block |
+| P3 | Inhibited (e.g. Grok logind): `idlescreen preview beams` | Preview **still starts**; inhibitors list names the block; idle savers remain blocked |
 | P4 | After stop: `idlescreen stop`; preview_active false |
 
 ## Packaging / dual icons / applet

@@ -9,7 +9,7 @@ pub enum PresentationDecision {
     Hold,
     /// Stop any active presentation.
     Stop {
-        /// Clear forced preview name (lock/inhibit/stale surface).
+        /// Clear forced preview name (lock/stale surface).
         clear_preview: bool,
     },
     /// Start (or switch to) this saver.
@@ -32,6 +32,12 @@ pub struct IdlePolicyInput<'a> {
 /// Decide the next presentation action from pure inputs.
 ///
 /// `idle_saver_name` is used only when starting due to system idle.
+///
+/// Policy:
+/// - **Session lock** stops everything and clears preview.
+/// - **Explicit preview** (TUI `p` / `idlescreen preview`) is allowed even when
+///   inhibited (logind/MPRIS/Grok) — user asked for a preview.
+/// - **Idle-driven** savers still respect inhibit and lock.
 pub fn decide_presentation(
     input: IdlePolicyInput<'_>,
     idle_saver_name: &str,
@@ -42,7 +48,8 @@ pub fn decide_presentation(
         };
     }
 
-    if input.session_locked || input.inhibited {
+    // Lock always wins: no idle, no preview.
+    if input.session_locked {
         if input.is_active || input.preview_name.is_some() {
             return PresentationDecision::Stop {
                 clear_preview: true,
@@ -51,6 +58,7 @@ pub fn decide_presentation(
         return PresentationDecision::Hold;
     }
 
+    // Explicit preview overrides inhibit (user-initiated).
     if let Some(name) = input.preview_name {
         if input.is_active && input.current_saver != name {
             return PresentationDecision::Start {
@@ -62,6 +70,16 @@ pub fn decide_presentation(
             return PresentationDecision::Start {
                 name: name.to_string(),
                 reason: "preview",
+            };
+        }
+        return PresentationDecision::Hold;
+    }
+
+    // Idle path: respect inhibitors (and battery-as-inhibit from tick loop).
+    if input.inhibited {
+        if input.is_active {
+            return PresentationDecision::Stop {
+                clear_preview: false,
             };
         }
         return PresentationDecision::Hold;

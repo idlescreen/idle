@@ -1,3 +1,11 @@
+idle-daemon (2.5.4-1) unstable; urgency=medium
+
+  * Explicit preview (TUI p / idlescreen preview) works while inhibited
+    (logind/MPRIS/Grok). Idle-driven savers still respect inhibitors.
+    Session lock still clears preview.
+
+ -- IdleScreen <jerydleuck@gmail.com>  Sat, 26 Jul 2026 15:00:00 +0000
+
 idle-daemon (2.5.3-1) unstable; urgency=medium
 
   * ListInhibitors includes logind idle + MPRIS Playing so `idlescreen inhibitors`
