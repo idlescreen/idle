@@ -339,11 +339,7 @@ fn firefox_prune_after_exit_clears_all_holds() {
     let other = client(":1.50");
     for reason in ["Playing video", "Playing audio"] {
         let _ = s
-            .add(
-                "org.mozilla.firefox".into(),
-                reason.into(),
-                ff.clone(),
-            )
+            .add("org.mozilla.firefox".into(), reason.into(), ff.clone())
             .unwrap();
     }
     let _ = s
@@ -375,7 +371,10 @@ fn firefox_uninhibit_real_cookie_clears_when_no_phantom() {
             c.clone(),
         )
         .unwrap();
-    assert!(cookie < 10000, "service cookies start at 1, not sniffer range");
+    assert!(
+        cookie < 10000,
+        "service cookies start at 1, not sniffer range"
+    );
     assert!(s.remove_for_client(cookie, &c));
     assert_eq!(s.len(), 0);
     assert!(!s.is_inhibited());

@@ -149,15 +149,15 @@ async fn process_message_stream(
                 }
             }
             "UnInhibit" => {
-                if let Ok(cookie) = msg.body().deserialize::<u32>() {
-                    if inhibitors.remove_for_client(cookie, &sender) {
-                        tracing::info!(
-                            "GNOME ScreenSaver UnInhibit from {} cookie={}",
-                            sender,
-                            cookie
-                        );
-                        controller.mark_dirty();
-                    }
+                if let Ok(cookie) = msg.body().deserialize::<u32>()
+                    && inhibitors.remove_for_client(cookie, &sender)
+                {
+                    tracing::info!(
+                        "GNOME ScreenSaver UnInhibit from {} cookie={}",
+                        sender,
+                        cookie
+                    );
+                    controller.mark_dirty();
                 }
             }
             _ => {}
