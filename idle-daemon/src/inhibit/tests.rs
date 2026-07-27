@@ -77,14 +77,52 @@ fn remove_client_clears_all_for_that_client() {
 }
 
 #[test]
-fn cookies_are_unique_and_increasing() {
+fn cookies_are_unique_and_increasing_for_distinct_reasons() {
     let s = InhibitorState::new();
     let c = client(":test.app.Cookie");
-    let k1 = s.add("a".to_string(), "r".to_string(), c.clone()).unwrap();
-    let k2 = s.add("a".to_string(), "r".to_string(), c.clone()).unwrap();
-    let k3 = s.add("a".to_string(), "r".to_string(), c.clone()).unwrap();
+    let k1 = s.add("a".to_string(), "r1".to_string(), c.clone()).unwrap();
+    let k2 = s.add("a".to_string(), "r2".to_string(), c.clone()).unwrap();
+    let k3 = s.add("a".to_string(), "r3".to_string(), c.clone()).unwrap();
     assert!(k1 < k2);
     assert!(k2 < k3);
+}
+
+#[test]
+fn add_coalesces_same_client_app_reason() {
+    let s = InhibitorState::new();
+    let c = client(":test.app.Coalesce");
+    let k1 = s
+        .add("firefox".into(), "Playing video".into(), c.clone())
+        .unwrap();
+    let k2 = s
+        .add("firefox".into(), "Playing video".into(), c.clone())
+        .unwrap();
+    assert_eq!(k1, k2, "duplicate Inhibit must reuse cookie");
+    assert_eq!(s.len(), 1);
+}
+
+#[test]
+fn prune_not_in_live_set_drops_dead_peers() {
+    let s = InhibitorState::new();
+    let live = client(":1.100");
+    let dead = client(":1.999");
+    let _ = s
+        .add("firefox".into(), "Playing video".into(), live.clone())
+        .unwrap();
+    let _ = s
+        .add("firefox".into(), "Playing video".into(), dead.clone())
+        .unwrap();
+    assert_eq!(s.len(), 2);
+    let mut set = std::collections::HashSet::new();
+    set.insert(":1.100".to_string());
+    let n = s.prune_not_in_live_set(&set);
+    assert_eq!(n, 1);
+    assert_eq!(s.len(), 1);
+    assert!(s.is_inhibited());
+    set.clear();
+    let n = s.prune_not_in_live_set(&set);
+    assert_eq!(n, 1);
+    assert!(!s.is_inhibited());
 }
 
 #[test]

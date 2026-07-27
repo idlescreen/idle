@@ -4,8 +4,10 @@
 
 mod external;
 
+use std::collections::HashSet;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::time::{Duration, Instant};
 
 use zbus::names::UniqueName;
 
@@ -27,8 +29,12 @@ pub struct Inhibitor {
 pub struct InhibitorState {
     inhibitors: Mutex<Vec<Inhibitor>>,
     last_cookie: AtomicU32,
+    /// Cache of “any external block active” + last probe time.
     #[cfg(not(test))]
-    logind_cache: Mutex<(bool, std::time::Instant)>,
+    logind_cache: Mutex<(bool, Instant)>,
+    /// Last time we pruned D-Bus-dead unique names from local cookies.
+    #[cfg(not(test))]
+    prune_cache: Mutex<Instant>,
 }
 
 impl InhibitorState {
@@ -39,14 +45,33 @@ impl InhibitorState {
             #[cfg(not(test))]
             logind_cache: Mutex::new((
                 false,
-                std::time::Instant::now()
-                    .checked_sub(std::time::Duration::from_secs(5))
-                    .unwrap_or_else(std::time::Instant::now),
+                Instant::now()
+                    .checked_sub(Duration::from_secs(5))
+                    .unwrap_or_else(Instant::now),
             )),
+            #[cfg(not(test))]
+            prune_cache: Mutex::new(
+                Instant::now()
+                    .checked_sub(Duration::from_secs(5))
+                    .unwrap_or_else(Instant::now),
+            ),
         }
     }
 
+    pub fn len(&self) -> usize {
+        self.inhibitors
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     pub fn is_inhibited(&self) -> bool {
+        self.maybe_prune_dead_clients();
+
         if !self
             .inhibitors
             .lock()
@@ -63,14 +88,15 @@ impl InhibitorState {
         #[cfg(not(test))]
         {
             let mut cache = self.logind_cache.lock().unwrap_or_else(|e| e.into_inner());
-            if cache.1.elapsed() >= std::time::Duration::from_secs(2) {
+            if cache.1.elapsed() >= Duration::from_secs(2) {
                 cache.0 = check_logind_inhibited() || check_mpris_playing();
-                cache.1 = std::time::Instant::now();
+                cache.1 = Instant::now();
             }
             cache.0
         }
     }
 
+    /// Add a hold. Same client+app+reason is coalesced (returns existing cookie).
     pub fn add(
         &self,
         application_name: String,
@@ -78,6 +104,13 @@ impl InhibitorState {
         client: UniqueName<'static>,
     ) -> Result<u32, &'static str> {
         let mut inhibitors = self.inhibitors.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(existing) = inhibitors.iter().find(|entry| {
+            entry.client == client
+                && entry.application_name == application_name
+                && entry.reason == reason
+        }) {
+            return Ok(existing.cookie);
+        }
         let count = inhibitors
             .iter()
             .filter(|entry| entry.client == client)
@@ -95,6 +128,7 @@ impl InhibitorState {
         Ok(cookie)
     }
 
+    /// Legacy helper used by tests / optional sniffer paths.
     pub fn add_with_cookie(
         &self,
         application_name: String,
@@ -107,6 +141,25 @@ impl InhibitorState {
             .iter()
             .any(|entry| entry.cookie == cookie && entry.client == client)
         {
+            return;
+        }
+        // Coalesce content duplicates (different fake cookies).
+        if inhibitors.iter().any(|entry| {
+            entry.client == client
+                && entry.application_name == application_name
+                && entry.reason == reason
+        }) {
+            return;
+        }
+        let count = inhibitors
+            .iter()
+            .filter(|entry| entry.client == client)
+            .count();
+        if count >= 32 {
+            tracing::warn!(
+                "refusing external inhibitor for {}: at capacity",
+                client.as_str()
+            );
             return;
         }
         tracing::info!(
@@ -139,11 +192,44 @@ impl InhibitorState {
 
     pub fn remove_client(&self, client: &UniqueName<'_>) {
         let mut inhibitors = self.inhibitors.lock().unwrap_or_else(|e| e.into_inner());
-        inhibitors.retain(|entry| entry.client != *client);
+        inhibitors.retain(|entry| entry.client.as_str() != client.as_str());
+    }
+
+    /// Drop holds whose D-Bus unique name is no longer on the session bus.
+    ///
+    /// Pure helper + optional live bus probe (throttled).
+    pub fn prune_not_in_live_set(&self, live_unique: &HashSet<String>) -> usize {
+        let mut inhibitors = self.inhibitors.lock().unwrap_or_else(|e| e.into_inner());
+        let before = inhibitors.len();
+        inhibitors.retain(|entry| live_unique.contains(entry.client.as_str()));
+        before.saturating_sub(inhibitors.len())
+    }
+
+    fn maybe_prune_dead_clients(&self) {
+        #[cfg(test)]
+        {
+            let _ = self;
+        }
+        #[cfg(not(test))]
+        {
+            let mut last = self.prune_cache.lock().unwrap_or_else(|e| e.into_inner());
+            if last.elapsed() < Duration::from_secs(2) {
+                return;
+            }
+            *last = Instant::now();
+            drop(last);
+            if let Some(live) = session_unique_names() {
+                let n = self.prune_not_in_live_set(&live);
+                if n > 0 {
+                    tracing::info!("pruned {n} inhibitor(s) from departed D-Bus clients");
+                }
+            }
+        }
     }
 
     /// IdleScreen cookies only (D-Bus UnInhibit targets these).
     pub fn list(&self) -> Vec<(u32, String, String)> {
+        self.maybe_prune_dead_clients();
         let inhibitors = self.inhibitors.lock().unwrap_or_else(|e| e.into_inner());
         inhibitors
             .iter()
@@ -158,25 +244,33 @@ impl InhibitorState {
     }
 
     /// Full picture for `idlescreen inhibitors`: cookies + logind idle + MPRIS.
-    ///
-    /// External rows use cookie `0` and `application` prefixed with source
-    /// (`logind:…`, `mpris:…`) so the CLI can print them clearly.
     pub fn list_all(&self) -> Vec<(u32, String, String)> {
         merge_inhibitor_rows(self.list(), &list_external())
     }
 }
 
+/// Live unique connection names on the session bus (`:1.N`).
+#[cfg(not(test))]
+fn session_unique_names() -> Option<HashSet<String>> {
+    let conn = zbus::blocking::Connection::session().ok()?;
+    let proxy = zbus::blocking::fdo::DBusProxy::new(&conn).ok()?;
+    let names = proxy.list_names().ok()?;
+    Some(
+        names
+            .into_iter()
+            .map(|n| n.to_string())
+            .filter(|n| n.starts_with(':'))
+            .collect(),
+    )
+}
+
 /// Merge local cookies with external blocks (pure; unit-tested).
-///
-/// Callers must already drop ignored logind holds (see
-/// [`external::ignore_logind_idle_hold`]); this only formats rows.
 pub fn merge_inhibitor_rows(
     local: Vec<(u32, String, String)>,
     external: &[external::ExternalInhibitor],
 ) -> Vec<(u32, String, String)> {
     let mut out = local;
     for ext in external {
-        // Defense in depth: never surface Grok/agent-turn logind rows.
         if ext.source == "logind" && external::ignore_logind_idle_hold(&ext.who, &ext.why) {
             continue;
         }

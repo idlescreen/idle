@@ -1,3 +1,11 @@
+idle-daemon (2.5.12-1) unstable; urgency=medium
+
+  * Fix stale Firefox ScreenSaver inhibitors after browser exit.
+  * Stop double-counting freeness.ScreenSaver (service + bus sniffer).
+  * Coalesce same client/app/reason; prune dead D-Bus unique names.
+
+ -- IdleScreen <jerydleuck@gmail.com>  Sun, 26 Jul 2026 19:10:00 -0700
+
 idle-daemon (2.5.11-1) unstable; urgency=medium
 
   * Quiet D-Bus peer auth when /proc/pid/exe is unreadable (Yama/systemd).

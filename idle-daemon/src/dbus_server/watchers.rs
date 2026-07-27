@@ -1,5 +1,12 @@
 // SPDX-License-Identifier: MIT
 
+//! D-Bus watchers for inhibitor lifecycle.
+//!
+//! **Important:** We *own* `org.freedesktop.ScreenSaver` and handle Inhibit/UnInhibit
+//! in [`super::screensaver`]. Do **not** also sniff those method calls — that
+//! double-counted holds with fake cookies (10000+) that Firefox never UnInhibits,
+//! leaving stale “Playing video” forever after Firefox exits.
+
 use std::sync::Arc;
 
 use futures_lite::StreamExt;
@@ -9,6 +16,7 @@ use zbus::names::BusName;
 use crate::controller::DaemonController;
 use crate::inhibit::InhibitorState;
 
+/// Drop all inhibitors for a unique name when it leaves the bus.
 pub async fn watch_inhibitor_clients(
     connection: zbus::Connection,
     inhibitors: Arc<InhibitorState>,
@@ -35,17 +43,32 @@ pub async fn watch_inhibitor_clients(
             Ok(args) => args,
             Err(_) => continue,
         };
+        // Only care about names that disappeared.
         if args.new_owner.is_some() {
             continue;
         }
+        // Unique connection names (`:1.NNN`) are what Inhibit senders use.
         let BusName::Unique(name) = &args.name else {
             continue;
         };
+        let before = inhibitors.len();
         inhibitors.remove_client(name);
-        controller.mark_dirty();
+        let after = inhibitors.len();
+        if before != after {
+            tracing::info!(
+                "cleared {} inhibitor(s) for departed peer {}",
+                before - after,
+                name
+            );
+            controller.mark_dirty();
+        }
     }
 }
 
+/// Sniff **only** interfaces we do not implement ourselves.
+///
+/// `org.gnome.ScreenSaver` may be used by apps that never talk to our freeness
+/// interface. We must not subscribe to `org.freedesktop.ScreenSaver` here.
 pub async fn watch_external_dbus_inhibits(
     connection: zbus::Connection,
     inhibitors: Arc<InhibitorState>,
@@ -53,14 +76,6 @@ pub async fn watch_external_dbus_inhibits(
 ) {
     use zbus::MatchRule;
     use zbus::message::Type;
-
-    let Ok(builder_fd) = MatchRule::builder()
-        .msg_type(Type::MethodCall)
-        .interface("org.freedesktop.ScreenSaver")
-    else {
-        return;
-    };
-    let rule_fd = builder_fd.build();
 
     let Ok(builder_gnome) = MatchRule::builder()
         .msg_type(Type::MethodCall)
@@ -70,23 +85,15 @@ pub async fn watch_external_dbus_inhibits(
     };
     let rule_gnome = builder_gnome.build();
 
-    let stream = match zbus::MessageStream::for_match_rule(rule_fd, &connection, None).await {
+    let stream = match zbus::MessageStream::for_match_rule(rule_gnome, &connection, None).await {
         Ok(s) => s,
         Err(err) => {
-            tracing::error!("Failed to subscribe to org.freedesktop.ScreenSaver match rule: {err}");
+            tracing::debug!(
+                "No org.gnome.ScreenSaver match (ok if unused on this DE): {err}"
+            );
             return;
         }
     };
-
-    if let Ok(gnome_stream) =
-        zbus::MessageStream::for_match_rule(rule_gnome, &connection, None).await
-    {
-        tokio::spawn(process_message_stream(
-            gnome_stream,
-            inhibitors.clone(),
-            controller.clone(),
-        ));
-    }
 
     process_message_stream(stream, inhibitors, controller).await;
 }
@@ -96,8 +103,6 @@ async fn process_message_stream(
     inhibitors: Arc<InhibitorState>,
     controller: Arc<DaemonController>,
 ) {
-    let mut next_cookie: u32 = 10000;
-
     while let Some(Ok(msg)) = stream.next().await {
         let header = msg.header();
         let member = match header.member() {
@@ -113,28 +118,34 @@ async fn process_message_stream(
         match member {
             "Inhibit" => {
                 if let Ok((app, reason)) = msg.body().deserialize::<(String, String)>() {
-                    let cookie = next_cookie;
-                    next_cookie = next_cookie.wrapping_add(1);
-                    tracing::info!(
-                        "External inhibitor added for client {} ({}: {}) -> cookie {}",
-                        sender,
-                        app,
-                        reason,
-                        cookie
-                    );
-                    inhibitors.add_with_cookie(app, reason, sender, cookie);
-                    controller.mark_dirty();
+                    // Coalesced add: same client/app/reason reuses one hold.
+                    match inhibitors.add(app.clone(), reason.clone(), sender.clone()) {
+                        Ok(cookie) => {
+                            tracing::info!(
+                                "GNOME ScreenSaver Inhibit from {} ({}: {}) cookie={}",
+                                sender,
+                                app,
+                                reason,
+                                cookie
+                            );
+                            controller.mark_dirty();
+                        }
+                        Err(e) => {
+                            tracing::warn!("GNOME ScreenSaver Inhibit rejected: {e}");
+                        }
+                    }
                 }
             }
             "UnInhibit" => {
                 if let Ok(cookie) = msg.body().deserialize::<u32>() {
-                    tracing::info!(
-                        "External inhibitor removed for client {} (cookie {})",
-                        sender,
-                        cookie
-                    );
-                    inhibitors.remove_for_client(cookie, &sender);
-                    controller.mark_dirty();
+                    if inhibitors.remove_for_client(cookie, &sender) {
+                        tracing::info!(
+                            "GNOME ScreenSaver UnInhibit from {} cookie={}",
+                            sender,
+                            cookie
+                        );
+                        controller.mark_dirty();
+                    }
                 }
             }
             _ => {}
