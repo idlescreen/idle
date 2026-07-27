@@ -65,10 +65,7 @@ pub async fn watch_inhibitor_clients(
     }
 }
 
-/// Sniff **only** interfaces we do not implement ourselves.
-///
-/// `org.gnome.ScreenSaver` may be used by apps that never talk to our freeness
-/// interface. We must not subscribe to `org.freedesktop.ScreenSaver` here.
+/// Sniff **only** interfaces we do not implement ourselves (see `sniff_policy`).
 pub async fn watch_external_dbus_inhibits(
     connection: zbus::Connection,
     inhibitors: Arc<InhibitorState>,
@@ -77,25 +74,40 @@ pub async fn watch_external_dbus_inhibits(
     use zbus::MatchRule;
     use zbus::message::Type;
 
-    let Ok(builder_gnome) = MatchRule::builder()
-        .msg_type(Type::MethodCall)
-        .interface("org.gnome.ScreenSaver")
-    else {
-        return;
-    };
-    let rule_gnome = builder_gnome.build();
+    use super::sniff_policy::{may_sniff_screensaver_interface, sniffable_screensaver_interfaces};
 
-    let stream = match zbus::MessageStream::for_match_rule(rule_gnome, &connection, None).await {
-        Ok(s) => s,
-        Err(err) => {
-            tracing::debug!(
-                "No org.gnome.ScreenSaver match (ok if unused on this DE): {err}"
-            );
-            return;
+    // Hard guard: never reintroduce freeness sniffing in this function.
+    debug_assert!(!may_sniff_screensaver_interface(
+        "org.freedesktop.ScreenSaver"
+    ));
+
+    for iface in sniffable_screensaver_interfaces() {
+        if !may_sniff_screensaver_interface(iface) {
+            continue;
         }
-    };
-
-    process_message_stream(stream, inhibitors, controller).await;
+        let Ok(builder) = MatchRule::builder()
+            .msg_type(Type::MethodCall)
+            .interface(*iface)
+        else {
+            continue;
+        };
+        let rule = builder.build();
+        match zbus::MessageStream::for_match_rule(rule, &connection, None).await {
+            Ok(stream) => {
+                let inhibitors = inhibitors.clone();
+                let controller = controller.clone();
+                tokio::spawn(async move {
+                    process_message_stream(stream, inhibitors, controller).await;
+                });
+            }
+            Err(err) => {
+                tracing::debug!("No {iface} match (ok if unused on this DE): {err}");
+            }
+        }
+    }
+    // Keep this task alive so spawned sniffer tasks are not the only owners;
+    // they outlive us via the runtime. Idle forever.
+    std::future::pending::<()>().await;
 }
 
 async fn process_message_stream(

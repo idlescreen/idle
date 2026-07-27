@@ -253,3 +253,146 @@ fn merge_empty_local_and_external_is_empty() {
     let rows = merge_inhibitor_rows(vec![], &[]);
     assert!(rows.is_empty());
 }
+
+// ---------------------------------------------------------------------------
+// Regression: Firefox stale ScreenSaver inhibitors (idle-daemon 2.5.12)
+//
+// Old bug: ScreenSaverService.add (real cookie 1..) AND bus sniffer
+// add_with_cookie (phantom 10000+) for the same Inhibit. Firefox UnInhibits
+// only the real cookie → phantoms block idle forever after Firefox exits.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn firefox_playing_video_coalesce_under_spam() {
+    // Firefox often calls Inhibit many times for the same reason.
+    let s = InhibitorState::new();
+    let c = client(":1.145");
+    let mut cookies = Vec::new();
+    for _ in 0..50 {
+        cookies.push(
+            s.add(
+                "org.mozilla.firefox".into(),
+                "Playing video".into(),
+                c.clone(),
+            )
+            .unwrap(),
+        );
+    }
+    assert_eq!(s.len(), 1, "spam Inhibit must not stack holds");
+    assert!(cookies.iter().all(|k| *k == cookies[0]));
+    assert!(s.is_inhibited());
+    assert!(s.remove_for_client(cookies[0], &c));
+    assert!(!s.is_inhibited());
+}
+
+#[test]
+fn firefox_double_count_uninhibit_leaves_phantom() {
+    // Documents the *old* failure mode if a sniffer still added phantoms.
+    // After UnInhibit of the real cookie, prune must clear orphans.
+    let s = InhibitorState::new();
+    let c = client(":1.145");
+    let real = s
+        .add(
+            "org.mozilla.firefox".into(),
+            "Playing video".into(),
+            c.clone(),
+        )
+        .unwrap();
+    // Simulated sniffer phantom (cookie Firefox never sees / never UnInhibits).
+    s.add_with_cookie(
+        "org.mozilla.firefox".into(),
+        "Playing video".into(),
+        c.clone(),
+        10000,
+    );
+    // With coalesce, add_with_cookie of same app/reason must NOT stack.
+    assert_eq!(
+        s.len(),
+        1,
+        "phantom with same app/reason must coalesce away: len={}",
+        s.len()
+    );
+    // Distinct phantom reason (old sniffer always used same reason — covered above).
+    // Force a second entry as if sniffer used a different cookie-only path without coalesce:
+    // use audio reason then prune.
+    s.add_with_cookie(
+        "org.mozilla.firefox".into(),
+        "Playing audio".into(),
+        c.clone(),
+        10001,
+    );
+    assert_eq!(s.len(), 2);
+    assert!(s.remove_for_client(real, &c));
+    // Still inhibited by phantom audio hold.
+    assert!(s.is_inhibited());
+    // Browser exited: unique name gone from bus → prune clears rest.
+    let live = std::collections::HashSet::new();
+    let n = s.prune_not_in_live_set(&live);
+    assert!(n >= 1);
+    assert!(!s.is_inhibited(), "after exit+prune must be free to idle");
+}
+
+#[test]
+fn firefox_prune_after_exit_clears_all_holds() {
+    let s = InhibitorState::new();
+    let ff = client(":1.200");
+    let other = client(":1.50");
+    for reason in ["Playing video", "Playing audio"] {
+        let _ = s
+            .add(
+                "org.mozilla.firefox".into(),
+                reason.into(),
+                ff.clone(),
+            )
+            .unwrap();
+    }
+    let _ = s
+        .add("vlc".into(), "fullscreen".into(), other.clone())
+        .unwrap();
+    assert_eq!(s.len(), 3);
+    // Firefox gone; VLC still live.
+    let mut live = std::collections::HashSet::new();
+    live.insert(":1.50".to_string());
+    let n = s.prune_not_in_live_set(&live);
+    assert_eq!(n, 2);
+    assert_eq!(s.len(), 1);
+    assert!(s.is_inhibited());
+    // VLC also gone.
+    let n = s.prune_not_in_live_set(&std::collections::HashSet::new());
+    assert_eq!(n, 1);
+    assert!(!s.is_inhibited());
+}
+
+#[test]
+fn firefox_uninhibit_real_cookie_clears_when_no_phantom() {
+    // Correct single-path (service only): UnInhibit is enough.
+    let s = InhibitorState::new();
+    let c = client(":1.145");
+    let cookie = s
+        .add(
+            "org.mozilla.firefox".into(),
+            "Playing video".into(),
+            c.clone(),
+        )
+        .unwrap();
+    assert!(cookie < 10000, "service cookies start at 1, not sniffer range");
+    assert!(s.remove_for_client(cookie, &c));
+    assert_eq!(s.len(), 0);
+    assert!(!s.is_inhibited());
+}
+
+#[test]
+fn remove_client_by_unique_name_string_eq() {
+    // NameOwnerChanged path: UniqueName compare via as_str.
+    let s = InhibitorState::new();
+    let c = client(":1.145");
+    let _ = s
+        .add(
+            "org.mozilla.firefox".into(),
+            "Playing video".into(),
+            c.clone(),
+        )
+        .unwrap();
+    s.remove_client(&client(":1.145"));
+    assert!(!s.is_inhibited());
+}

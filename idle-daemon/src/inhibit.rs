@@ -7,6 +7,7 @@ mod external;
 use std::collections::HashSet;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicU32, Ordering};
+#[cfg(not(test))]
 use std::time::{Duration, Instant};
 
 use zbus::names::UniqueName;

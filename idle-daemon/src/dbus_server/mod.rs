@@ -4,6 +4,7 @@ mod auth;
 mod screensaver;
 mod service;
 mod service_helpers;
+mod sniff_policy;
 mod watchers;
 
 use std::sync::Arc;

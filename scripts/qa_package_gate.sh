@@ -63,7 +63,10 @@ cargo test -p idle-cli -p idle-daemon -p idle-ipc -p idle-dbus -p wayland-presen
   contract_ STATUS_FIELD control_methods bus_contract \
   queue_preview queue_stop requeue after_fault multi_preview \
   trusted_control untrusted_basename applet_comm security_reject \
-  command_queue set_saver_rejects shm_rejects shm_accepts socket_rejects
+  command_queue set_saver_rejects shm_rejects shm_accepts socket_rejects \
+  freeness_screensaver firefox_playing firefox_double_count firefox_prune \
+  firefox_uninhibit add_coalesces prune_not_in_live sniffable_list \
+  sniffable_list_never freeness_screensaver_must
 echo ""
 echo ">>> package gate: named regressions passed"
 echo ""

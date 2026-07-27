@@ -45,6 +45,7 @@ Wayland session); run `just qa-smoke` after install.
 | Commit before configure | `layer_surface_configured`, zero geometry | smoke durability |
 | Idle thrash after fault | `present_cooldown_after_fault`, `cooldown_as_inhibit_blocks_idle` | smoke thrash count ≤ 8 |
 | Grok listed as inhibitor | `ignore_logind_idle_hold`, `merge_drops_grok` | smoke inhibitors section |
+| Firefox stale after exit (phantom 10000+) | `freeness_screensaver_must_not_be_sniffed`, `firefox_playing_video_coalesce`, `firefox_double_count_uninhibit_leaves_phantom`, `firefox_prune_after_exit`, `firefox_uninhibit_real_cookie` | restart daemon clears; after 2.5.12 upgrade no re-stack |
 | Preview blocked by inhibit | `preview_starts_even_when_inhibited`, cooldown force preview | P3/I6 |
 | Panel still visible | `exclusive_zone_for(-1)`, `render_dimensions` expand, `panel_expand_margins` | journal `fullscreen saver geometry` / 1920×1080 |
 | Doctor false NOMINAL | `doctor_rules` composite inhibited / daemon down | D1–D4 |
@@ -76,6 +77,8 @@ systemctl --user is-active idle-daemon
 | ID | Steps | Pass criteria |
 |----|--------|----------------|
 | I1 | Grok/agent logind idle only | **Does not** list grok; not “agent turn” |
+| I6 | Play media in Firefox then **fully quit** Firefox | `idlescreen inhibitors` empty within a few seconds; doctor not FAIL for inhibit |
+| I7 | Firefox spam Inhibit same reason | At most one cookie for that app/reason (unit: coalesce) |
 | I2 | MPRIS Playing | Shows `mpris:…` |
 | I3 | No blocks | `inhibited: false` + No active inhibitors |
 | I4 | Real logind idle (vlc) | Listed; blocks **idle** only |
