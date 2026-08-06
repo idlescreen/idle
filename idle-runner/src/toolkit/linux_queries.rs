@@ -16,7 +16,9 @@ pub fn query_disk_drives() -> Vec<DiskDriveInfo> {
         });
     }
     if drives.is_empty() {
-        tracing::warn!("sysinfo returned no disk drives; returning empty list instead of fake data");
+        tracing::warn!(
+            "sysinfo returned no disk drives; returning empty list instead of fake data"
+        );
     }
     drives
 }
@@ -64,7 +66,9 @@ pub fn query_all_monitors() -> Vec<String> {
         }
     }
     if monitors.is_empty() {
-        tracing::warn!("Could not detect any monitors in /sys/class/drm; returning empty list instead of fake data");
+        tracing::warn!(
+            "Could not detect any monitors in /sys/class/drm; returning empty list instead of fake data"
+        );
     }
     monitors
 }

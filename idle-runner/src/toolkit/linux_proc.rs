@@ -79,7 +79,9 @@ pub fn query_power_status_linux() -> Option<PowerStatus> {
         }
     }
     if !has_ac && battery_percent.is_some() {
-        tracing::warn!("Detected battery but no AC adapter in /sys/class/power_supply; assuming AC is offline (running on battery)");
+        tracing::warn!(
+            "Detected battery but no AC adapter in /sys/class/power_supply; assuming AC is offline (running on battery)"
+        );
     }
     battery_percent.map(|pct| PowerStatus {
         ac_online: if has_ac { ac_online } else { false },
