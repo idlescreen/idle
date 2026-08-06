@@ -79,10 +79,10 @@ pub fn pick_saver_name(config: &DaemonConfig, seed_micros: u64) -> String {
         .active_saver
         .as_deref()
         .filter(|&s| s == "random" || s == "shuffle" || is_allowed_saver(s))
+        && active != "random"
+        && active != "shuffle"
     {
-        if active != "random" && active != "shuffle" {
-            return active.to_string();
-        }
+        return active.to_string();
     }
 
     let savers = idle_runner::discovery::detect_screensavers();
