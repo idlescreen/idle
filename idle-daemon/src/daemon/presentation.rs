@@ -80,15 +80,19 @@ pub fn pick_saver_name(config: &DaemonConfig, seed_micros: u64) -> String {
         .as_deref()
         .filter(|&s| s == "random" || s == "shuffle" || is_allowed_saver(s))
     {
-        if active == "random" || active == "shuffle" {
-            let savers = idle_runner::discovery::detect_screensavers();
-            if !savers.is_empty() {
-                let index = (seed_micros as usize) % savers.len();
-                return savers[index].clone();
-            }
-        } else {
+        if active != "random" && active != "shuffle" {
             return active.to_string();
         }
+    }
+
+    let savers = idle_runner::discovery::detect_screensavers();
+    if !savers.is_empty() {
+        let mut seed = seed_micros;
+        seed = seed
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
+        let index = (seed % savers.len() as u64) as usize;
+        return savers[index].clone();
     }
 
     let mut seed = seed_micros;
