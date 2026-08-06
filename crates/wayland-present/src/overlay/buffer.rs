@@ -24,6 +24,7 @@ pub struct MappedBuffer {
 
 impl Drop for MappedBuffer {
     fn drop(&mut self) {
+        self.wl_buffer.destroy();
         if !self.mapped_ptr.is_null() && self.mapped_len > 0 {
             // SAFETY: `mapped_ptr`/`mapped_len` come from a successful MAP_SHARED
             // mmap in `allocate_buffer`; we null them after munmap to make Drop idempotent.
