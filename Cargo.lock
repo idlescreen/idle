@@ -701,7 +701,7 @@ version = "2.3.2"
 
 [[package]]
 name = "idle-runner"
-version = "2.3.2"
+version = "2.3.3"
 dependencies = [
  "bytemuck",
  "crossterm",
@@ -2043,7 +2043,7 @@ dependencies = [
 
 [[package]]
 name = "wayland-present"
-version = "0.3.64"
+version = "0.3.65"
 dependencies = [
  "libc",
  "tracing",
