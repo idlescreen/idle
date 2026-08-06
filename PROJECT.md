@@ -30,9 +30,9 @@ Under openOODA refactoring, `idle-daemon` is structured around 5 openOODA pillar
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
 | M1 | Security & Immune Rail Tests | Fail-closed IPC/DBus validation + 3+ negative selection tests | None | DONE |
-| M2 | State Alignment & CLI Validation | Resolve state desyncs (battery/cooldown, sticky preview, saver aliases, double writes) + validation script | None | IN_PROGRESS |
-| M3 | openOODA Module Extraction | Extract `ooda/` module hierarchy, resolve file length risks (<250 lines), document architecture | M1, M2 | PLANNED |
-| M4 | Final Integration & Gate Audit | Workspace `cargo test`, line check, state validation, and forensic integrity audit | M1, M2, M3 | PLANNED |
+| M2 | State Alignment & CLI Validation | Resolve state desyncs (battery/cooldown, sticky preview, saver aliases, double writes) + validation script | None | DONE |
+| M3 | openOODA Module Extraction | Extract `ooda/` module hierarchy, resolve file length risks (<250 lines), document architecture | M1, M2 | DONE |
+| M4 | Final Integration & Gate Audit | Workspace `cargo test`, line check, state validation, and forensic integrity audit | M1, M2, M3 | DONE |
 
 ## Interface Contracts
 ### D-Bus / CLI ↔ DaemonController State Contract
