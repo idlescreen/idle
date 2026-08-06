@@ -16,11 +16,7 @@ pub fn query_disk_drives() -> Vec<DiskDriveInfo> {
         });
     }
     if drives.is_empty() {
-        drives.push(DiskDriveInfo {
-            path: "/".to_string(),
-            free_bytes: 50 * 1024 * 1024 * 1024,
-            total_bytes: 100 * 1024 * 1024 * 1024,
-        });
+        tracing::warn!("sysinfo returned no disk drives; returning empty list instead of fake data");
     }
     drives
 }
@@ -67,10 +63,10 @@ pub fn query_all_monitors() -> Vec<String> {
             }
         }
     }
-    if !monitors.is_empty() {
-        return monitors;
+    if monitors.is_empty() {
+        tracing::warn!("Could not detect any monitors in /sys/class/drm; returning empty list instead of fake data");
     }
-    vec!["Primary: 1920x1080".to_string()]
+    monitors
 }
 
 #[cfg(not(target_os = "linux"))]
