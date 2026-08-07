@@ -30,9 +30,11 @@ pub fn start_config_watcher(controller: Arc<DaemonController>) {
     let target_path = path.clone();
 
     // Debounce: atomic write is tmp→rename; notify may fire Create+Modify+Rename.
-    let last_reload = std::sync::Arc::new(std::sync::Mutex::new(std::time::Instant::now()
-        .checked_sub(Duration::from_secs(10))
-        .unwrap_or_else(std::time::Instant::now)));
+    let last_reload = std::sync::Arc::new(std::sync::Mutex::new(
+        std::time::Instant::now()
+            .checked_sub(Duration::from_secs(10))
+            .unwrap_or_else(std::time::Instant::now),
+    ));
     let last_reload_cb = last_reload.clone();
 
     let mut watcher = match notify::recommended_watcher(move |res: Result<Event, _>| {
@@ -41,10 +43,10 @@ pub fn start_config_watcher(controller: Arc<DaemonController>) {
                 event.kind,
                 EventKind::Modify(_) | EventKind::Create(_) | EventKind::Any
             )
-            && event.paths.iter().any(|p| {
-                p == &target_path
-                    || p.file_name() == target_path.file_name()
-            })
+            && event
+                .paths
+                .iter()
+                .any(|p| p == &target_path || p.file_name() == target_path.file_name())
         {
             // Ignore rename/write storms within 400ms.
             if let Ok(mut last) = last_reload_cb.lock() {
