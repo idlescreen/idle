@@ -20,6 +20,8 @@ curl -fsSL https://idlescreen.github.io/packages/install.sh | sh
 
 Installs the product metapackage **`idlescreen`** (depends on `idle-daemon`, `idle-cli`, `idle-savers`, `idle-tui`), and on COSMIC also **`idle-cosmic`**. Remove with `sudo dnf remove idlescreen` / `sudo apt remove idlescreen`.
 
+**Channel:** public packages are whatever is on [GitHub Pages](https://idlescreen.github.io/packages/). This source tree may be ahead of the published index until `packages` is released.
+
 ---
 
 ## Repository layout (this monorepo)
