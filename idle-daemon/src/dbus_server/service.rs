@@ -69,9 +69,14 @@ impl TranceService {
         #[zbus(header)] header: zbus::message::Header<'_>,
     ) -> zbus::fdo::Result<()> {
         authorize_control(&self.controller, &header).await?;
-        let saver = match name {
-            "random" | "none" | "shuffle" | "" => None,
-            s => Some(s.to_string()),
+        let saver = if name.is_empty()
+            || name.eq_ignore_ascii_case("random")
+            || name.eq_ignore_ascii_case("none")
+            || name.eq_ignore_ascii_case("shuffle")
+        {
+            None
+        } else {
+            Some(name.to_string())
         };
         apply_config_command(&self.controller, DaemonCommand::SetSaver(saver), "SetSaver")
     }

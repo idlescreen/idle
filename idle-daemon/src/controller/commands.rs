@@ -55,8 +55,15 @@ impl DaemonController {
                     .context("persisting config after SetTimeout command")
             }
             DaemonCommand::SetSaver(name) => {
+                // Empty / random / none / shuffle (any case) → random rotation.
+                // Capital "Random" is what the TUI label uses; must not resolve as a plugin name.
                 let normalized = match name.as_deref() {
-                    Some(s) if s.is_empty() || s == "random" || s == "none" || s == "shuffle" => {
+                    Some(s)
+                        if s.is_empty()
+                            || s.eq_ignore_ascii_case("random")
+                            || s.eq_ignore_ascii_case("none")
+                            || s.eq_ignore_ascii_case("shuffle") =>
+                    {
                         None
                     }
                     other => other.map(String::from),
@@ -87,7 +94,11 @@ fn validate_idle_timeout(minutes: u32) -> anyhow::Result<()> {
 
 fn validate_saver_choice(saver: Option<&str>) -> anyhow::Result<()> {
     if let Some(name) = saver {
-        if name.is_empty() || name == "random" || name == "none" || name == "shuffle" {
+        if name.is_empty()
+            || name.eq_ignore_ascii_case("random")
+            || name.eq_ignore_ascii_case("none")
+            || name.eq_ignore_ascii_case("shuffle")
+        {
             return Ok(());
         }
         sanitize_saver_name(name)

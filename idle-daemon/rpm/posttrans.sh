@@ -67,18 +67,22 @@ else
             runuser -u "$_user" -- mkdir -p "/home/$_user/.config/idle" "/home/$_user/.config/idlescreen" 2>/dev/null || true
         fi
     }
+    # Match user-service-lib.sh: always enable + start/restart (fresh install used to no-op).
     try_restart_idle() {
         ensure_user_config_dirs "$1" "$2"
         _user_systemctl "$1" "$2" daemon-reload || true
         _user_systemctl "$1" "$2" reset-failed idle-daemon.service || true
-        if _user_is_enabled "$1" "$2"; then
-            echo "idle: applying upgrade for $2 (user service)"
-            _user_systemctl "$1" "$2" restart idle-daemon.service || true
-            return 0
-        fi
+        _user_systemctl "$1" "$2" enable idle-daemon.service || true
         if _user_is_active "$1" "$2"; then
-            echo "idle: applying upgrade for $2 (running unit)"
-            _user_systemctl "$1" "$2" try-restart idle-daemon.service || true
+            echo "idle: restarting idle-daemon for $2"
+            _user_systemctl "$1" "$2" restart idle-daemon.service || true
+        else
+            echo "idle: starting idle-daemon for $2"
+            _user_systemctl "$1" "$2" start idle-daemon.service || true
+        fi
+        if ! _user_is_active "$1" "$2"; then
+            _user_systemctl "$1" "$2" reset-failed idle-daemon.service || true
+            _user_systemctl "$1" "$2" start idle-daemon.service || true
         fi
     }
 fi

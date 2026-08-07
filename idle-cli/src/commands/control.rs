@@ -19,9 +19,14 @@ pub fn cmd_timeout(client: &TranceClient, args: &[String]) -> Result<()> {
 pub fn cmd_saver(client: &TranceClient, args: &[String]) -> Result<()> {
     match args {
         [cmd, name] if cmd == "set" => {
-            let dbus_name = match name.as_str() {
-                "random" | "none" | "shuffle" | "" => "",
-                s => s,
+            let dbus_name = if name.is_empty()
+                || name.eq_ignore_ascii_case("random")
+                || name.eq_ignore_ascii_case("none")
+                || name.eq_ignore_ascii_case("shuffle")
+            {
+                ""
+            } else {
+                name.as_str()
             };
             client
                 .set_saver(dbus_name)

@@ -37,8 +37,8 @@ fn test_live_status_contract_completeness() {
 fn test_saver_alias_normalization_sync() {
     let controller = Arc::new(DaemonController::new(DaemonConfig::default()));
 
-    // Setting "random", "none", "shuffle", or "" must result in active_saver = None (random rotation)
-    for alias in ["random", "none", "shuffle", ""] {
+    // Setting random/none/shuffle (any case) or "" → active_saver = None (random rotation)
+    for alias in ["random", "none", "shuffle", "", "Random", "RANDOM", "None", "Shuffle"] {
         let cmd = DaemonCommand::SetSaver(if alias.is_empty() {
             None
         } else {

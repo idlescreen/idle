@@ -45,10 +45,13 @@ fn apply_idle_timeout(config: &mut DaemonConfig, val: &str) {
 }
 
 fn apply_active_saver(config: &mut DaemonConfig, val: &str) {
-    if val.is_empty() || val == "none" {
+    // Empty / none / random / shuffle (any case) → random rotation (None on wire).
+    if val.is_empty()
+        || val.eq_ignore_ascii_case("none")
+        || val.eq_ignore_ascii_case("random")
+        || val.eq_ignore_ascii_case("shuffle")
+    {
         config.active_saver = None;
-    } else if val == "random" || val == "shuffle" {
-        config.active_saver = Some(val.to_string());
     } else if is_allowed_saver(val) {
         config.active_saver = sanitize_saver_name(val).map(|s| s.to_string());
     }

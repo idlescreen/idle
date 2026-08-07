@@ -1,3 +1,9 @@
+idle-cli (3.0.1-1) unstable; urgency=medium
+
+  * saver set: treat Random/none/shuffle case-insensitively as random mode.
+
+ -- IdleScreen <jerydleuck@gmail.com>  Fri, 07 Aug 2026 08:50:55 +0200
+
 idle-cli (2.5.6-1) unstable; urgency=medium
 
   * config set gpu: honest deprecation (GPU upscaler removed; always off).

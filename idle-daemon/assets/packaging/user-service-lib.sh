@@ -85,28 +85,46 @@ try_stop_idle() {
     _user_systemctl "$_uid" "$_user" stop idle-daemon.service || true
 }
 
-# Apply upgrade: load new binary without the user running systemctl.
-# Enabled → restart (or start if dead). Active-but-not-enabled → try-restart.
+# Apply install/upgrade: ensure the unit is enabled and running for every
+# logged-in desktop user with a session bus. Fresh installs used to only
+# print a hint unless the unit was already enabled — so TUI showed "stopped".
 try_restart_idle() {
     _uid="$1"
     _user="$2"
+    ensure_user_config_dirs "$_uid" "$_user"
+    _user_systemctl "$_uid" "$_user" daemon-reload || true
     _user_systemctl "$_uid" "$_user" reset-failed idle-daemon.service || true
-    if _user_is_enabled "$_uid" "$_user"; then
-        echo "idle: applying upgrade for ${_user} (user service)"
-        _user_systemctl "$_uid" "$_user" restart idle-daemon.service || true
-        return 0
-    fi
+    # Always enable so graphical-session.target starts it next login.
+    _user_systemctl "$_uid" "$_user" enable idle-daemon.service || true
     if _user_is_active "$_uid" "$_user"; then
-        echo "idle: applying upgrade for ${_user} (running unit)"
-        _user_systemctl "$_uid" "$_user" try-restart idle-daemon.service || true
+        echo "idle: restarting idle-daemon for ${_user}"
+        _user_systemctl "$_uid" "$_user" restart idle-daemon.service || true
+    else
+        echo "idle: starting idle-daemon for ${_user}"
+        _user_systemctl "$_uid" "$_user" start idle-daemon.service || true
+    fi
+    # Second chance if the unit raced unit file install.
+    if ! _user_is_active "$_uid" "$_user"; then
+        _user_systemctl "$_uid" "$_user" reset-failed idle-daemon.service || true
+        _user_systemctl "$_uid" "$_user" start idle-daemon.service || true
+    fi
+}
+
+ensure_user_config_dirs() {
+    _uid="$1"
+    _user="$2"
+    if command -v runuser >/dev/null 2>&1; then
+        runuser -u "$_user" -- mkdir -p \
+            "/home/$_user/.config/idle" \
+            "/home/$_user/.config/idlescreen" 2>/dev/null || true
     fi
 }
 
 print_user_hint() {
     echo ""
-    echo "  Note: idle-daemon is a *user* systemd service."
-    echo "  If the screensaver is not running after install, as your desktop user:"
-    echo "    systemctl --user enable --now idle-daemon"
-    echo "  or:  idle doctor --fix"
+    echo "  Note: idle-daemon is a *user* systemd service (enable --now is attempted at install)."
+    echo "  If it is still stopped, as your desktop user run:"
+    echo "    systemctl --user enable --now idle-daemon.service"
+    echo "  or:  idlescreen doctor --fix"
     echo ""
 }

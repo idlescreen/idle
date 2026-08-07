@@ -1,3 +1,11 @@
+idle-daemon (3.0.1-1) unstable; urgency=medium
+
+  * Always enable+start user service on install/upgrade (fresh-install was stopped).
+  * Random saver: accept case-insensitive Random/none/shuffle aliases.
+  * Packaging scripts: daemon-reload, enable, start with second chance.
+
+ -- IdleScreen <jerydleuck@gmail.com>  Fri, 07 Aug 2026 08:50:55 +0200
+
 idle-daemon (2.5.12-1) unstable; urgency=medium
 
   * Fix stale Firefox ScreenSaver inhibitors after browser exit.

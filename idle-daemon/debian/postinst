@@ -49,23 +49,27 @@ else
     try_reload_user_units() {
         _user_systemctl "$1" "$2" daemon-reload || true
     }
+    # Match user-service-lib.sh: always enable + start/restart (fresh install used to no-op).
     try_restart_idle() {
+        _user_systemctl "$1" "$2" daemon-reload || true
         _user_systemctl "$1" "$2" reset-failed idle-daemon.service || true
-        # Enabled → always restart (try-restart is a no-op when inactive).
-        if command -v runuser >/dev/null 2>&1; then
-            if runuser -u "$2" -- env \
+        _user_systemctl "$1" "$2" enable idle-daemon.service || true
+        if command -v runuser >/dev/null 2>&1 \
+            && runuser -u "$2" -- env \
                 XDG_RUNTIME_DIR="/run/user/$1" \
                 DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$1/bus" \
-                systemctl --user is-enabled idle-daemon.service >/dev/null 2>&1; then
-                _user_systemctl "$1" "$2" restart idle-daemon.service || true
-                return 0
-            fi
+                systemctl --user is-active idle-daemon.service >/dev/null 2>&1; then
+            echo "idle: restarting idle-daemon for $2"
+            _user_systemctl "$1" "$2" restart idle-daemon.service || true
+        else
+            echo "idle: starting idle-daemon for $2"
+            _user_systemctl "$1" "$2" start idle-daemon.service || true
         fi
-        _user_systemctl "$1" "$2" try-restart idle-daemon.service || true
+        _user_systemctl "$1" "$2" start idle-daemon.service || true
     }
     print_user_hint() {
-        echo "  If needed: systemctl --user enable --now idle-daemon"
-        echo "  or: idle doctor --fix"
+        echo "  If needed: systemctl --user enable --now idle-daemon.service"
+        echo "  or: idlescreen doctor --fix"
     }
 fi
 
