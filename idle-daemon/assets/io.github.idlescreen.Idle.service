@@ -2,4 +2,3 @@
 Name=io.github.idlescreen.Idle
 Exec=/usr/bin/idle-daemon daemon
 SystemdService=idle-daemon.service
-User=session

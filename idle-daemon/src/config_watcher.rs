@@ -29,11 +29,30 @@ pub fn start_config_watcher(controller: Arc<DaemonController>) {
     let controller_clone = controller.clone();
     let target_path = path.clone();
 
+    // Debounce: atomic write is tmp→rename; notify may fire Create+Modify+Rename.
+    let last_reload = std::sync::Arc::new(std::sync::Mutex::new(std::time::Instant::now()
+        .checked_sub(Duration::from_secs(10))
+        .unwrap_or_else(std::time::Instant::now)));
+    let last_reload_cb = last_reload.clone();
+
     let mut watcher = match notify::recommended_watcher(move |res: Result<Event, _>| {
         if let Ok(event) = res
-            && matches!(event.kind, EventKind::Modify(_) | EventKind::Create(_))
-            && event.paths.iter().any(|p| p == &target_path)
+            && matches!(
+                event.kind,
+                EventKind::Modify(_) | EventKind::Create(_) | EventKind::Any
+            )
+            && event.paths.iter().any(|p| {
+                p == &target_path
+                    || p.file_name() == target_path.file_name()
+            })
         {
+            // Ignore rename/write storms within 400ms.
+            if let Ok(mut last) = last_reload_cb.lock() {
+                if last.elapsed() < Duration::from_millis(400) {
+                    return;
+                }
+                *last = std::time::Instant::now();
+            }
             tracing::info!("Config file modified on disk; hot-reloading settings...");
             // Disk is source of truth: apply under lock and **never** save back
             // (avoids lost-update races with D-Bus mutate_config + self-echo loops).

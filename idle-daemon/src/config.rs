@@ -177,8 +177,14 @@ impl DaemonConfig {
         static TMP_COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
         let count = TMP_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let tmp_path = parent.join(format!("config.tmp.{}.{}", std::process::id(), count));
-        fs::write(&tmp_path, content)?;
-        fs::rename(tmp_path, path)
+        fs::write(&tmp_path, &content)?;
+        match fs::rename(&tmp_path, path) {
+            Ok(()) => Ok(()),
+            Err(e) => {
+                let _ = fs::remove_file(&tmp_path);
+                Err(e)
+            }
+        }
     }
 }
 

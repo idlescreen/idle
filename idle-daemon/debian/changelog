@@ -1,3 +1,10 @@
+idle-daemon (3.0.2-1) unstable; urgency=medium
+
+  * D-Bus activation: drop invalid User=session (dbus-broker rejects it).
+  * Config watcher: debounce hot-reload storms; clean failed atomic write temps.
+
+ -- IdleScreen <jerydleuck@gmail.com>  Fri, 07 Aug 2026 09:08:59 +0200
+
 idle-daemon (3.0.1-1) unstable; urgency=medium
 
   * Always enable+start user service on install/upgrade (fresh-install was stopped).
