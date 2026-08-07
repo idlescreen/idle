@@ -96,16 +96,23 @@ without owning the trusted binary. This is an intentional trade-off to keep
 the daemon functional under compositor hardening, not a bug. The window is
 **local-only** (session bus; same UID as the daemon).
 
+**Opt out of the residual:** set `IDLE_STRICT_CONTROL=1` in the user unit
+environment, or `strict_control: true` in `~/.config/idle/config.yaml` (applied
+at daemon start). Strict mode **denies** control when `/proc/pid/exe` is
+unreadable — no comm fallback. CLI/TUI must remain readable via exe for control
+to work under Yama/`ProtectProc`.
+
 Mitigations already in place:
 
 - Same-UID requirement means the attacker must already control a process
   running as the user.
 - Control methods are **not** privileged in any cross-user sense.
-- The audit log records every accept/reject via `tracing`.
+- The audit log records every accept/reject via `tracing` (comm accepts at WARN).
+- Optional strict mode closes the prctl residual (see above).
 
 If your threat model excludes local same-UID attackers (rare on a single-user
-desktop), the fallback is safe. Otherwise, restrict the bus ACL via
-`/etc/dbus-1/session.conf` or run idle-daemon under a dedicated user.
+desktop), the default fallback is fine. Otherwise use `IDLE_STRICT_CONTROL=1`
+or restrict the bus ACL via `/etc/dbus-1/session.conf`.
 
 If a feature is not expressible on these wires, it is almost certainly outside
 our lane.

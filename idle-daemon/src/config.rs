@@ -25,6 +25,10 @@ pub struct DaemonConfig {
     /// Per-saver custom parameters (e.g. speed, density)
     pub saver_params: std::collections::BTreeMap<String, String>,
     pub theme: idle_api::Theme,
+    /// When true, D-Bus control auth refuses the `/proc/pid/comm` fallback
+    /// (exe must resolve to a trusted basename). Env `IDLE_STRICT_CONTROL=1`
+    /// also enables this at process start.
+    pub strict_control: bool,
 }
 
 impl Default for DaemonConfig {
@@ -38,6 +42,7 @@ impl Default for DaemonConfig {
             render_scale: None,
             saver_params: std::collections::BTreeMap::new(),
             theme: idle_api::Theme::default(),
+            strict_control: false,
         }
     }
 }
@@ -149,7 +154,9 @@ impl DaemonConfig {
              gpu_enabled: false\n\
              show_fps_overlay: {}\n\
              render_scale: {}\n\
-             theme: \"{}\"\n",
+             theme: \"{}\"\n\
+             # strict_control: deny D-Bus control when peer exe unreadable (no comm fallback)\n\
+             strict_control: {}\n",
             self.idle_timeout_mins,
             active_str,
             self.idle_enabled,
@@ -158,6 +165,7 @@ impl DaemonConfig {
                 .map(|s| s.to_string())
                 .unwrap_or_else(|| "null".to_string()),
             self.theme,
+            self.strict_control,
         );
 
         if !self.saver_params.is_empty() {

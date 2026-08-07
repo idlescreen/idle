@@ -29,6 +29,11 @@ pub(crate) fn apply_config_key(config: &mut DaemonConfig, key: &str, val: &str) 
                 config.theme = theme;
             }
         }
+        "strict_control" => {
+            if let Ok(b) = val.parse::<bool>() {
+                config.strict_control = b;
+            }
+        }
         _ => {}
     }
 }

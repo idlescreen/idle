@@ -49,7 +49,7 @@ fn main() -> anyhow::Result<()> {
             "daemon" | "--daemon" => daemon::run_daemon(),
             "--help" | "-h" => {
                 println!(
-                    "idle-daemon — background idle monitoring service for trance
+                    "idle-daemon — background idle monitoring service for IdleScreen
 
 usage:
   idle-daemon                     run the background idle daemon (default)

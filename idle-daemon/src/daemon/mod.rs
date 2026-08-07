@@ -35,7 +35,15 @@ pub fn run_daemon() -> anyhow::Result<()> {
     let Some(pidfile) = pidfile::acquire_pidfile()? else {
         return Ok(());
     };
-    let controller = Arc::new(DaemonController::new(DaemonConfig::load()));
+    let config = DaemonConfig::load();
+    // Honor config.yaml strict_control for D-Bus auth (env is the auth check surface).
+    if config.strict_control {
+        // SAFETY: single-threaded startup before other threads read the flag.
+        unsafe {
+            std::env::set_var("IDLE_STRICT_CONTROL", "1");
+        }
+    }
+    let controller = Arc::new(DaemonController::new(config));
     crate::config_watcher::start_config_watcher(controller.clone());
     install_signal_handlers(&controller)?;
     log_daemon_startup();
@@ -50,7 +58,7 @@ pub fn run_daemon() -> anyhow::Result<()> {
 fn check_wayland_env() -> anyhow::Result<()> {
     if std::env::var("WAYLAND_DISPLAY").is_err() {
         return Err(anyhow!(
-            "WAYLAND_DISPLAY is not set; trance requires a Wayland session"
+            "WAYLAND_DISPLAY is not set; IdleScreen requires a Wayland session"
         ));
     }
     Ok(())

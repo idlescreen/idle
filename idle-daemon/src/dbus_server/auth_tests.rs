@@ -18,7 +18,31 @@ fn clear_trust_all_env() {
     // Other tests may set these; deny-policy tests must start clean.
     unsafe {
         std::env::remove_var("IDLE_DBUS_TRUST_ALL");
+        std::env::remove_var("IDLE_STRICT_CONTROL");
     }
+}
+
+#[test]
+fn strict_control_denies_comm_fallback_when_exe_unreadable() {
+    let _guard = env_lock();
+    clear_trust_all_env();
+    // Missing PID → Unreadable exe; without strict, comm path still fails (no comm).
+    // With strict, deny even before comm is considered — same outcome for missing pid.
+    unsafe {
+        std::env::set_var("IDLE_STRICT_CONTROL", "1");
+    }
+    assert!(
+        !is_trusted_control_peer(u32::MAX, Some(unsafe { libc::geteuid() }), ":1.strict"),
+        "strict control must deny unreadable exe"
+    );
+    assert!(
+        strict_control_enabled(),
+        "IDLE_STRICT_CONTROL=1 must enable strict mode"
+    );
+    unsafe {
+        std::env::remove_var("IDLE_STRICT_CONTROL");
+    }
+    assert!(!strict_control_enabled());
 }
 
 #[test]

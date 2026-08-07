@@ -35,6 +35,18 @@ fn dbus_trust_all_enabled() -> bool {
     std::env::var("IDLE_DBUS_TRUST_ALL").ok().as_deref() == Some("1")
 }
 
+/// Strict control: no `/proc/pid/comm` fallback when exe is unreadable.
+///
+/// Enabled by `IDLE_STRICT_CONTROL=1` (process env) — operators who refuse
+/// the documented same-UID `prctl` residual should set this (or
+/// `strict_control: true` in config.yaml once the daemon reloads env via unit).
+pub(crate) fn strict_control_enabled() -> bool {
+    matches!(
+        std::env::var("IDLE_STRICT_CONTROL").ok().as_deref(),
+        Some("1") | Some("true") | Some("TRUE") | Some("yes")
+    )
+}
+
 fn is_trusted_control_peer(pid: u32, peer_uid: Option<u32>, peer_name: &str) -> bool {
     // Escape hatch is debug-only so release builds cannot be opened with
     // `IDLE_DBUS_TRUST_ALL=1` by a local attacker.
@@ -64,6 +76,13 @@ fn is_trusted_control_peer(pid: u32, peer_uid: Option<u32>, peer_name: &str) -> 
         }
         PeerExeCheck::Untrusted => false,
         PeerExeCheck::Unreadable => {
+            // Strict mode: refuse comm fallback (closes prctl spoof residual).
+            if strict_control_enabled() {
+                tracing::warn!(
+                    "D-Bus auth: peer {peer_name} (pid {pid}) denied — exe unreadable and IDLE_STRICT_CONTROL is set (no comm fallback)"
+                );
+                return false;
+            }
             // Do **not** accept pure same-UID: any compromised same-user process
             // could otherwise call control methods. Prefer `/proc/pid/comm`, which
             // remains readable under typical Yama/systemd hardening when `exe` is not.
@@ -72,7 +91,7 @@ fn is_trusted_control_peer(pid: u32, peer_uid: Option<u32>, peer_name: &str) -> 
                     // Same-UID + comm is a known residual (prctl spoof). Surface at
                     // WARN so journal reviews can detect non-exe trust accepts.
                     tracing::warn!(
-                        "D-Bus auth: peer {peer_name} (pid {pid}, comm {comm}) accepted via same-UID + trusted comm (exe unreadable; spoof residual — see docs/BOUNDARIES.md)"
+                        "D-Bus auth: peer {peer_name} (pid {pid}, comm {comm}) accepted via same-UID + trusted comm (exe unreadable; spoof residual — see docs/BOUNDARIES.md or IDLE_STRICT_CONTROL=1)"
                     );
                     true
                 }
