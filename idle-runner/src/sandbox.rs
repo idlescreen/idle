@@ -4,13 +4,20 @@ use landlock::Access;
 use landlock::RulesetAttr;
 use landlock::{ABI, AccessFs, Ruleset};
 
-/// Enforces a strict Landlock filesystem sandbox on the current process,
-/// locking down all filesystem access (read, write, execute).
+/// Enforce a strict Landlock filesystem sandbox on the current process.
 ///
-/// Skipped when `IDLE_DISABLE_SANDBOX=1` (offline export / `render`).
-pub fn enforce_sandbox() -> Result<(), String> {
+/// Fails closed unless the caller has explicitly opted out via
+/// `IDLE_DISABLE_SANDBOX=1` (only used by offline export / `render`).
+///
+/// Returns an error rather than logging-and-continuing, so plugin loading
+/// paths propagate the failure and refuse to load the plugin when the kernel
+/// cannot enforce the sandbox.
+pub fn enforce_sandbox_or_skip_for_render() -> Result<(), String> {
     if idle_api::env_truthy(&["IDLE_DISABLE_SANDBOX"]) {
-        tracing::info!("Landlock sandbox skipped (IDLE_DISABLE_SANDBOX)");
+        tracing::warn!(
+            "Landlock sandbox DISABLED via IDLE_DISABLE_SANDBOX — \
+             only the offline render pipeline should set this"
+        );
         return Ok(());
     }
     // Use ABI::V1 which is the baseline Landlock version supported since 5.13.
@@ -30,3 +37,7 @@ pub fn enforce_sandbox() -> Result<(), String> {
     tracing::info!("Landlock filesystem sandbox enforced: {:?}", status);
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "sandbox_tests.rs"]
+mod sandbox_tests;

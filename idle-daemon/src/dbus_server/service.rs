@@ -39,10 +39,9 @@ impl TranceService {
             tracing::error!(target: "idle_daemon::dbus", "Disable failed: {error:?}");
             return Err(zbus::fdo::Error::Failed(error.to_string()));
         }
-        let _ = self
-            .controller
-            .command_tx
-            .send(DaemonCommand::StopPresentation);
+        self.controller
+            .send_command(DaemonCommand::StopPresentation)
+            .map_err(|_| zbus::fdo::Error::LimitsExceeded("Command queue full".into()))?;
         sync_config_status(&self.controller);
         Ok(())
     }
@@ -58,10 +57,9 @@ impl TranceService {
             DaemonCommand::SetTimeout(minutes),
             "SetTimeout",
         )?;
-        let _ = self
-            .controller
-            .command_tx
-            .send(DaemonCommand::SetTimeout(minutes));
+        self.controller
+            .send_command(DaemonCommand::SetTimeout(minutes))
+            .map_err(|_| zbus::fdo::Error::LimitsExceeded("Command queue full".into()))?;
         Ok(())
     }
 
@@ -71,7 +69,10 @@ impl TranceService {
         #[zbus(header)] header: zbus::message::Header<'_>,
     ) -> zbus::fdo::Result<()> {
         authorize_control(&self.controller, &header).await?;
-        let saver = (!name.is_empty()).then(|| name.to_string());
+        let saver = match name {
+            "random" | "none" | "shuffle" | "" => None,
+            s => Some(s.to_string()),
+        };
         apply_config_command(&self.controller, DaemonCommand::SetSaver(saver), "SetSaver")
     }
 
@@ -94,23 +95,21 @@ impl TranceService {
         )
         .map_err(|error| zbus::fdo::Error::Failed(error.to_string()))?;
 
-        let _ = self
-            .controller
-            .command_tx
-            .send(DaemonCommand::Preview(name.to_string()));
+        self.controller
+            .send_command(DaemonCommand::Preview(name.to_string()))
+            .map_err(|_| zbus::fdo::Error::LimitsExceeded("Command queue full".into()))?;
         self.controller.mark_dirty();
         Ok(())
     }
 
-    async fn stop_preview(
+    pub(crate) async fn stop_preview(
         &self,
         #[zbus(header)] header: zbus::message::Header<'_>,
     ) -> zbus::fdo::Result<()> {
         authorize_control(&self.controller, &header).await?;
-        let _ = self
-            .controller
-            .command_tx
-            .send(DaemonCommand::StopPresentation);
+        self.controller
+            .send_command(DaemonCommand::StopPresentation)
+            .map_err(|_| zbus::fdo::Error::LimitsExceeded("Command queue full".into()))?;
         self.controller.mark_dirty();
         Ok(())
     }
@@ -133,10 +132,9 @@ impl TranceService {
                 sender.to_owned(),
             )
             .map_err(|error| zbus::fdo::Error::LimitsExceeded(error.to_string()))?;
-        let _ = self
-            .controller
-            .command_tx
-            .send(DaemonCommand::StopPresentation);
+        self.controller
+            .send_command(DaemonCommand::StopPresentation)
+            .map_err(|_| zbus::fdo::Error::LimitsExceeded("Command queue full".into()))?;
         self.controller.mark_dirty();
         Ok(cookie)
     }

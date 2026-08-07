@@ -3,7 +3,6 @@
 
 //! Pure preview command queue effects (package-gate integration without Wayland).
 
-use super::idle_decision::{IdlePolicyInput, PresentationDecision, decide_presentation};
 use super::runtime::{RuntimeFault, recovery_plan};
 
 /// Apply a Preview D-Bus command to sticky preview state.
@@ -24,30 +23,30 @@ pub fn apply_fault_clear_preview(preview_name: &mut Option<String>, fault: Runti
     }
 }
 
-/// Decide presentation after applying optional preview queue + inhibit flag.
-pub fn decide_after_queue(
-    preview_name: Option<&str>,
-    inhibited: bool,
-    system_idle: bool,
-    idle_saver: &str,
-) -> PresentationDecision {
-    let input = IdlePolicyInput {
-        is_active: false,
-        surface_visible: true,
-        current_saver: "",
-        preview_name,
-        idle_enabled: true,
-        system_idle,
-        session_locked: false,
-        inhibited,
-    };
-    decide_presentation(input, idle_saver)
-}
-
 #[cfg(test)]
 mod tests {
-    use super::super::idle_decision::PresentationDecision;
+    use super::super::idle_decision::{IdlePolicyInput, PresentationDecision, decide_presentation};
     use super::*;
+
+    /// Decide presentation after applying optional preview queue + inhibit flag.
+    pub fn decide_after_queue(
+        preview_name: Option<&str>,
+        inhibited: bool,
+        system_idle: bool,
+        idle_saver: &str,
+    ) -> PresentationDecision {
+        let input = IdlePolicyInput {
+            is_active: false,
+            surface_visible: true,
+            current_saver: "",
+            preview_name,
+            idle_enabled: true,
+            system_idle,
+            session_locked: false,
+            inhibited,
+        };
+        decide_presentation(input, idle_saver)
+    }
 
     #[test]
     fn queue_preview_sets_name() {

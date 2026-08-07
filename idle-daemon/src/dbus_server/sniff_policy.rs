@@ -12,8 +12,6 @@
 /// Return true only if bus method-call sniffing is allowed for this interface.
 pub fn may_sniff_screensaver_interface(interface: &str) -> bool {
     match interface {
-        // Owned by idle-daemon ScreenSaverService — never sniff.
-        "org.freedesktop.ScreenSaver" => false,
         // Optional legacy path some GNOME clients still use.
         "org.gnome.ScreenSaver" => true,
         _ => false,

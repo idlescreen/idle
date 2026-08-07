@@ -109,9 +109,14 @@ pub fn run_ipc_runner(
                 // Init and validated against map size inside `cells_mut`.
                 let cells = unsafe { shm.cells_mut() }
                     .map_err(|e| format!("shm cells view rejected: {e}"))?;
+                let mut dirty = false;
                 for (i, cell) in session.grid().iter().enumerate() {
                     if i < cells.len() {
-                        cells[i] = FfiTerminalCell::from(*cell);
+                        let new_val = FfiTerminalCell::from(*cell);
+                        if cells[i] != new_val {
+                            cells[i] = new_val;
+                            dirty = true;
+                        }
                     }
                 }
 
@@ -121,7 +126,7 @@ pub fn run_ipc_runner(
                     header.frame_counter = header.frame_counter.wrapping_add(1);
                 }
 
-                IpcResponse::FrameReady { scanlines }
+                IpcResponse::FrameReady { scanlines, dirty }
                     .write_to(&mut socket)
                     .map_err(|e| format!("failed to send FrameReady: {}", e))?;
             }

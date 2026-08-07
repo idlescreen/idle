@@ -22,6 +22,7 @@ mod doctor_fs;
 mod doctor_rules;
 mod doctor_service;
 mod doctor_sys;
+mod pkg_query;
 mod interactive;
 mod interactive_io;
 mod self_update;

@@ -23,8 +23,7 @@ pub struct IpcPluginSession {
     upscaler: FrameUpscaler,
     pub(crate) grid: Vec<TerminalCell>,
     content_buf: Vec<u8>,
-    pixel_buf: std::sync::Arc<Vec<u8>>,
-    hardware_scaling: bool,
+        hardware_scaling: bool,
 
     pub(crate) child: Option<Child>,
     pub(crate) socket: Option<UnixStream>,
@@ -55,8 +54,7 @@ impl IpcPluginSession {
             upscaler,
             grid: Vec::new(),
             content_buf: Vec::new(),
-            pixel_buf: std::sync::Arc::new(Vec::new()),
-            hardware_scaling: false,
+                        hardware_scaling: false,
             child: None,
             socket: None,
             shm: None,
@@ -96,6 +94,15 @@ impl IpcPluginSession {
             .checked_mul(rows)
             .ok_or_else(|| format!("grid size overflow: {cols}x{rows}"))?;
         self.grid = vec![TerminalCell::default(); cells];
+
+        if let Some(mut child) = self.child.take() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+        if let Some(path) = self.socket_path.take() {
+            let _ = std::fs::remove_file(path);
+        }
+
         let init_res = initialize_ipc_session(
             &self.saver_name,
             cols,
@@ -117,12 +124,19 @@ impl IpcPluginSession {
             let cmd = IpcCommand::SetSimulationRate { hz: fps };
             if let Err(e) = cmd.write_to(&mut *socket) {
                 tracing::error!("failed to send SetSimulationRate: {}", e);
+                self.socket = None;
                 return;
             }
             match IpcResponse::read_from(&mut *socket) {
                 Ok(IpcResponse::Ack) => {}
-                Ok(resp) => tracing::error!("unexpected response to SetSimulationRate: {:?}", resp),
-                Err(e) => tracing::error!("failed to read SetSimulationRate Ack: {}", e),
+                Ok(resp) => {
+                    tracing::error!("unexpected response to SetSimulationRate: {:?}", resp);
+                    self.socket = None;
+                }
+                Err(e) => {
+                    tracing::error!("failed to read SetSimulationRate Ack: {}", e);
+                    self.socket = None;
+                }
             }
         }
     }
@@ -134,14 +148,15 @@ impl IpcPluginSession {
             };
             if let Err(e) = cmd.write_to(&mut *socket) {
                 tracing::error!("failed to send TickAndDraw: {}", e);
+                self.socket = None;
             }
         }
     }
 
-    pub fn draw_frame(&mut self, grid_cols: usize, grid_rows: usize) -> bool {
+    pub fn draw_frame(&mut self, grid_cols: usize, grid_rows: usize) -> (bool, bool) {
         if let Some(ref mut socket) = self.socket {
             match IpcResponse::read_from(&mut *socket) {
-                Ok(IpcResponse::FrameReady { scanlines }) => {
+                Ok(IpcResponse::FrameReady { scanlines, dirty }) => {
                     if let Some(ref shm) = self.shm {
                         // SAFETY: SHM mapped for session lifetime; dims set at init.
                         match unsafe { shm.cells_mut() } {
@@ -154,11 +169,13 @@ impl IpcPluginSession {
                                     tracing::error!(
                                         "grid resize overflow: {grid_cols}x{grid_rows}"
                                     );
-                                    return false;
+                                    return (false, false);
                                 }
-                                // Zip avoids bounds checks on the destination grid.
-                                for (dst, src) in self.grid.iter_mut().zip(cells.iter()) {
-                                    *dst = TerminalCell::from(*src);
+                                if dirty {
+                                    // Zip avoids bounds checks on the destination grid.
+                                    for (dst, src) in self.grid.iter_mut().zip(cells.iter()) {
+                                        *dst = TerminalCell::from(*src);
+                                    }
                                 }
                             }
                             Err(e) => {
@@ -166,13 +183,19 @@ impl IpcPluginSession {
                             }
                         }
                     }
-                    return scanlines;
+                    return (scanlines, dirty);
                 }
-                Ok(resp) => tracing::error!("unexpected response to TickAndDraw: {:?}", resp),
-                Err(e) => tracing::error!("failed to read response to TickAndDraw: {}", e),
+                Ok(resp) => {
+                    tracing::error!("unexpected response to TickAndDraw: {:?}", resp);
+                    self.socket = None;
+                }
+                Err(e) => {
+                    tracing::error!("failed to read response to TickAndDraw: {}", e);
+                    self.socket = None;
+                }
             }
         }
-        false
+        (false, false)
     }
 
     pub fn raster_viewport(
@@ -186,7 +209,8 @@ impl IpcPluginSession {
         width: u32,
         height: u32,
         scanlines: bool,
-    ) -> std::sync::Arc<Vec<u8>> {
+        pixel_buf: &mut Vec<u8>,
+    ) {
         let using_gpu = self.using_gpu_upscale();
         let hardware_scaling = self.hardware_scaling;
         raster_viewport_into(
@@ -196,7 +220,7 @@ impl IpcPluginSession {
             hardware_scaling,
             using_gpu,
             &mut self.content_buf,
-            std::sync::Arc::make_mut(&mut self.pixel_buf),
+            pixel_buf,
             col_start,
             row_start,
             cols,
@@ -206,6 +230,5 @@ impl IpcPluginSession {
             height,
             scanlines,
         );
-        self.pixel_buf.clone()
     }
 }

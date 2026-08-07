@@ -83,14 +83,17 @@ fn run_preview_stub(_saver: &mut dyn Screensaver) -> isize {
 pub fn run_plugin_fullscreen(plugin_path: &str) -> Result<isize, Box<dyn std::error::Error>> {
     use idle_api::ScreensaverInstance;
 
+    // Order matters: load caption font, then enforce Landlock **before** loading
+    // the plugin .so. ELF constructors run on `Library::new`, so the sandbox
+    // must already be active or plugin code can execute unrestricted. Sandbox
+    // failures are fail-closed: refuse to load the plugin rather than run
+    // unsandboxed.
+    crate::caption_overlay::init_font();
+    crate::sandbox::enforce_sandbox_or_skip_for_render()
+        .map_err(crate::launcher::PluginError::Sandbox)?;
+
     unsafe {
         let lib = libloading::Library::new(plugin_path)?;
-
-        // Eagerly load caption font before filesystem is locked
-        crate::caption_overlay::init_font();
-        if let Err(e) = crate::sandbox::enforce_sandbox() {
-            tracing::warn!("Could not enforce Landlock sandbox: {e}");
-        }
 
         let create_fn: libloading::Symbol<unsafe extern "C" fn() -> *mut ScreensaverInstance> =
             lib.get(b"create_screensaver")?;

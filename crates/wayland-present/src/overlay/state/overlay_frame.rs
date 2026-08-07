@@ -73,9 +73,10 @@ impl SessionState {
         let Some(overlay) = self.overlays.get_mut(&output_id) else {
             return;
         };
-        overlay.buffer = buffer;
+        overlay.buffers[0] = buffer;
+        overlay.current_buffer = 0;
 
-        if let Some(buffer) = &overlay.buffer {
+        if let Some(buffer) = &overlay.buffers[0] {
             overlay.surface.attach(Some(&buffer.wl_buffer), 0, 0);
             overlay
                 .surface
@@ -87,11 +88,12 @@ impl SessionState {
     /// Attach a screensaver frame buffer after `ensure_frame_buffer` succeeds.
     #[allow(clippy::cast_possible_wrap)]
     pub(super) fn commit_frame_buffer(
+        queue: &wayland_client::QueueHandle<SessionState>,
         overlay: &mut MonitorOverlay,
         width: u32,
         height: u32,
     ) -> bool {
-        let Some(buffer) = overlay.buffer.as_ref() else {
+        let Some(buffer) = overlay.buffers[overlay.current_buffer].as_ref() else {
             return false;
         };
 
@@ -137,6 +139,10 @@ impl SessionState {
         overlay
             .surface
             .damage_buffer(0, 0, width as i32, height as i32);
+        
+        // Request frame callback to wake up `poll()` on VSync, enabling backpressure.
+        let _ = overlay.surface.frame(queue, ());
+        
         overlay.surface.commit();
         true
     }

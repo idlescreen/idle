@@ -121,6 +121,16 @@ pub fn initialize_ipc_session(
         return Err(format!("failed to set blocking on runner stream: {}", e));
     }
 
+    if let Err(e) = socket.set_read_timeout(Some(Duration::from_millis(500))) {
+        kill_and_reap(&mut child, &socket_path);
+        return Err(format!("failed to set read timeout on runner stream: {}", e));
+    }
+
+    if let Err(e) = socket.set_write_timeout(Some(Duration::from_millis(500))) {
+        kill_and_reap(&mut child, &socket_path);
+        return Err(format!("failed to set write timeout on runner stream: {}", e));
+    }
+
     let mut socket = socket;
 
     match IpcResponse::read_from(&mut socket) {

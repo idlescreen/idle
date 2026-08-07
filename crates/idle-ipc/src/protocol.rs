@@ -12,7 +12,7 @@ pub enum IpcCommand {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum IpcResponse {
     Ready,
-    FrameReady { scanlines: bool },
+    FrameReady { scanlines: bool, dirty: bool },
     Ack,
 }
 
@@ -48,10 +48,11 @@ impl IpcCommand {
                 let mut rows_bytes = [0u8; 4];
                 reader.read_exact(&mut cols_bytes)?;
                 reader.read_exact(&mut rows_bytes)?;
-                Ok(IpcCommand::Init {
-                    cols: u32::from_le_bytes(cols_bytes),
-                    rows: u32::from_le_bytes(rows_bytes),
-                })
+                let cols = u32::from_le_bytes(cols_bytes);
+                let rows = u32::from_le_bytes(rows_bytes);
+                crate::ffi_cell::validate_grid_dims(cols as usize, rows as usize)
+                    .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))?;
+                Ok(IpcCommand::Init { cols, rows })
             }
             1 => {
                 let mut dt_bytes = [0u8; 8];
@@ -82,8 +83,8 @@ impl IpcResponse {
             IpcResponse::Ready => {
                 writer.write_all(&[0])?;
             }
-            IpcResponse::FrameReady { scanlines } => {
-                writer.write_all(&[1, if *scanlines { 1 } else { 0 }])?;
+            IpcResponse::FrameReady { scanlines, dirty } => {
+                writer.write_all(&[1, if *scanlines { 1 } else { 0 }, if *dirty { 1 } else { 0 }])?;
             }
             IpcResponse::Ack => {
                 writer.write_all(&[2])?;
@@ -98,10 +99,11 @@ impl IpcResponse {
         match tag[0] {
             0 => Ok(IpcResponse::Ready),
             1 => {
-                let mut scan_byte = [0u8; 1];
-                reader.read_exact(&mut scan_byte)?;
+                let mut data = [0u8; 2];
+                reader.read_exact(&mut data)?;
                 Ok(IpcResponse::FrameReady {
-                    scanlines: scan_byte[0] != 0,
+                    scanlines: data[0] != 0,
+                    dirty: data[1] != 0,
                 })
             }
             2 => Ok(IpcResponse::Ack),
@@ -110,5 +112,20 @@ impl IpcResponse {
                 "invalid response tag",
             )),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ipc_response_frame_ready_roundtrip() {
+        let resp = IpcResponse::FrameReady { scanlines: true, dirty: false };
+        let mut buf = Vec::new();
+        resp.write_to(&mut buf).unwrap();
+        assert_eq!(buf, vec![1, 1, 0]);
+        let read_resp = IpcResponse::read_from(&buf[..]).unwrap();
+        assert_eq!(resp, read_resp);
     }
 }

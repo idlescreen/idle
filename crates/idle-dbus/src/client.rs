@@ -1,11 +1,62 @@
 // SPDX-License-Identifier: MIT
 
 use std::collections::HashMap;
+use std::panic::{AssertUnwindSafe, PanicHookInfo, catch_unwind};
+use std::sync::Mutex;
 
 use zbus::zvariant::OwnedValue;
 
 use crate::status::DaemonStatus;
 use crate::{OBJECT_PATH, SERVICE_NAME};
+
+static PANIC_HOOK_LOCK: Mutex<()> = Mutex::new(());
+
+struct PanicHookGuard {
+    prev_hook: Option<Box<dyn Fn(&PanicHookInfo<'_>) + Sync + Send + 'static>>,
+}
+
+impl PanicHookGuard {
+    fn suppress() -> Self {
+        let prev_hook = std::panic::take_hook();
+        std::panic::set_hook(Box::new(|_| {}));
+        Self {
+            prev_hook: Some(prev_hook),
+        }
+    }
+}
+
+impl Drop for PanicHookGuard {
+    fn drop(&mut self) {
+        if let Some(prev) = self.prev_hook.take() {
+            std::panic::set_hook(prev);
+        }
+    }
+}
+
+fn catch_unwind_silent<F, R>(f: F) -> std::thread::Result<R>
+where
+    F: FnOnce() -> R,
+{
+    let _lock = PANIC_HOOK_LOCK.lock().unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
+    let _guard = PanicHookGuard::suppress();
+    catch_unwind(AssertUnwindSafe(f))
+}
+
+fn check_fd_availability(required: usize) -> bool {
+    let mut fds = Vec::with_capacity(required);
+    let mut available = true;
+    for _ in 0..required {
+        match std::fs::File::open("/dev/null") {
+            Ok(file) => fds.push(file),
+            Err(_) => {
+                available = false;
+                break;
+            }
+        }
+    }
+    drop(fds);
+    available
+}
 
 #[zbus::proxy(
     interface = "io.github.idlescreen.Idle",
@@ -37,10 +88,23 @@ pub struct TranceClient {
 
 impl TranceClient {
     pub fn connect() -> zbus::Result<Self> {
-        let connection = zbus::blocking::Connection::session()?;
-        let proxy = IdleProxyBlocking::new(&connection)?;
-        proxy.get_status()?;
-        Ok(Self { connection })
+        if !check_fd_availability(4) {
+            return Err(zbus::Error::Failure(
+                "insufficient file descriptors available".into(),
+            ));
+        }
+        let res = catch_unwind_silent(|| {
+            let connection = zbus::blocking::Connection::session()?;
+            let proxy = IdleProxyBlocking::new(&connection)?;
+            proxy.get_status()?;
+            Ok(Self { connection })
+        });
+        match res {
+            Ok(r) => r,
+            Err(_) => Err(zbus::Error::Failure(
+                "panic connecting to D-Bus session".into(),
+            )),
+        }
     }
 
     pub fn get_status(&self) -> zbus::Result<DaemonStatus> {
@@ -139,22 +203,28 @@ fn read_string(map: &HashMap<String, OwnedValue>, key: &str) -> String {
 
 /// Returns whether the IdleScreen daemon is reachable on the session bus.
 pub fn daemon_available() -> bool {
-    let connection = match zbus::blocking::Connection::session() {
-        Ok(connection) => connection,
-        Err(_) => return false,
-    };
-    let dbus = match zbus::blocking::fdo::DBusProxy::new(&connection) {
-        Ok(dbus) => dbus,
-        Err(_) => return false,
-    };
-
-    if let Ok(bus) = zbus::names::BusName::try_from(SERVICE_NAME)
-        && dbus.name_has_owner(bus).unwrap_or(false)
-    {
-        return true;
+    if !check_fd_availability(4) {
+        return false;
     }
-    let _ = OBJECT_PATH;
-    false
+    let res = catch_unwind_silent(|| {
+        let connection = match zbus::blocking::Connection::session() {
+            Ok(connection) => connection,
+            Err(_) => return false,
+        };
+        let dbus = match zbus::blocking::fdo::DBusProxy::new(&connection) {
+            Ok(dbus) => dbus,
+            Err(_) => return false,
+        };
+
+        if let Ok(bus) = zbus::names::BusName::try_from(SERVICE_NAME)
+            && dbus.name_has_owner(bus).unwrap_or(false)
+        {
+            return true;
+        }
+        let _ = OBJECT_PATH;
+        false
+    });
+    res.unwrap_or(false)
 }
 
 #[cfg(test)]

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{self, Sender};
+use std::sync::mpsc::{self, SyncSender, Sender};
 use std::time::Duration;
 
 use crate::appearance::OverlayAppearance;
@@ -11,7 +11,9 @@ use crate::overlay::{PresenterCommand, spawn_event_thread};
 
 /// Presents fullscreen Wayland overlays on top of the desktop.
 pub struct OverlayPresenter {
-    command_tx: Sender<PresenterCommand>,
+    command_tx: SyncSender<PresenterCommand>,
+    buffer_tx: Sender<Vec<u8>>,
+    buffer_rx: Mutex<mpsc::Receiver<Vec<u8>>>,
     visible: Arc<AtomicBool>,
     shutdown: Arc<AtomicBool>,
     outputs: OutputRegistry,
@@ -27,7 +29,8 @@ impl OverlayPresenter {
         }
 
         let (ready_tx, ready_rx) = mpsc::channel();
-        let (command_tx, command_rx) = mpsc::channel();
+        let (command_tx, command_rx) = mpsc::sync_channel(1);
+        let (buffer_tx, buffer_rx) = mpsc::channel();
         let visible = Arc::new(AtomicBool::new(false));
         let shutdown = Arc::new(AtomicBool::new(false));
         let outputs = OutputRegistry::new();
@@ -47,6 +50,8 @@ impl OverlayPresenter {
         match ready_rx.recv_timeout(Duration::from_secs(5)) {
             Ok(Ok(())) => Some(Self {
                 command_tx,
+                buffer_tx,
+                buffer_rx: Mutex::new(buffer_rx),
                 visible,
                 shutdown,
                 outputs,
@@ -89,13 +94,24 @@ impl OverlayPresenter {
         let _ = self.command_tx.send(PresenterCommand::ShowScreensaver);
     }
 
-    pub fn submit_frame(&self, output_id: u32, width: u32, height: u32, pixels: Arc<Vec<u8>>) {
+    pub fn submit_frame(&self, output_id: u32, width: u32, height: u32, pixels: Vec<u8>) {
         let _ = self.command_tx.send(PresenterCommand::UpdateFrame {
             output_id,
             width,
             height,
             pixels,
+            return_pool: self.buffer_tx.clone(),
         });
+    }
+
+    pub fn get_frame_buffer(&self, size: usize) -> Vec<u8> {
+        if let Ok(mut buf) = self.buffer_rx.lock().unwrap().try_recv() {
+            if buf.len() != size {
+                buf.resize(size, 0);
+            }
+            return buf;
+        }
+        vec![0; size]
     }
 
     pub fn hide(&self) {

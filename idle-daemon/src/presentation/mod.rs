@@ -8,6 +8,7 @@
 
 mod frame_loop;
 mod frame_pacing;
+mod render;
 mod hw_scaling;
 mod ipc_init;
 mod ipc_lifecycle;
@@ -47,6 +48,10 @@ impl PluginPresentation {
         saver_name: String,
         options: PresentationOptions,
     ) -> Result<Self, String> {
+        if !idle_runner::launcher::is_allowed_saver(&saver_name) {
+            return Err(format!("invalid or disallowed saver name: {saver_name}"));
+        }
+
         let stop = Arc::new(AtomicBool::new(false));
         let stop_flag = stop.clone();
         let presenter_for_thread = presenter.clone();
@@ -66,6 +71,10 @@ impl PluginPresentation {
         })
     }
 
+    pub fn is_running(&self) -> bool {
+        self.thread.as_ref().is_some_and(|t| !t.is_finished())
+    }
+
     pub fn stop(&mut self, presenter: &OverlayPresenter) {
         self.stop.store(true, Ordering::Relaxed);
         presenter.hide();
@@ -74,3 +83,66 @@ impl PluginPresentation {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_plugin_presentation_start_rejects_invalid_saver() {
+        let presenter = match OverlayPresenter::new() {
+            Some(p) => Arc::new(p),
+            None => return,
+        };
+        let options = PresentationOptions {
+            gpu_enabled: false,
+            show_fps_overlay: false,
+            render_scale: None,
+            launch_mode: LaunchMode::Preview,
+        };
+        let result = PluginPresentation::start(
+            presenter,
+            "nonexistent_invalid_saver_123".to_string(),
+            options,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_plugin_presentation_is_running_returns_false_when_thread_finished() {
+        let stop = Arc::new(AtomicBool::new(false));
+        let handle = thread::spawn(|| {});
+        thread::sleep(std::time::Duration::from_millis(20));
+
+        let plugin = PluginPresentation {
+            stop,
+            thread: Some(handle),
+        };
+        thread::sleep(std::time::Duration::from_millis(10));
+        assert!(!plugin.is_running());
+    }
+
+    #[test]
+    fn test_active_presentation_check_liveness_clears_state_on_finished_thread() {
+        let stop = Arc::new(AtomicBool::new(false));
+        let handle = thread::spawn(|| {});
+        thread::sleep(std::time::Duration::from_millis(20));
+
+        let plugin = PluginPresentation {
+            stop,
+            thread: Some(handle),
+        };
+        thread::sleep(std::time::Duration::from_millis(10));
+
+        let mut active = crate::daemon::presentation::ActivePresentation::Plugin(plugin);
+        let mut preview_name = Some("beams".to_string());
+        let mut current_saver = "beams".to_string();
+
+        active.check_liveness(&mut preview_name, &mut current_saver);
+
+        assert!(!active.is_active());
+        assert_eq!(current_saver, "");
+        assert_eq!(preview_name, None);
+    }
+}
+

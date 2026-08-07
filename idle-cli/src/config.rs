@@ -120,7 +120,10 @@ fn set_idle_timeout(client: &TranceClient, val: &str) -> Result<()> {
 }
 
 fn set_active_saver(client: &TranceClient, val: &str) -> Result<()> {
-    let name = if val == "none" { "" } else { val };
+    let name = match val {
+        "none" | "random" | "shuffle" | "" => "",
+        s => s,
+    };
     client
         .set_saver(name)
         .with_context(|| format!("setting active saver to '{name}'"))?;

@@ -19,7 +19,7 @@ pub struct ExternalInhibitor {
 /// blank during a turn. That must **not**:
 /// - appear in `idlescreen inhibitors`, or
 /// - block idle-driven savers / force doctor FAIL for "inhibited",
-/// because it is not a user media/fullscreen intent.
+///   because it is not a user media/fullscreen intent.
 ///
 /// Forced preview (`idlescreen preview` / TUI `p`) already ignores *all*
 /// inhibitors in presentation policy; this filter cleans list + idle path.
@@ -42,13 +42,9 @@ type LogindInhibitorInfo = (String, String, String, String, u32, u32);
 
 /// True when logind has any **IdleScreen-relevant** idle inhibitor.
 #[cfg(all(target_os = "linux", not(test)))]
-pub fn check_logind_inhibited() -> bool {
-    !list_logind_idle().is_empty()
-}
-
-#[cfg(all(target_os = "linux", not(test)))]
 pub fn list_logind_idle() -> Vec<ExternalInhibitor> {
-    let run_blocking = || {
+    use super::zbus_helper::safe_zbus_blocking;
+    safe_zbus_blocking(|| {
         let Ok(conn) = zbus::blocking::Connection::system() else {
             return Vec::new();
         };
@@ -79,24 +75,14 @@ pub fn list_logind_idle() -> Vec<ExternalInhibitor> {
             });
         }
         out
-    };
-
-    if tokio::runtime::Handle::try_current().is_ok() {
-        tokio::task::block_in_place(run_blocking)
-    } else {
-        run_blocking()
-    }
-}
-
-/// True when any MPRIS player reports PlaybackStatus=Playing.
-#[cfg(all(target_os = "linux", not(test)))]
-pub fn check_mpris_playing() -> bool {
-    !list_mpris_playing().is_empty()
+    })
+    .unwrap_or_default()
 }
 
 #[cfg(all(target_os = "linux", not(test)))]
 pub fn list_mpris_playing() -> Vec<ExternalInhibitor> {
-    let run_blocking = || {
+    use super::zbus_helper::safe_zbus_blocking;
+    safe_zbus_blocking(|| {
         let Ok(conn) = zbus::blocking::Connection::session() else {
             return Vec::new();
         };
@@ -132,13 +118,8 @@ pub fn list_mpris_playing() -> Vec<ExternalInhibitor> {
             }
         }
         out
-    };
-
-    if tokio::runtime::Handle::try_current().is_ok() {
-        tokio::task::block_in_place(run_blocking)
-    } else {
-        run_blocking()
-    }
+    })
+    .unwrap_or_default()
 }
 
 #[cfg(all(target_os = "linux", not(test)))]
@@ -162,15 +143,6 @@ fn mpris_status_playing(conn: &zbus::blocking::Connection, name: &str, path: &st
     }
 }
 
-#[cfg(any(not(target_os = "linux"), test))]
-pub fn check_logind_inhibited() -> bool {
-    false
-}
-
-#[cfg(any(not(target_os = "linux"), test))]
-pub fn check_mpris_playing() -> bool {
-    false
-}
 
 #[cfg(any(not(target_os = "linux"), test))]
 pub fn list_logind_idle() -> Vec<ExternalInhibitor> {
@@ -184,6 +156,11 @@ pub fn list_mpris_playing() -> Vec<ExternalInhibitor> {
 
 /// All external blocks currently considered by IdleScreen.
 pub fn list_external() -> Vec<ExternalInhibitor> {
+    if std::env::var("IDLE_TEST_MOCK_AC").is_ok()
+        || std::env::var("IDLE_TEST_DISABLE_EXTERNAL").is_ok()
+    {
+        return Vec::new();
+    }
     let mut out = list_logind_idle();
     out.extend(list_mpris_playing());
     out

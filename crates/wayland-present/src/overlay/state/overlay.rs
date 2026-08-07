@@ -70,7 +70,8 @@ impl SessionState {
                 layer_surface,
                 width: 0,
                 height: 0,
-                buffer: None,
+                buffers: [None, None],
+                current_buffer: 0,
                 viewport,
             },
         );
@@ -146,7 +147,7 @@ impl SessionState {
         output_id: u32,
         width: u32,
         height: u32,
-        pixels: std::sync::Arc<Vec<u8>>,
+        pixels: &[u8],
     ) {
         if !self.screensaver_mode {
             return;
@@ -166,19 +167,22 @@ impl SessionState {
         if overlay.width == 0 || overlay.height == 0 {
             return;
         }
+        
+        overlay.current_buffer ^= 1;
 
         if !super::super::buffer::ensure_frame_buffer(
-            &mut overlay.buffer,
+            &mut overlay.buffers[overlay.current_buffer],
             shm,
             &self.queue,
             width,
             height,
-            &pixels,
+            pixels,
         ) {
             return;
         }
 
-        if !Self::commit_frame_buffer(overlay, width, height) {
+        let queue = self.queue.clone();
+        if !Self::commit_frame_buffer(&queue, overlay, width, height) {
             tracing::error!(
                 output_id,
                 "wayland-present: frame buffer missing after ensure; skipping frame"

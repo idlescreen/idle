@@ -5,15 +5,20 @@
 //! `run_daemon` is the orchestrator; setup helpers stay here and the runtime
 //! tick loop lives in sibling modules.
 
-mod battery;
-mod idle_decision;
-mod idle_logic;
-mod presentation;
-mod preview_queue;
-mod runtime;
-mod tick_loop;
+pub mod battery;
+pub(crate) mod idle_decision;
+pub(crate) mod idle_logic;
+pub(crate) mod pidfile;
+pub(crate) mod presentation;
+pub(crate) mod preview_queue;
+pub(crate) mod recovery;
+pub(crate) mod runtime;
+pub(crate) mod tick_loop;
+#[cfg(test)]
+mod liveness_validation_tests;
+#[cfg(test)]
+mod m2_concurrency_stress_tests;
 
-use std::fs;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
@@ -27,7 +32,7 @@ pub use tick_loop::tick_loop_until_shutdown;
 #[tracing::instrument(skip_all)]
 pub fn run_daemon() -> anyhow::Result<()> {
     check_wayland_env()?;
-    let Some(pidfile) = acquire_pidfile()? else {
+    let Some(pidfile) = pidfile::acquire_pidfile()? else {
         return Ok(());
     };
     let controller = Arc::new(DaemonController::new(DaemonConfig::load()));
@@ -38,7 +43,7 @@ pub fn run_daemon() -> anyhow::Result<()> {
     let result = tick_loop_until_shutdown(Arc::clone(&controller));
     controller.shutdown.store(true, Ordering::Relaxed);
     let _ = dbus_handle.join();
-    release_pidfile(&pidfile);
+    pidfile::release_pidfile(&pidfile);
     result
 }
 
@@ -51,43 +56,10 @@ fn check_wayland_env() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn pid_file_path() -> std::path::PathBuf {
-    if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
-        std::path::PathBuf::from(runtime_dir).join("idle-daemon.pid")
-    } else {
-        std::env::temp_dir().join("idle-daemon.pid")
-    }
-}
-
-/// Acquire the daemon pid file.
-///
-/// Returns `Ok(Some(path))` when this process owns the pid file and should
-/// release it later. Returns `Ok(None)` when another daemon is already running
-/// — the caller should exit cleanly without further setup.
-fn acquire_pidfile() -> anyhow::Result<Option<std::path::PathBuf>> {
-    let path = pid_file_path();
-    if let Some(pid) = fs::read_to_string(&path)
-        .ok()
-        .and_then(|s| s.trim().parse::<i32>().ok())
-    {
-        // SAFETY: signal 0 only probes existence; no signal is delivered.
-        unsafe {
-            if libc::kill(pid, 0) == 0 && pid != std::process::id() as i32 {
-                tracing::warn!("idle-daemon is already running (pid {pid}). Exiting.");
-                return Ok(None);
-            }
-        }
-    }
-    fs::write(&path, std::process::id().to_string())
-        .with_context(|| format!("writing pid file to {}", path.display()))?;
-    Ok(Some(path))
-}
-
-fn release_pidfile(path: &std::path::Path) {
-    let _ = fs::remove_file(path);
-}
-
 fn install_signal_handlers(controller: &Arc<DaemonController>) -> anyhow::Result<()> {
+    unsafe {
+        libc::signal(libc::SIGPIPE, libc::SIG_IGN);
+    }
     signal_hook::flag::register(
         signal_hook::consts::SIGINT,
         Arc::clone(&controller.shutdown),
@@ -114,9 +86,42 @@ fn log_daemon_startup() {
 fn spawn_dbus_thread(
     controller: Arc<DaemonController>,
 ) -> anyhow::Result<std::thread::JoinHandle<()>> {
+    let ctrl = controller.clone();
     let handle = std::thread::spawn(move || {
-        if let Err(error) = crate::dbus_server::run(controller) {
-            tracing::error!("D-Bus server stopped: {error}");
+        let mut retries = 0;
+        while !controller.shutdown.load(Ordering::Relaxed) && retries < 3 {
+            let start = std::time::Instant::now();
+            let ctrl_loop = ctrl.clone();
+            let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                crate::dbus_server::run(ctrl_loop)
+            }));
+            if start.elapsed() > std::time::Duration::from_secs(5) {
+                retries = 0;
+            }
+            match res {
+                Ok(Err(error)) => {
+                    tracing::error!("D-Bus server stopped: {error}");
+                    retries += 1;
+                }
+                Err(payload) => {
+                    let msg = payload
+                        .downcast_ref::<&str>()
+                        .copied()
+                        .or_else(|| payload.downcast_ref::<String>().map(|s| s.as_str()))
+                        .unwrap_or("unknown panic");
+                    tracing::error!("D-Bus server thread panicked: {msg}");
+                    retries += 1;
+                }
+                Ok(Ok(())) => break,
+            }
+            if controller.shutdown.load(Ordering::Relaxed) {
+                break;
+            }
+            tracing::warn!("Restarting D-Bus server after error or panic...");
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+        if retries >= 3 {
+            tracing::error!("D-Bus server thread exceeded max retries (3); stopping D-Bus thread.");
         }
     });
     Ok(handle)

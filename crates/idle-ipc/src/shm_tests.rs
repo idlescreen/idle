@@ -188,3 +188,37 @@ fn create_open_roundtrip_name() {
     let reopen = SharedMemory::open(name, size);
     assert!(reopen.is_err(), "open after owner drop should fail");
 }
+
+#[test]
+fn test_immune_rail_shm_security_and_bounds() {
+    use crate::{is_valid_shm_name, SharedMemory, compute_shm_size, SHM_MAGIC};
+
+    // 1. Path traversal & invalid prefix rejection
+    assert!(!is_valid_shm_name("/idle-shm-../etc/passwd"));
+    assert!(!is_valid_shm_name("/dev/shm/idle-shm-1-0"));
+    assert!(!is_valid_shm_name("/other-prefix-1"));
+    assert!(!is_valid_shm_name("/idle-shm-"));
+    assert!(SharedMemory::create("/idle-shm-../etc/passwd", 4096).is_err());
+
+    // 2. Corrupted SHM header magic rejection
+    let sz = compute_shm_size(4, 2).unwrap();
+    let shm = SharedMemory::create("/idle-shm-magic-test-0", sz).unwrap();
+    unsafe {
+        shm.header_mut().magic = 0xDEAD_BEEF;
+        shm.header_mut().cols = 4;
+        shm.header_mut().rows = 2;
+        let err = shm.cells_mut().expect_err("corrupt magic must fail");
+        assert!(err.contains("magic"));
+    }
+
+    // 3. Cell allocation overflow within mapped region
+    let sz_small = compute_shm_size(2, 2).unwrap();
+    let shm_over = SharedMemory::create("/idle-shm-overflow-test-0", sz_small).unwrap();
+    unsafe {
+        shm_over.header_mut().magic = SHM_MAGIC;
+        shm_over.header_mut().cols = 10_000;
+        shm_over.header_mut().rows = 10_000;
+        let err = shm_over.cells_mut().expect_err("oversized cell dims must fail");
+        assert!(err.contains("need") || err.contains("map"));
+    }
+}

@@ -10,6 +10,7 @@
 //! - Interface: [`INTERFACE_NAME`] (`io.github.idlescreen.Idle`)
 
 pub mod client;
+pub mod locks;
 pub mod status;
 pub mod status_contract;
 

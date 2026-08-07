@@ -1,17 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 IdleScreen
 
-mod config;
-mod config_parse;
-mod config_watcher;
-mod controller;
-mod daemon;
-mod dbus_server;
-mod failsafe;
-mod inhibit;
-mod ipc_runner;
-mod lock_monitor;
-mod presentation;
+#[allow(clippy::wildcard_imports)]
+use idle_daemon::*;
 
 fn main() -> anyhow::Result<()> {
     use anyhow::Context;
@@ -49,90 +40,70 @@ fn main() -> anyhow::Result<()> {
         .set(idle_runner::toolkit::sys_info::is_secondary_monitor);
 
     let args: Vec<String> = std::env::args().collect();
+    
     if args.len() > 1 {
         let sub = &args[1];
-        if sub == "run-plugin" {
-            if args.len() < 3 {
-                eprintln!("error: missing saver name.\nusage: idle-daemon run-plugin <saver>");
-                std::process::exit(1);
-            }
-            let name = &args[2];
-            if name.contains('/') || name.contains('\\') {
-                eprintln!("error: saver name must not be a path");
-                std::process::exit(1);
-            }
-            let path = idle_runner::launcher::resolve_saver_binary(
-                name,
-                &idle_runner::launcher::LaunchMode::Preview,
-            )
-            .unwrap_or_else(|error| {
-                eprintln!("error: {error}");
-                std::process::exit(1);
-            });
-            match idle_runner::idle_runner::run_plugin_fullscreen(path.to_string_lossy().as_ref()) {
-                Ok(code) => std::process::exit(code as i32),
-                Err(e) => {
-                    eprintln!("failed to execute screensaver plugin: {}", e);
-                    std::process::exit(1);
-                }
-            }
-        } else if sub == "run-ipc-runner" {
-            if args.len() < 9 {
-                eprintln!(
-                    "error: missing arguments.\nusage: idle-daemon run-ipc-runner <saver> <socket_path> <shm_name> <cols> <rows> <gpu_enabled> <render_scale>"
-                );
-                std::process::exit(1);
-            }
-            let saver = &args[2];
-            let socket_path = &args[3];
-            let shm_name = &args[4];
-            let cols: usize = args[5].parse().unwrap_or(80);
-            let rows: usize = args[6].parse().unwrap_or(24);
-            let gpu_enabled: bool = args[7].parse().unwrap_or(false);
-            let render_scale: Option<f32> = if args[8] == "none" {
-                None
-            } else {
-                args[8].parse().ok()
-            };
-
-            if let Err(e) = ipc_runner::run_ipc_runner(
-                saver,
-                socket_path,
-                shm_name,
-                cols,
-                rows,
-                gpu_enabled,
-                render_scale,
-            ) {
-                eprintln!("runner error: {}", e);
-                std::process::exit(1);
-            }
-            std::process::exit(0);
-        } else if sub == "failsafe-lock" {
-            if let Err(e) = failsafe::run_failsafe_lock() {
-                eprintln!("Failsafe locker error: {e}");
-                std::process::exit(1);
-            }
-            std::process::exit(0);
-        } else if sub == "daemon" || sub == "--daemon" {
-            daemon::run_daemon()?;
-        } else if sub == "--help" || sub == "-h" {
-            println!(
-                "idle-daemon — background idle monitoring service for trance
+        match sub.as_str() {
+            "run-plugin" => run_plugin_subcmd(&args),
+            "run-ipc-runner" => run_ipc_runner_subcmd(&args),
+            "daemon" | "--daemon" => daemon::run_daemon(),
+            "--help" | "-h" => {
+                println!(
+                    "idle-daemon — background idle monitoring service for trance
 
 usage:
   idle-daemon                     run the background idle daemon (default)
   idle-daemon daemon | --daemon   run the background idle daemon
   idle-daemon run-plugin <saver>  run a trusted screensaver plugin fullscreen
   idle-daemon --help | -h         show this help message"
-            );
-        } else {
-            eprintln!("unknown argument: {}\ntry --help", sub);
-            std::process::exit(1);
+                );
+                Ok(())
+            }
+            other => anyhow::bail!("unknown argument: {}\ntry --help", other),
         }
     } else {
         // Run the daemon by default
-        daemon::run_daemon()?;
+        daemon::run_daemon()
     }
-    Ok(())
+}
+
+fn run_plugin_subcmd(args: &[String]) -> anyhow::Result<()> {
+    anyhow::ensure!(
+        args.len() >= 3,
+        "missing saver name.\nusage: idle-daemon run-plugin <saver>"
+    );
+    let name = &args[2];
+    anyhow::ensure!(
+        !name.contains('/') && !name.contains('\\'),
+        "saver name must not be a path"
+    );
+    let path = idle_runner::launcher::resolve_saver_binary(
+        name,
+        &idle_runner::launcher::LaunchMode::Preview,
+    )?;
+    // run_plugin_fullscreen replaces this process image with the plugin;
+    // exit the host with the plugin's status code on return.
+    let code = idle_runner::idle_runner::run_plugin_fullscreen(path.to_string_lossy().as_ref())
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
+    std::process::exit(code as i32);
+}
+
+fn run_ipc_runner_subcmd(args: &[String]) -> anyhow::Result<()> {
+    anyhow::ensure!(
+        args.len() >= 9,
+        "missing arguments.\nusage: idle-daemon run-ipc-runner <saver> <socket_path> <shm_name> <cols> <rows> <gpu_enabled> <render_scale>"
+    );
+    let saver = &args[2];
+    let socket_path = &args[3];
+    let shm_name = &args[4];
+    let cols: usize = args[5].parse().unwrap_or(80);
+    let rows: usize = args[6].parse().unwrap_or(24);
+    let gpu_enabled: bool = args[7].parse().unwrap_or(false);
+    let render_scale: Option<f32> = if args[8] == "none" {
+        None
+    } else {
+        args[8].parse().ok()
+    };
+    ipc_runner::run_ipc_runner(saver, socket_path, shm_name, cols, rows, gpu_enabled, render_scale)
+        .map_err(|e| anyhow::anyhow!("{e}"))
 }

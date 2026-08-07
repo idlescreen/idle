@@ -25,7 +25,8 @@ pub struct MonitorOverlay {
     pub layer_surface: zwlr_layer_surface_v1::ZwlrLayerSurfaceV1,
     pub width: u32,
     pub height: u32,
-    pub buffer: Option<MappedBuffer>,
+    pub buffers: [Option<MappedBuffer>; 2],
+    pub current_buffer: usize,
     pub viewport: Option<wp_viewport::WpViewport>,
 }
 

@@ -12,6 +12,7 @@ use super::presentation::{
 };
 use crate::config::DaemonConfig;
 
+#[allow(dead_code)]
 pub fn update_presentation_state(
     overlay_presenter: &Arc<OverlayPresenter>,
     presentation: &mut ActivePresentation,
@@ -22,6 +23,8 @@ pub fn update_presentation_state(
     session_locked: bool,
     inhibited: bool,
 ) {
+    presentation.check_liveness(preview_name, current_saver);
+
     let input = IdlePolicyInput {
         is_active: presentation.is_active(),
         surface_visible: overlay_presenter.is_visible(),
@@ -53,7 +56,7 @@ pub fn update_presentation_state(
                 current_saver.clear();
             }
             if !presentation.is_active() {
-                start_presentation(
+                let started = start_presentation(
                     overlay_presenter,
                     presentation,
                     current_saver,
@@ -61,6 +64,10 @@ pub fn update_presentation_state(
                     reason,
                     config,
                 );
+                if !started && reason == "preview" {
+                    tracing::warn!("preview plugin launch failed; clearing preview state");
+                    *preview_name = None;
+                }
             }
         }
     }

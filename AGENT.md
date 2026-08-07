@@ -10,7 +10,7 @@ Enforce on every change in this repository.
 
 ## Constraints
 
-- Max **250 lines** per `.rs` file (split at functional boundaries).
+- Max **256 lines** per `.rs` / `.sh` file (split at functional boundaries); see `scripts/check_file_lines.sh`.
 - **Zero** `.unwrap()` or `.expect()` in production (non-test) code.
   Tests may use `unwrap`/`expect` only when the failure message is clear.
 - Fallible APIs use `Result` / `Option` with explicit error types.

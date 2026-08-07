@@ -6,7 +6,7 @@ Read and respect:
 
 1. [docs/BOUNDARIES.md](docs/BOUNDARIES.md) — kernel / compositor / DE vs our lane
 2. [docs/DBUS.md](docs/DBUS.md) — frozen control-plane ABI
-3. [AGENT.md](AGENT.md) — Rust contract (250-line files, no prod unwrap)
+3. [AGENT.md](AGENT.md) — Rust contract (256-line files, no prod unwrap)
 
 IdleScreen is a **Wayland client and plugin host**, not a compositor or lock screen.
 

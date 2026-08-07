@@ -9,7 +9,7 @@ pub struct ScreenSaverService {
 
 #[zbus::interface(name = "org.freedesktop.ScreenSaver")]
 impl ScreenSaverService {
-    async fn inhibit(
+    pub(crate) async fn inhibit(
         &self,
         application_name: &str,
         reason_for_inhibit: &str,
@@ -35,13 +35,12 @@ impl ScreenSaverService {
             .map_err(|error| zbus::fdo::Error::LimitsExceeded(error.to_string()))?;
         let _ = self
             .controller
-            .command_tx
-            .send(DaemonCommand::StopPresentation);
+            .send_command(DaemonCommand::StopPresentation);
         self.controller.mark_dirty();
         Ok(cookie)
     }
 
-    async fn un_inhibit(
+    pub(crate) async fn un_inhibit(
         &self,
         cookie: u32,
         #[zbus(header)] header: zbus::message::Header<'_>,
@@ -63,26 +62,25 @@ impl ScreenSaverService {
         Ok(())
     }
 
-    async fn simulate_user_activity(&self) {
+    pub(crate) async fn simulate_user_activity(&self) {
         tracing::info!("ScreenSaver: SimulateUserActivity requested");
         let _ = self
             .controller
-            .command_tx
-            .send(DaemonCommand::StopPresentation);
+            .send_command(DaemonCommand::StopPresentation);
     }
 
-    async fn get_active(&self) -> bool {
+    pub(crate) async fn get_active(&self) -> bool {
         let active = self
             .controller
             .status
             .lock()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p))
             .presentation_active;
         tracing::debug!("ScreenSaver: GetActive requested: {}", active);
         active
     }
 
-    async fn set_active(
+    pub(crate) async fn set_active(
         &self,
         active: bool,
         #[zbus(header)] header: zbus::message::Header<'_>,
@@ -90,34 +88,30 @@ impl ScreenSaverService {
         tracing::info!("ScreenSaver: SetActive requested: {}", active);
         if active {
             super::service_helpers::authorize_control(&self.controller, &header).await?;
-            let saver = self
+            let config = self
                 .controller
                 .config
                 .lock()
-                .unwrap_or_else(|e| e.into_inner())
-                .active_saver
-                .clone()
-                .unwrap_or_else(|| "beams".to_string());
-            let _ = self
-                .controller
-                .command_tx
-                .send(DaemonCommand::Preview(saver));
+                .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p))
+                .clone();
+            let saver = crate::daemon::presentation::pick_saver_name(&config, crate::daemon::presentation::current_time_micros());
+            self.controller
+                .send_command(DaemonCommand::Preview(saver))
+                .map_err(|_| zbus::fdo::Error::LimitsExceeded("Command queue full".into()))?;
         } else {
-            let _ = self
-                .controller
-                .command_tx
-                .send(DaemonCommand::StopPresentation);
+            self.controller
+                .send_command(DaemonCommand::StopPresentation)
+                .map_err(|_| zbus::fdo::Error::LimitsExceeded("Command queue full".into()))?;
         }
         self.controller.mark_dirty();
         Ok(())
     }
 
-    async fn lock(&self) {
+    pub(crate) async fn lock(&self) {
         tracing::info!("ScreenSaver: Lock requested");
         let _ = self
             .controller
-            .command_tx
-            .send(DaemonCommand::StopPresentation);
+            .send_command(DaemonCommand::StopPresentation);
     }
 }
 
@@ -150,7 +144,7 @@ mod tests {
 
         assert!(!service.get_active().await);
 
-        controller.status.lock().unwrap().presentation_active = true;
+        controller.status.lock().unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p)).presentation_active = true;
         assert!(service.get_active().await);
     }
 

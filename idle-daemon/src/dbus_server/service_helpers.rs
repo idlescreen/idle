@@ -36,12 +36,13 @@ pub fn live_status(controller: &Arc<DaemonController>) -> DaemonStatus {
     let mut status = controller
         .status
         .lock()
-        .unwrap_or_else(|e| e.into_inner())
+        .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p))
         .clone();
     status.session_locked = controller
         .session_locked
         .load(std::sync::atomic::Ordering::Relaxed);
-    status.inhibited = controller.inhibitors.is_inhibited();
+    let on_battery = crate::daemon::battery::is_on_battery();
+    status.inhibited = status.inhibited || controller.inhibitors.is_inhibited() || on_battery;
     status
 }
 
@@ -50,10 +51,10 @@ pub fn sync_config_status(controller: &Arc<DaemonController>) {
     let config = controller
         .config
         .lock()
-        .unwrap_or_else(|e| e.into_inner())
+        .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p))
         .clone();
     {
-        let mut status = controller.status.lock().unwrap_or_else(|e| e.into_inner());
+        let mut status = controller.status.lock().unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
         status.idle_enabled = config.idle_enabled;
         status.idle_timeout_mins = config.idle_timeout_mins;
         status.active_saver = config.active_saver.clone().unwrap_or_default();

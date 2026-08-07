@@ -111,3 +111,7 @@ pub fn decide_presentation(
 #[cfg(test)]
 #[path = "idle_decision_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "idle_decision_preview_tests.rs"]
+mod preview_tests;

@@ -3,9 +3,11 @@
 mod auth;
 mod screensaver;
 mod service;
-mod service_helpers;
+pub mod service_helpers;
 mod sniff_policy;
 mod watchers;
+#[cfg(test)]
+mod queue_overflow_tests;
 
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
@@ -13,6 +15,7 @@ use std::time::Duration;
 
 use anyhow::Context;
 use idle_dbus::{OBJECT_PATH, SERVICE_NAME};
+use zbus::fdo::RequestNameFlags;
 
 use crate::controller::DaemonController;
 use crate::lock_monitor;
@@ -22,23 +25,27 @@ use service::TranceService;
 pub fn run(controller: Arc<DaemonController>) -> anyhow::Result<()> {
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
-        .worker_threads(2)
+        .worker_threads(4)
         .thread_name("idle-dbus")
         .build()
         .context("building D-Bus tokio runtime")?;
 
-    runtime.block_on(serve(controller))
+    let res = runtime.block_on(serve(controller));
+    runtime.shutdown_timeout(Duration::from_millis(500));
+    res
 }
 
 async fn serve(controller: Arc<DaemonController>) -> anyhow::Result<()> {
-    let (status_emit_tx, status_emit_rx) = std::sync::mpsc::channel();
+    let (status_emit_tx, status_emit_rx) = tokio::sync::mpsc::channel(64);
     {
         let mut slot = controller
             .status_emit_tx
             .lock()
-            .unwrap_or_else(|e| e.into_inner());
+            .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
         *slot = Some(status_emit_tx);
     }
+
+    let flags = RequestNameFlags::ReplaceExisting | RequestNameFlags::AllowReplacement;
 
     let connection = zbus::connection::Builder::session()
         .context("opening D-Bus session connection")?
@@ -62,7 +69,7 @@ async fn serve(controller: Arc<DaemonController>) -> anyhow::Result<()> {
         .await
         .context("building D-Bus connection")?;
 
-    let _ = connection.request_name("org.freedesktop.ScreenSaver").await;
+    let _ = connection.request_name_with_flags("org.freedesktop.ScreenSaver", flags).await;
 
     controller.set_dbus_connection(connection.clone());
 
@@ -86,13 +93,17 @@ async fn serve(controller: Arc<DaemonController>) -> anyhow::Result<()> {
     ));
 
     tokio::spawn(emit_status_changes(
-        connection,
+        connection.clone(),
         status_emit_rx,
         controller.shutdown.clone(),
     ));
 
     while !controller.shutdown.load(Ordering::Relaxed) {
-        tokio::time::sleep(Duration::from_millis(200)).await;
+        if connection.is_closed() {
+            tracing::error!("D-Bus connection closed unexpectedly");
+            anyhow::bail!("D-Bus connection closed unexpectedly");
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
     }
 
     Ok(())
@@ -100,21 +111,29 @@ async fn serve(controller: Arc<DaemonController>) -> anyhow::Result<()> {
 
 pub async fn emit_status_changes(
     connection: zbus::Connection,
-    receiver: std::sync::mpsc::Receiver<idle_dbus::DaemonStatus>,
+    mut receiver: tokio::sync::mpsc::Receiver<idle_dbus::DaemonStatus>,
     shutdown: Arc<std::sync::atomic::AtomicBool>,
 ) {
     while !shutdown.load(Ordering::Relaxed) {
-        match receiver.recv_timeout(Duration::from_millis(200)) {
-            Ok(status) => {
-                let map = status.to_map();
-                if let Ok(emitter) =
-                    zbus::object_server::SignalEmitter::new(&connection, OBJECT_PATH)
-                {
-                    let _ = TranceService::status_changed(&emitter, map).await;
+        if connection.is_closed() {
+            break;
+        }
+        tokio::select! {
+            opt = receiver.recv() => match opt {
+                Some(mut status) => {
+                    while let Ok(latest) = receiver.try_recv() {
+                        status = latest;
+                    }
+                    let map = status.to_map();
+                    if let Ok(emitter) =
+                        zbus::object_server::SignalEmitter::new(&connection, OBJECT_PATH)
+                    {
+                        let _ = TranceService::status_changed(&emitter, map).await;
+                    }
                 }
-            }
-            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}
-            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
+                None => break,
+            },
+            _ = tokio::time::sleep(Duration::from_millis(200)) => {}
         }
     }
 }

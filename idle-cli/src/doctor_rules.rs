@@ -128,7 +128,7 @@ mod tests {
     fn nominal_requires_all_pass() {
         let ok = chk("A", true, "fine");
         let bad = chk("B", false, "nope");
-        assert!(all_systems_nominal(&[ok.clone()]));
+        assert!(all_systems_nominal(std::slice::from_ref(&ok)));
         assert!(!all_systems_nominal(&[ok, bad]));
     }
 

@@ -67,10 +67,12 @@ fn load_global_theme_raw() -> (Option<(u8, u8, u8)>, Option<bool>) {
                             && val != "none"
                             && val.starts_with('#')
                             && val.len() == 7
+                            && let (Ok(r), Ok(g), Ok(b)) = (
+                                u8::from_str_radix(&val[1..3], 16),
+                                u8::from_str_radix(&val[3..5], 16),
+                                u8::from_str_radix(&val[5..7], 16),
+                            )
                         {
-                            let r = u8::from_str_radix(&val[1..3], 16).unwrap_or(0);
-                            let g = u8::from_str_radix(&val[3..5], 16).unwrap_or(245);
-                            let b = u8::from_str_radix(&val[5..7], 16).unwrap_or(255);
                             accent = Some((r, g, b));
                         }
                     }

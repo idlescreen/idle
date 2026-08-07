@@ -2,7 +2,7 @@
 
 use wayland_client::{
     Connection, Dispatch, QueueHandle,
-    protocol::{wl_buffer, wl_compositor, wl_shm, wl_shm_pool, wl_surface},
+    protocol::{wl_buffer, wl_compositor, wl_shm, wl_shm_pool, wl_surface, wl_callback},
 };
 
 use super::super::state::SessionState;
@@ -61,6 +61,18 @@ impl Dispatch<wl_surface::WlSurface, u32> for SessionState {
         _: &wl_surface::WlSurface,
         _: wl_surface::Event,
         _: &u32,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+    }
+}
+
+impl Dispatch<wl_callback::WlCallback, ()> for SessionState {
+    fn event(
+        _: &mut Self,
+        _: &wl_callback::WlCallback,
+        _: wl_callback::Event,
+        _: &(),
         _: &Connection,
         _: &QueueHandle<Self>,
     ) {

@@ -12,8 +12,9 @@
 //! User pointer and keyboard events dismiss the overlay after a short grace period
 //! so accidental motion during fade-in does not immediately hide the screensaver.
 
-mod buffer;
-mod handlers;
+pub(crate) mod buffer;
+pub(crate) mod error_utils;
+pub(crate) mod handlers;
 mod state;
 mod thread;
 

@@ -55,31 +55,34 @@ impl PluginSession {
             tracing::info!("CPU upscale (render scale {:.0}%)", render_scale * 100.0);
         }
 
+        // Eagerly set OS and logo text environment variables so plugins can read them
+        // even inside the Landlock sandbox.
+        // Propagate export determinism if seed already set by render.
+        if std::env::var_os("IDLESCREEN_RENDER_SEED").is_some()
+            || std::env::var_os("RENDER_SEED").is_some()
+            || std::env::var_os("IDLE_RENDER_SEED").is_some()
+        {
+            idle_api::set_env("IDLE_EXPORT_MODE", "1");
+        }
+        let sys_info = if idle_api::SystemInfo::export_mode_enabled() {
+            idle_api::SystemInfo::export_fixture()
+        } else {
+            crate::toolkit::sys_info::get_system_info()
+        };
+        idle_api::set_env("IDLE_OS_NAME", &sys_info.os);
+        idle_api::set_env("IDLE_LOGO_TEXT", &sys_info.logo_text);
+
+        // Eagerly load caption font before filesystem is locked, then enforce
+        // Landlock **before** loading the plugin .so. ELF constructors run on
+        // `Library::new`, so the sandbox must already be active or plugin code
+        // can execute unrestricted. Sandbox failures are fail-closed: refuse to
+        // load the plugin rather than run unsandboxed.
+        crate::caption_overlay::init_font();
+        crate::sandbox::enforce_sandbox_or_skip_for_render()
+            .map_err(crate::launcher::PluginError::Sandbox)?;
+
         unsafe {
             let lib = Library::new(path)?;
-
-            // Eagerly set OS and logo text environment variables so plugins can read them
-            // even inside the Landlock sandbox.
-            // Propagate export determinism if seed already set by render.
-            if std::env::var_os("IDLESCREEN_RENDER_SEED").is_some()
-                || std::env::var_os("RENDER_SEED").is_some()
-                || std::env::var_os("IDLE_RENDER_SEED").is_some()
-            {
-                idle_api::set_env("IDLE_EXPORT_MODE", "1");
-            }
-            let sys_info = if idle_api::SystemInfo::export_mode_enabled() {
-                idle_api::SystemInfo::export_fixture()
-            } else {
-                crate::toolkit::sys_info::get_system_info()
-            };
-            idle_api::set_env("IDLE_OS_NAME", &sys_info.os);
-            idle_api::set_env("IDLE_LOGO_TEXT", &sys_info.logo_text);
-
-            // Eagerly load caption font before filesystem is locked
-            crate::caption_overlay::init_font();
-            if let Err(e) = crate::sandbox::enforce_sandbox() {
-                tracing::warn!("Could not enforce Landlock sandbox: {e}");
-            }
 
             // Optional ABI negotiation: missing symbol => assume host-compatible legacy.
             // Prefer idle_api_version; fall back to historical trance_api_version.

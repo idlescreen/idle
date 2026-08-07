@@ -212,11 +212,43 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if response == "y" || response == "yes" {
         let version = get_version()?;
+        // Tag first (signed if the operator has a signing key configured;
+        // unsigned otherwise — git falls back automatically). Tag must succeed
+        // before commit so the package metadata references an existing tag.
+        let tag = format!("v{version}");
+        let tag_exists = Command::new("git")
+            .args(["rev-parse", "--verify", "--quiet", &format!("refs/tags/{tag}")])
+            .current_dir("../packages")
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false);
+        if !tag_exists {
+            println!("Creating signed tag {tag} (falls back to unsigned if no key configured)...");
+            run_cmd(
+                Command::new("git")
+                    .args(["tag", "-s", "-a", &tag, "-m", &format!("Release idle {version}")])
+                    .current_dir("../packages"),
+            )?;
+        }
         println!("Staging and committing packages in packages repository...");
         run_cmd(Command::new("git").args(["add", "."]).current_dir("../packages"))?;
-        run_cmd(Command::new("git").args(["commit", "-m", &format!("Release idle v{}", version)]).current_dir("../packages"))?;
-        run_cmd(Command::new("git").args(["push", "origin", "main"]).current_dir("../packages"))?;
-        println!("Push complete.");
+        run_cmd(
+            Command::new("git")
+                .args(["commit", "-m", &format!("Release idle v{version}")])
+                .current_dir("../packages"),
+        )?;
+        println!("Pushing commit and signed tag...");
+        run_cmd(
+            Command::new("git")
+                .args(["push", "origin", "main"])
+                .current_dir("../packages"),
+        )?;
+        run_cmd(
+            Command::new("git")
+                .args(["push", "origin", &tag])
+                .current_dir("../packages"),
+        )?;
+        println!("Push complete (commit + tag {tag}).");
     }
 
     Ok(())

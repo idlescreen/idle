@@ -19,13 +19,16 @@ pub fn cmd_timeout(client: &TranceClient, args: &[String]) -> Result<()> {
 pub fn cmd_saver(client: &TranceClient, args: &[String]) -> Result<()> {
     match args {
         [cmd, name] if cmd == "set" => {
-            let dbus_name = if name == "random" { "" } else { name.as_str() };
+            let dbus_name = match name.as_str() {
+                "random" | "none" | "shuffle" | "" => "",
+                s => s,
+            };
             client
                 .set_saver(dbus_name)
                 .context("setting active saver via d-bus")
         }
         [cmd] if cmd == "list" => cmd_list(client),
-        _ => bail!("usage: idlescreen saver set <name|random> | idlescreen list"),
+        _ => bail!("usage: idlescreen saver set <name|random|none> | idlescreen saver list"),
     }
 }
 

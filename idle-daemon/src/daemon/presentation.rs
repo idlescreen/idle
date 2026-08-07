@@ -16,7 +16,36 @@ pub enum ActivePresentation {
 
 impl ActivePresentation {
     pub fn is_active(&self) -> bool {
-        matches!(self, Self::Plugin(_))
+        match self {
+            Self::None => false,
+            Self::Plugin(plugin) => plugin.is_running(),
+        }
+    }
+
+    #[allow(clippy::collapsible_if)]
+    pub fn process_exits(&mut self, current_saver: &mut String, preview_name: &mut Option<String>) {
+        if let Self::Plugin(plugin) = self {
+            if !plugin.is_running() {
+                *self = Self::None;
+                current_saver.clear();
+                *preview_name = None;
+            }
+        }
+    }
+
+    #[allow(clippy::collapsible_if)]
+    pub fn check_liveness(
+        &mut self,
+        preview_name: &mut Option<String>,
+        current_saver: &mut String,
+    ) {
+        if let Self::Plugin(plugin) = self {
+            if !plugin.is_running() {
+                *self = Self::None;
+                current_saver.clear();
+                *preview_name = None;
+            }
+        }
     }
 }
 
@@ -28,8 +57,12 @@ pub fn start_presentation(
     saver_name: String,
     reason: &str,
     config: &DaemonConfig,
-) {
+) -> bool {
     tracing::info!("starting Wayland screensaver '{saver_name}' ({reason})...");
+    if !is_allowed_saver(&saver_name) {
+        tracing::error!("failed to start screensaver: invalid or disallowed saver name '{saver_name}'");
+        return false;
+    }
     let launch_mode = if reason == "preview" {
         idle_runner::launcher::LaunchMode::Preview
     } else {
@@ -49,8 +82,12 @@ pub fn start_presentation(
         Ok(plugin) => {
             *current_saver = saver_name;
             *presentation = ActivePresentation::Plugin(plugin);
+            true
         }
-        Err(error) => tracing::error!("failed to start screensaver: {error}"),
+        Err(error) => {
+            tracing::error!("failed to start screensaver: {error}");
+            false
+        }
     }
 }
 

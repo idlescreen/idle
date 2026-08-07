@@ -95,6 +95,10 @@ pub async fn require_control_peer(
     connection: &Connection,
     header: &Header<'_>,
 ) -> zbus::fdo::Result<()> {
+    if dbus_trust_all_enabled() {
+        return Ok(());
+    }
+
     let sender = header.sender().ok_or_else(|| {
         zbus::fdo::Error::AccessDenied("control request missing D-Bus sender".into())
     })?;

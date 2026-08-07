@@ -62,6 +62,8 @@ pub use screensaver::{GpuSpotlight, Screensaver, ScreensaverInstance, Screensave
 pub use system_info::SystemInfo;
 pub use terminal_cell::TerminalCell;
 
+pub mod locks;
+
 /// Compatibility module structures for minimal changes in screensaver ports.
 pub mod core {
     pub use crate::{

@@ -5,24 +5,26 @@ use std::sync::atomic::Ordering;
 use super::DaemonController;
 
 impl DaemonController {
-    #[tracing::instrument(skip_all, fields(system_idle, presentation_active, preview_active, current_saver = %current_saver))]
+    #[tracing::instrument(skip_all, fields(system_idle, presentation_active, preview_active, current_saver = %current_saver, effective_inhibited))]
+    #[allow(clippy::fn_params_excessive_bools)]
     pub fn update_live_state(
         &self,
         system_idle: bool,
         presentation_active: bool,
         preview_active: bool,
         current_saver: &str,
+        effective_inhibited: bool,
     ) {
         // Lock order: config → inhibitors/logind → status (never hold status
         // across `is_inhibited()`, which may block on system D-Bus).
         let config = self
             .config
             .lock()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p))
             .clone();
         let session_locked = self.session_locked.load(Ordering::Relaxed);
-        let inhibited = self.inhibitors.is_inhibited();
-        let mut status = self.status.lock().unwrap_or_else(|e| e.into_inner());
+        let inhibited = effective_inhibited || self.inhibitors.is_inhibited();
+        let mut status = self.status.lock().unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
         let changed = Self::apply_live_fields(
             &mut status,
             &config,
@@ -44,7 +46,7 @@ impl DaemonController {
             return None;
         }
         let reloaded = crate::config::DaemonConfig::load();
-        let mut config = self.config.lock().unwrap_or_else(|e| e.into_inner());
+        let mut config = self.config.lock().unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
         let previous_timeout = config.idle_timeout_mins;
         if *config != reloaded {
             *config = reloaded;
@@ -138,111 +140,10 @@ impl DaemonController {
 }
 
 /// True when `existing` is the Display form of `scale` (avoids alloc on steady state).
-fn render_scale_matches(existing: &str, scale: f32) -> bool {
+pub(crate) fn render_scale_matches(existing: &str, scale: f32) -> bool {
     // Fast path: parse existing and compare with a small epsilon.
     match existing.parse::<f32>() {
         Ok(v) => (v - scale).abs() <= f32::EPSILON * 8.0,
         Err(_) => false,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::DaemonController;
-    use super::render_scale_matches;
-    use crate::config::DaemonConfig;
-    use idle_dbus::DaemonStatus;
-
-    #[test]
-    fn render_scale_matches_accepts_same_value() {
-        assert!(render_scale_matches("0.5", 0.5));
-        assert!(render_scale_matches("1", 1.0));
-        assert!(!render_scale_matches("0.5", 1.0));
-        assert!(!render_scale_matches("", 0.5));
-    }
-
-    #[test]
-    fn live_fields_can_show_preview_while_inhibited() {
-        let mut status = DaemonStatus::default();
-        let config = DaemonConfig::default();
-        let changed = DaemonController::apply_live_fields(
-            &mut status,
-            &config,
-            false,
-            true,
-            true,
-            "beams",
-            false,
-            true,
-        );
-        assert!(changed);
-        assert!(status.preview_active);
-        assert!(status.presentation_active);
-        assert!(status.inhibited);
-        assert_eq!(status.current_saver, "beams");
-        assert!(status.running);
-    }
-
-    #[test]
-    fn live_fields_idempotent_when_unchanged() {
-        let mut status = DaemonStatus::default();
-        let config = DaemonConfig::default();
-        let _ = DaemonController::apply_live_fields(
-            &mut status,
-            &config,
-            true,
-            false,
-            false,
-            "",
-            false,
-            false,
-        );
-        let changed = DaemonController::apply_live_fields(
-            &mut status,
-            &config,
-            true,
-            false,
-            false,
-            "",
-            false,
-            false,
-        );
-        assert!(!changed);
-    }
-
-    #[test]
-    fn live_fields_reflect_session_locked() {
-        let mut status = DaemonStatus::default();
-        let config = DaemonConfig::default();
-        DaemonController::apply_live_fields(
-            &mut status,
-            &config,
-            false,
-            false,
-            false,
-            "",
-            true,
-            false,
-        );
-        assert!(status.session_locked);
-        assert!(!status.preview_active);
-    }
-
-    #[test]
-    fn live_fields_sync_idle_enabled_from_config() {
-        let mut status = DaemonStatus::default();
-        let mut config = DaemonConfig::default();
-        config.idle_enabled = false;
-        DaemonController::apply_live_fields(
-            &mut status,
-            &config,
-            false,
-            false,
-            false,
-            "",
-            false,
-            false,
-        );
-        assert!(!status.idle_enabled);
     }
 }

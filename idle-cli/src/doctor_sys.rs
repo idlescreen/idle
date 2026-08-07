@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 
 use super::doctor_checks::{CheckResult, chk};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
+use crate::pkg_query::{query_dpkg, query_dpkg_file, query_rpm_file};
 
 pub fn check_fonts() -> CheckResult {
     if font_check_via_fc_list() {
@@ -159,62 +160,6 @@ fn query_rpm_whatprovides(capability: &str) -> Option<String> {
 }
 
 /// Owning RPM for a filesystem path (`rpm -qf`).
-fn query_rpm_file(path: &Path) -> Option<String> {
-    let o = Command::new("rpm")
-        .args([
-            "-qf",
-            path.to_str()?,
-            "--qf",
-            "%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}",
-        ])
-        .output()
-        .ok()?;
-    if !o.status.success() {
-        return None;
-    }
-    let s = String::from_utf8_lossy(&o.stdout).trim().to_string();
-    if s.is_empty() || s.contains("is not owned") || s.contains("not owned by any package") {
-        None
-    } else {
-        Some(s)
-    }
-}
-
-fn query_dpkg(pkg: &str) -> Option<String> {
-    let o = Command::new("dpkg-query")
-        .args(["-W", "-f=${Package} ${Version}\\n", pkg])
-        .output()
-        .ok()?;
-    if !o.status.success() {
-        return None;
-    }
-    let s = String::from_utf8_lossy(&o.stdout)
-        .lines()
-        .map(str::trim)
-        .find(|l| !l.is_empty())
-        .map(str::to_string)?;
-    if s.is_empty() { None } else { Some(s) }
-}
-
-/// Owning DEB for a filesystem path (`dpkg -S`).
-fn query_dpkg_file(path: &Path) -> Option<String> {
-    let o = Command::new("dpkg")
-        .args(["-S", path.to_str()?])
-        .output()
-        .ok()?;
-    if !o.status.success() {
-        return None;
-    }
-    // "idle-cli: /usr/bin/idlescreen"
-    let line = String::from_utf8_lossy(&o.stdout);
-    let pkg = line.split(':').next()?.trim();
-    if pkg.is_empty() || pkg.contains("no path found") {
-        return None;
-    }
-    // Enrich with version when possible.
-    query_dpkg(pkg).or_else(|| Some(pkg.to_string()))
-}
-
 fn which_path(name: &str) -> Option<PathBuf> {
     let o = Command::new("sh")
         .args(["-c", &format!("command -v {name}")])

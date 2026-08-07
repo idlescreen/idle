@@ -19,6 +19,8 @@ pub enum PluginError {
     SymbolMissing(&'static str),
     #[error("plugin API version {found} incompatible with host {expected}")]
     ApiVersionMismatch { found: u32, expected: u32 },
+    #[error("sandbox error: {0}")]
+    Sandbox(String),
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
 }

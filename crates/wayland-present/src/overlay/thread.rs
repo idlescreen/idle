@@ -13,6 +13,7 @@ use wayland_client::Connection;
 use crate::appearance::OverlayAppearance;
 use crate::output::OutputRegistry;
 
+use super::error_utils::is_wayland_would_block;
 use super::state::SessionState;
 
 pub enum PresenterCommand {
@@ -22,7 +23,8 @@ pub enum PresenterCommand {
         output_id: u32,
         width: u32,
         height: u32,
-        pixels: Arc<Vec<u8>>,
+        pixels: Vec<u8>,
+        return_pool: Sender<Vec<u8>>,
     },
     Hide,
 }
@@ -66,7 +68,13 @@ fn run_event_loop(
     outputs: OutputRegistry,
     supports_scaling: Arc<AtomicBool>,
 ) -> Result<(), &'static str> {
-    let connection = Connection::connect_to_env().map_err(|_| "failed to connect to Wayland")?;
+    let connection = match Connection::connect_to_env() {
+        Ok(conn) => conn,
+        Err(_) => {
+            let _ = ready_tx.send(Err("failed to connect to Wayland"));
+            return Err("failed to connect to Wayland");
+        }
+    };
 
     let mut event_queue = connection.new_event_queue();
     let queue = event_queue.handle();
@@ -144,10 +152,6 @@ fn dispatch_pending_events(
         // SAFETY: `poll_fd` points to one valid `pollfd` for the Wayland socket.
         let poll_result = unsafe { libc::poll(poll_fd, 1, 100) };
         if poll_result > 0 {
-            if poll_fd.revents & (libc::POLLHUP | libc::POLLERR | libc::POLLNVAL) != 0 {
-                return Err("Wayland connection closed");
-            }
-
             if poll_fd.revents & libc::POLLIN != 0 {
                 match guard.read() {
                     Ok(_) => {}
@@ -172,6 +176,10 @@ fn dispatch_pending_events(
                     tracing::error!(error = %e, "wayland-present: failed to dispatch Wayland events");
                     return Err("failed to dispatch Wayland events");
                 }
+            }
+
+            if poll_fd.revents & (libc::POLLHUP | libc::POLLERR | libc::POLLNVAL) != 0 {
+                return Err("Wayland connection closed");
             }
         } else if poll_result < 0 {
             let err = std::io::Error::last_os_error();
@@ -198,50 +206,14 @@ fn apply_commands(state: &mut SessionState, command_rx: &Receiver<PresenterComma
                 width,
                 height,
                 pixels,
-            } => state.update_frame(output_id, width, height, pixels),
+                return_pool,
+            } => {
+                state.update_frame(output_id, width, height, &pixels);
+                let _ = return_pool.send(pixels);
+            }
             PresenterCommand::Hide => state.hide(),
         }
     }
 }
 
-/// `prepare_read`/`read` can return WouldBlock (EAGAIN) when the socket was
-/// already drained — that must not kill the presenter thread.
-fn is_wayland_would_block(err: &wayland_client::backend::WaylandError) -> bool {
-    match err {
-        wayland_client::backend::WaylandError::Io(io) => {
-            matches!(
-                io.kind(),
-                std::io::ErrorKind::WouldBlock | std::io::ErrorKind::Interrupted
-            )
-        }
-        _ => false,
-    }
-}
 
-#[cfg(test)]
-mod would_block_tests {
-    use super::is_wayland_would_block;
-    use wayland_client::backend::WaylandError;
-
-    #[test]
-    fn eagain_is_would_block() {
-        // Regression: EAGAIN killed presenter → daemon recovered in a loop.
-        let err = WaylandError::Io(std::io::Error::from(std::io::ErrorKind::WouldBlock));
-        assert!(is_wayland_would_block(&err));
-    }
-
-    #[test]
-    fn interrupted_is_retryable() {
-        let err = WaylandError::Io(std::io::Error::from(std::io::ErrorKind::Interrupted));
-        assert!(is_wayland_would_block(&err));
-    }
-
-    #[test]
-    fn protocol_error_is_fatal() {
-        // Connection loss / abort must still tear down the thread.
-        let err = WaylandError::Io(std::io::Error::from(std::io::ErrorKind::ConnectionAborted));
-        assert!(!is_wayland_would_block(&err));
-        let err2 = WaylandError::Io(std::io::Error::from(std::io::ErrorKind::BrokenPipe));
-        assert!(!is_wayland_would_block(&err2));
-    }
-}

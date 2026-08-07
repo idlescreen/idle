@@ -1,4 +1,13 @@
-//! Env-var fallback for primary monitor cell bounds (IPC shim until channel exists).
+//! In-process cache for primary monitor cell bounds.
+//!
+//! `idle-api::publish_primary_bounds` and `idle-api::clear_primary_bounds` are
+//! the canonical writers; they update the process-local cache only. A separate,
+//! dedicated IPC channel between the daemon and its helpers is the planned
+//! replacement for the previous env-var shim (which called
+//! `unsafe { std::env::set_var }` from arbitrary threads). Until that channel
+//! ships, cross-process publishing must be done by setting the
+//! `IDLE_PRIMARY_*` environment variables on the **child** before exec so the
+//! kernel inherits them; do not rely on `set_var` from a publisher.
 
 use std::sync::{OnceLock, RwLock};
 
@@ -18,7 +27,7 @@ pub(crate) fn cached_primary_bounds_from_env() -> Option<MonitorCellBounds> {
     }
     let mut cache = env_bounds_cache()
         .write()
-        .unwrap_or_else(|e| e.into_inner());
+        .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
     if cache.is_none() {
         *cache = read_primary_bounds_from_env();
     }
@@ -55,35 +64,13 @@ fn read_primary_bounds_from_env() -> Option<MonitorCellBounds> {
 }
 
 pub(crate) fn store_primary_bounds(bounds: MonitorCellBounds) {
-    // SAFETY (Phase 4 note): the `unsafe std::env::set_var` calls below are a known
-    // hazard — `std::env::set_var` is not thread-safe and the surrounding `unsafe`
-    // blocks provide no actual safety guarantee. A follow-up Phase 4 agent working
-    // on the daemon crate will replace this IPC mechanism with a thread-safe channel,
-    // at which point these `unsafe` blocks and the env-var fallback in
-    // `read_primary_bounds_from_env` can be removed entirely. Do not remove them yet.
-    crate::set_env("IDLE_PRIMARY_START_COL", bounds.start_col.to_string());
-    crate::set_env("IDLE_PRIMARY_END_COL", bounds.end_col.to_string());
-    crate::set_env("IDLE_PRIMARY_START_ROW", bounds.start_row.to_string());
-    crate::set_env("IDLE_PRIMARY_END_ROW", bounds.end_row.to_string());
     *env_bounds_cache()
         .write()
-        .unwrap_or_else(|e| e.into_inner()) = Some(bounds);
+        .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p)) = Some(bounds);
 }
 
 pub(crate) fn clear_stored_primary_bounds() {
-    // See `store_primary_bounds` for the Phase 4 hazard note.
-    // SAFETY: same process-global env protocol as store; test/host teardown.
-    unsafe {
-        for k in [
-            "IDLE_PRIMARY_START_COL",
-            "IDLE_PRIMARY_END_COL",
-            "IDLE_PRIMARY_START_ROW",
-            "IDLE_PRIMARY_END_ROW",
-        ] {
-            std::env::remove_var(k);
-        }
-    }
     *env_bounds_cache()
         .write()
-        .unwrap_or_else(|e| e.into_inner()) = None;
+        .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p)) = None;
 }

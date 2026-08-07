@@ -11,10 +11,13 @@ impl DaemonController {
     where
         F: FnOnce(&mut DaemonConfig),
     {
-        let mut config = self.config.lock().unwrap_or_else(|e| e.into_inner());
+        let mut config = self.config.lock().unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
+        let previous = config.clone();
         f(&mut config);
-        config.save().context("saving config")?;
-        self.mark_dirty();
+        if *config != previous {
+            config.save().context("saving config")?;
+            self.mark_dirty();
+        }
         Ok(())
     }
 
@@ -33,8 +36,12 @@ impl DaemonController {
                     .context("persisting config after SetTimeout command")
             }
             DaemonCommand::SetSaver(name) => {
-                validate_saver_choice(name.as_deref())?;
-                self.mutate_config(|c| c.active_saver = name)
+                let normalized = match name.as_deref() {
+                    Some(s) if s.is_empty() || s == "random" || s == "none" || s == "shuffle" => None,
+                    other => other.map(String::from),
+                };
+                validate_saver_choice(normalized.as_deref())?;
+                self.mutate_config(|c| c.active_saver = normalized)
                     .context("persisting config after SetSaver command")
             }
             DaemonCommand::SetShowFpsOverlay(enabled) => self
@@ -59,6 +66,9 @@ fn validate_idle_timeout(minutes: u32) -> anyhow::Result<()> {
 
 fn validate_saver_choice(saver: Option<&str>) -> anyhow::Result<()> {
     if let Some(name) = saver {
+        if name.is_empty() || name == "random" || name == "none" || name == "shuffle" {
+            return Ok(());
+        }
         sanitize_saver_name(name)
             .ok_or_else(|| anyhow!("unknown or invalid screensaver name: {name}"))?;
         resolve_saver_binary(name, &LaunchMode::Daemon)
@@ -89,3 +99,7 @@ fn normalize_render_scale(scale: Option<f32>) -> anyhow::Result<Option<f32>> {
 #[cfg(test)]
 #[path = "commands_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "commands_validation_tests.rs"]
+mod validation_tests;

@@ -79,6 +79,34 @@ a desktop explicitly provides that integration slot.
 | Optional SHM/IPC | Isolation between daemon and plugin process |
 | Landlock | Kernel-enforced FS constraint on plugin host |
 
+## D-Bus control-peer auth: known trade-offs
+
+`idle-daemon`'s `org.freedesktop.ScreenSaver` (and `io.github.idlescreen.Idle`)
+control methods gate on the D-Bus peer's identity:
+
+1. **Same-UID check** (defense in depth; refuses cross-user on session bus).
+2. **Trusted-basename check** on `/proc/<pid>/exe`: only `idlescreen`,
+   `idle-tui`, and `idlescreen-applet` (with install-prefix and root ownership).
+3. **Fallback** to `/proc/<pid>/comm` when `/proc/<pid>/exe` is unreadable
+   (typical under Yama / systemd `ProtectProc=invisible`).
+
+The comm fallback has a **known same-UID bypass**: any process with the same
+UID as the daemon can `prctl(PR_SET_NAME, "idlescreen")` and pass the check
+without owning the trusted binary. This is an intentional trade-off to keep
+the daemon functional under compositor hardening, not a bug. The window is
+**local-only** (session bus; same UID as the daemon).
+
+Mitigations already in place:
+
+- Same-UID requirement means the attacker must already control a process
+  running as the user.
+- Control methods are **not** privileged in any cross-user sense.
+- The audit log records every accept/reject via `tracing`.
+
+If your threat model excludes local same-UID attackers (rare on a single-user
+desktop), the fallback is safe. Otherwise, restrict the bus ACL via
+`/etc/dbus-1/session.conf` or run idle-daemon under a dedicated user.
+
 If a feature is not expressible on these wires, it is almost certainly outside
 our lane.
 

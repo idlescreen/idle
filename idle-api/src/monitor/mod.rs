@@ -47,3 +47,7 @@ pub fn is_secondary_monitor() -> bool {
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "env_tests.rs"]
+mod env_tests;
