@@ -20,7 +20,10 @@ pub fn get_monitor_layouts(cols: usize, rows: usize) -> Vec<MonitorCellBounds> {
     {
         return layouts.clone();
     }
-    let mut cache = cache_rw.write().unwrap_or_else(|e| { tracing::error!("mutex poisoned: {e}"); std::process::abort() });
+    let mut cache = cache_rw.write().unwrap_or_else(|e| {
+        tracing::error!("mutex poisoned: {e}");
+        std::process::abort()
+    });
     if let Some((ref layouts, (cached_cols, cached_rows), last_query)) = *cache
         && cached_cols == cols
         && cached_rows == rows

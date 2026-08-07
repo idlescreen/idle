@@ -14,7 +14,10 @@ pub fn runtime_socket_dir() -> Result<PathBuf, String> {
     })?;
     let p = PathBuf::from(dir);
     if !p.is_dir() {
-        return Err(format!("XDG_RUNTIME_DIR is not a directory: {}", p.display()));
+        return Err(format!(
+            "XDG_RUNTIME_DIR is not a directory: {}",
+            p.display()
+        ));
     }
     Ok(p)
 }

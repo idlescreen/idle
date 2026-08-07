@@ -60,7 +60,10 @@ fn get_system() -> std::sync::MutexGuard<'static, sysinfo::System> {
             Mutex::new(sysinfo::System::new_with_specifics(kind))
         })
         .lock()
-        .unwrap_or_else(|e| { tracing::error!("mutex poisoned: {e}"); std::process::abort() })
+        .unwrap_or_else(|e| {
+            tracing::error!("mutex poisoned: {e}");
+            std::process::abort()
+        })
 }
 
 fn static_host() -> &'static StaticHostInfo {
@@ -108,7 +111,10 @@ pub fn get_system_info() -> SystemInfo {
     {
         return val.clone();
     }
-    let mut cache = cache_rw.write().unwrap_or_else(|e| { tracing::error!("mutex poisoned: {e}"); std::process::abort() });
+    let mut cache = cache_rw.write().unwrap_or_else(|e| {
+        tracing::error!("mutex poisoned: {e}");
+        std::process::abort()
+    });
     if let Some(ref val) = cache.0
         && cache.1.elapsed() < Duration::from_secs(3)
     {

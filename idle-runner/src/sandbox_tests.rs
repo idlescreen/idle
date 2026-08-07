@@ -58,15 +58,15 @@ fn without_escape_pathless_entry_fails_closed() {
         std::env::remove_var("IDLE_RENDER_PIPELINE");
     }
     let r = enforce_sandbox_or_skip_for_render();
-    assert!(r.is_err(), "pathless enforce must fail closed without escape");
+    assert!(
+        r.is_err(),
+        "pathless enforce must fail closed without escape"
+    );
 }
 
 #[test]
 fn plugin_loaders_order_sandbox_before_library_new() {
-    let idr = format!(
-        "{}/src/idle_runner.rs",
-        env!("CARGO_MANIFEST_DIR")
-    );
+    let idr = format!("{}/src/idle_runner.rs", env!("CARGO_MANIFEST_DIR"));
     let loading = format!(
         "{}/src/plugin_session/loading.rs",
         env!("CARGO_MANIFEST_DIR")

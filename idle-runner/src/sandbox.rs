@@ -7,7 +7,7 @@
 //! that would deny-all and break `dlopen`, or force operators into escape hatches.
 
 use landlock::{
-    Access, AccessFs, PathBeneath, PathFd, Ruleset, RulesetAttr, RulesetCreatedAttr, ABI,
+    ABI, Access, AccessFs, PathBeneath, PathFd, Ruleset, RulesetAttr, RulesetCreatedAttr,
 };
 use std::path::Path;
 
