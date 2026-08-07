@@ -43,7 +43,7 @@ fn dbus_trust_all_enabled() -> bool {
 pub(crate) fn strict_control_enabled() -> bool {
     matches!(
         std::env::var("IDLE_STRICT_CONTROL").ok().as_deref(),
-        Some("1") | Some("true") | Some("TRUE") | Some("yes")
+        Some("1" | "true" | "TRUE" | "yes")
     )
 }
 
