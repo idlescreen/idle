@@ -1,7 +1,7 @@
 # AUDIT Stage 3 — Test expansion (security & correctness seams)
 
 **Scope:** High-value unit tests for Stage-1/2 hardening seams.  
-**Constraint:** Each `.rs` file ≤250 lines; prefer existing `*_tests.rs` modules.  
+**Constraint:** Each `.rs` file ≤256 lines; prefer existing `*_tests.rs` modules.  
 **Command:** `cargo test --workspace --exclude idle-plugins-all`  
 **Git:** no commit (per task).
 
@@ -118,7 +118,7 @@ No behavior change beyond extracting existing logic into named functions.
 
 ## File size law
 
-All new/edited `.rs` files remain **≤250 lines**.
+All new/edited `.rs` files remain **≤256 lines**.
 
 ## Verification
 

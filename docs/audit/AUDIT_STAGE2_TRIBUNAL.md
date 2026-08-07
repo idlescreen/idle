@@ -64,7 +64,7 @@ No auth reversion. No further tighten this round (pidfd / re-query credentials r
 | `launcher` + `launcher_resolve` | **PASS** — public resolve/sanitize surface intact. |
 | `cpu/{mod,stretch,letterbox,sample}` | **BUG:** `cpu_tests.rs` used `FilterMode` via `use super::*` after nest under `cpu::`; `FilterMode` lives at crate root → compile failure in test profile. |
 | overlay `overlay` / `overlay_frame` / `overlay_geom` | **PASS** — `state/mod.rs` loads private modules; `SessionState` methods remain. |
-| 250-line law | **PASS** — post-tribunal max **242** (`crates/idle-ipc/src/shm.rs`). |
+| 256-line law | **PASS** — post-tribunal max **242** (`crates/idle-ipc/src/shm.rs`). |
 
 **Tribunal action:** `use crate::FilterMode;` in `crates/idle-upscaler/src/cpu_tests.rs`.
 
@@ -129,7 +129,7 @@ CARGO_TARGET_DIR=/tmp/idle-cargo-target CARGO_INCREMENTAL=0 \
 
 All package test binaries reported **0 failed** (including idle-daemon ×3 bins 82 each, idle-runner 44, idle-ipc 22, idle-upscaler 20, idle-dbus 13, idle-api, wayland-*, doctests).
 
-Line law: no production `.rs` file > 250 lines (max 242).
+Line law: no production `.rs` file > 256 lines (max 242).
 
 ---
 

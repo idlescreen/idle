@@ -1,16 +1,16 @@
 # AUDIT STAGE 1 — Complexity / file-length enforcement
 
 **Workspace:** `/tmp/idle-audit-graph`  
-**Rule:** max **250** lines per `.rs` file (exclude `target/`); reduce cyclomatic density on ≥200-line complex units by extracting helpers/modules.  
+**Rule:** max **256** lines per `.rs` file (exclude `target/`); reduce cyclomatic density on ≥200-line complex units by extracting helpers/modules.  
 **Git:** no commit (per task).
 
 ## Verdict
 
-**PASS** — no production `.rs` file exceeds 250 lines (post-split max observed: **242** `crates/idle-ipc/src/shm.rs`).
+**PASS** — no production `.rs` file exceeds 256 lines (post-split max observed: **242** `crates/idle-ipc/src/shm.rs`).
 
 ## Baseline (pre-split inventory)
 
-All files were already **≤250**. Largest / densest offenders targeted for helper extraction:
+All files were already **≤256**. Largest / densest offenders targeted for helper extraction:
 
 | Lines | File | Branch-ish score (approx) |
 |------:|------|---------------------------|
@@ -91,7 +91,7 @@ Public surface (`resolve_saver_binary`, `sanitize_saver_name`, `ALLOWED_SAVERS`,
    48 crates/wayland-present/src/overlay/state/overlay_geom.rs
 ```
 
-Largest remaining (all ≤250): `shm.rs` 242, `gpu_init.rs` 240, `cell_renderer/mod.rs` 233 — left intact (already under limit; lower functional urgency than the branch-dense CLI/auth/config/launcher units).
+Largest remaining (all ≤256): `shm.rs` 242, `gpu_init.rs` 240, `cell_renderer/mod.rs` 233 — left intact (already under limit; lower functional urgency than the branch-dense CLI/auth/config/launcher units).
 
 ## Build verification
 

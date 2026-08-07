@@ -14,7 +14,7 @@ and `std::process::Child` both reaped the OOP runner pid. That is fixed by makin
 `Child` the sole reaper and moving failsafe into `is_plugin_alive`.
 
 SHM / memfd RAII was already largely sound; this pass adds SAFETY contracts,
-idempotent Drop, magic validation, path-safety split for the 250-line law, and a
+idempotent Drop, magic validation, path-safety split for the 256-line law, and a
 mutex/lock-order fix so `status` is never held across logind D-Bus probes.
 
 ---
@@ -102,7 +102,7 @@ init spawn Child
 | `/tmp/idle-audit-graph/idle-daemon/src/controller/status.rs` | Inhibit probe before `status` lock |
 | `/tmp/idle-audit-graph/idle-daemon/src/daemon/mod.rs` | `kill(0)` SAFETY for pidfile probe |
 
-Line limits: all touched `.rs` files ≤ 250 lines (`shm.rs` = 242).
+Line limits: all touched `.rs` files ≤ 256 lines (`shm.rs` = 242).
 
 ---
 

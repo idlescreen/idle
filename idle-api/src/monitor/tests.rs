@@ -1,4 +1,8 @@
 use super::*;
+use std::sync::Mutex;
+
+/// Serialize tests that touch process-global env or the primary-bounds cache.
+static SERIAL: Mutex<()> = Mutex::new(());
 
 fn bounds(start_col: usize, end_col: usize, start_row: usize, end_row: usize) -> MonitorCellBounds {
     MonitorCellBounds {
@@ -53,7 +57,9 @@ fn bounds_centers() {
 
 #[test]
 fn get_primary_monitor_bounds_default_is_full_grid() {
+    let _g = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
     // No callback set and no env vars in test by default
+    // SAFETY: test isolation — clear env so default full-grid path is exercised.
     unsafe {
         std::env::remove_var("IDLE_PRIMARY_START_COL");
         std::env::remove_var("IDLE_PRIMARY_END_COL");
@@ -71,6 +77,7 @@ fn get_primary_monitor_bounds_default_is_full_grid() {
 
 #[test]
 fn publish_then_get_primary_bounds_round_trip() {
+    let _g = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
     clear_primary_bounds();
     publish_primary_bounds(bounds(2, 8, 1, 4));
     let b = get_primary_monitor_bounds(80, 24);
@@ -83,6 +90,8 @@ fn publish_then_get_primary_bounds_round_trip() {
 
 #[test]
 fn is_secondary_monitor_default_false() {
+    let _g = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    // SAFETY: test isolation for secondary-monitor env flag.
     unsafe {
         std::env::remove_var("IDLE_SECONDARY_MONITOR");
     }

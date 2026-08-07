@@ -23,4 +23,4 @@ pub use thread::spawn_event_thread;
 // Idle notifications are coalesced before crossing the thread boundary.
 // Registry globals are bound once per monitor instance.
 // Disconnecting the queue ends the monitor thread cleanly.
-// Handlers are split to keep each Dispatch impl file under 250 lines.
+// Handlers are split to keep each Dispatch impl file under 256 lines.

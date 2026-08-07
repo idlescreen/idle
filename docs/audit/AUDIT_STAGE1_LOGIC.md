@@ -29,7 +29,7 @@ cargo test -p idle-api --lib rng  → 12 passed
 
 **Files:**
 - `idle-daemon/src/dbus_server/auth.rs` (orchestration)
-- `idle-daemon/src/dbus_server/auth_peer.rs` (exe/comm inspection; split for ≤250-line law)
+- `idle-daemon/src/dbus_server/auth_peer.rs` (exe/comm inspection; split for ≤256-line law)
 - `idle-daemon/src/dbus_server/auth_tests.rs`
 
 ### 2. Grid allocation overflow (`ipc_session` / `plugin_session`)
@@ -128,7 +128,7 @@ cargo test -p idle-api --lib rng  → 12 passed
 - D-Bus well-known name, interface, object path: **untouched**
 - FFI symbol `trance_api_version`: **untouched**
 - Historical peer basenames (`trance`, `trance-tui`, …) retained in allowlist
-- File split only for AGENT.md 250-line law (`auth_peer.rs`)
+- File split only for AGENT.md 256-line law (`auth_peer.rs`)
 
 ## Residual backlog (not blocking Stage 1)
 

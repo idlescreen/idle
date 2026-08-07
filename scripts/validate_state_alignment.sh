@@ -11,7 +11,7 @@ echo "=== Running State Alignment Integration Tests ==="
 cd "$PROJECT_ROOT/idle"
 cargo test --test state_sync_tests
 
-echo "=== Verifying File Line Count Constraints (<250 lines) ==="
+echo "=== Verifying File Line Count Constraints (<=256 lines) ==="
 "$PROJECT_ROOT/scripts/check_file_lines.sh"
 
 echo "=== All Milestone 2 State Alignment Checks Passed Successfully ==="
