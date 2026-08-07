@@ -128,7 +128,10 @@ impl DaemonController {
         if self.teardown_requested.swap(false, Ordering::SeqCst) {
             commands.push(DaemonCommand::StopPresentation);
         }
-        let receiver = self.command_rx.lock().unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
+        let receiver = self
+            .command_rx
+            .lock()
+            .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
         while let Ok(command) = receiver.try_recv() {
             if matches!(command, DaemonCommand::StopPresentation)
                 && commands.contains(&DaemonCommand::StopPresentation)

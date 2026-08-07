@@ -227,12 +227,22 @@ fn test_dev_plugin_dirs_env_behavior() {
 #[test]
 fn test_immune_rail_saver_name_and_path_traversal() {
     let malicious = [
-        "../../../etc/passwd", "../../sh", "/usr/bin/malicious", "; rm -rf / ;",
-        "$(whoami)", "`whoami`", "beams\0malicious", "custom_untrusted_saver", &"A".repeat(4096),
+        "../../../etc/passwd",
+        "../../sh",
+        "/usr/bin/malicious",
+        "; rm -rf / ;",
+        "$(whoami)",
+        "`whoami`",
+        "beams\0malicious",
+        "custom_untrusted_saver",
+        &"A".repeat(4096),
     ];
     for input in malicious {
         assert!(!is_allowed_saver(input), "reject: {input:?}");
-        assert!(resolve_saver_binary(input, &LaunchMode::Daemon).is_err(), "Err for: {input:?}");
+        assert!(
+            resolve_saver_binary(input, &LaunchMode::Daemon).is_err(),
+            "Err for: {input:?}"
+        );
     }
     assert_eq!(sanitize_saver_name("; rm -rf / ;"), None);
     assert_eq!(sanitize_saver_name("$(whoami)"), None);

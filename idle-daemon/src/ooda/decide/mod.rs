@@ -5,9 +5,7 @@
 use wayland_present::OverlayPresenter;
 
 use super::orient::SituationAssessment;
-use crate::daemon::idle_decision::{
-    IdlePolicyInput, PresentationDecision, decide_presentation,
-};
+use crate::daemon::idle_decision::{IdlePolicyInput, PresentationDecision, decide_presentation};
 use crate::daemon::presentation::{ActivePresentation, current_time_micros, pick_saver_name};
 
 #[derive(Default)]
@@ -175,4 +173,3 @@ mod tests {
         assert_eq!(decision, PresentationDecision::Hold);
     }
 }
-

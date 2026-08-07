@@ -54,7 +54,10 @@ pub fn sync_config_status(controller: &Arc<DaemonController>) {
         .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p))
         .clone();
     {
-        let mut status = controller.status.lock().unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
+        let mut status = controller
+            .status
+            .lock()
+            .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
         status.idle_enabled = config.idle_enabled;
         status.idle_timeout_mins = config.idle_timeout_mins;
         status.active_saver = config.active_saver.clone().unwrap_or_default();

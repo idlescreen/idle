@@ -115,12 +115,18 @@ mod tests {
 
     #[test]
     fn classify_presenter_dead() {
-        assert_eq!(classify_runtime(true, false), Err(RuntimeFault::PresenterDead));
+        assert_eq!(
+            classify_runtime(true, false),
+            Err(RuntimeFault::PresenterDead)
+        );
     }
 
     #[test]
     fn classify_idle_dead() {
-        assert_eq!(classify_runtime(false, true), Err(RuntimeFault::IdleMonitorDead));
+        assert_eq!(
+            classify_runtime(false, true),
+            Err(RuntimeFault::IdleMonitorDead)
+        );
     }
 
     #[test]

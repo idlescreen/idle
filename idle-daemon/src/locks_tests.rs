@@ -1,6 +1,5 @@
 // Test files legitimately panic; suppress the lint at file scope.
 #![allow(clippy::panic)]
-
 // SPDX-License-Identifier: MIT
 
 //! Adversarial tests for F-004 (`poison_or_exit` abort on poisoned lock).

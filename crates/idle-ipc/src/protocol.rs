@@ -84,7 +84,11 @@ impl IpcResponse {
                 writer.write_all(&[0])?;
             }
             IpcResponse::FrameReady { scanlines, dirty } => {
-                writer.write_all(&[1, if *scanlines { 1 } else { 0 }, if *dirty { 1 } else { 0 }])?;
+                writer.write_all(&[
+                    1,
+                    if *scanlines { 1 } else { 0 },
+                    if *dirty { 1 } else { 0 },
+                ])?;
             }
             IpcResponse::Ack => {
                 writer.write_all(&[2])?;
@@ -121,7 +125,10 @@ mod tests {
 
     #[test]
     fn test_ipc_response_frame_ready_roundtrip() {
-        let resp = IpcResponse::FrameReady { scanlines: true, dirty: false };
+        let resp = IpcResponse::FrameReady {
+            scanlines: true,
+            dirty: false,
+        };
         let mut buf = Vec::new();
         resp.write_to(&mut buf).unwrap();
         assert_eq!(buf, vec![1, 1, 0]);

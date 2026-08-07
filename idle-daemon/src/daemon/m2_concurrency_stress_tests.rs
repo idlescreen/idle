@@ -3,11 +3,13 @@
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
     use crate::config::DaemonConfig;
-    use crate::daemon::idle_decision::{IdlePolicyInput, PresentationDecision, decide_presentation};
+    use crate::daemon::idle_decision::{
+        IdlePolicyInput, PresentationDecision, decide_presentation,
+    };
     use crate::daemon::presentation::ActivePresentation;
     use crate::ooda::act::OodaActor;
+    use std::sync::Arc;
     use wayland_present::OverlayPresenter;
 
     #[test]
@@ -39,13 +41,18 @@ mod tests {
                                         // Invariant 1: Session lock NEVER allows Start
                                         if session_locked {
                                             assert!(
-                                                !matches!(decision, PresentationDecision::Start { .. }),
+                                                !matches!(
+                                                    decision,
+                                                    PresentationDecision::Start { .. }
+                                                ),
                                                 "Session lock allowed Start decision: {input:?} -> {decision:?}"
                                             );
                                             if is_active || preview_name.is_some() {
                                                 assert_eq!(
                                                     decision,
-                                                    PresentationDecision::Stop { clear_preview: true },
+                                                    PresentationDecision::Stop {
+                                                        clear_preview: true
+                                                    },
                                                     "Session lock active/preview did not issue Stop(clear_preview=true): {input:?}"
                                                 );
                                             }
@@ -55,19 +62,31 @@ mod tests {
                                         if is_active && !surface_visible {
                                             assert_eq!(
                                                 decision,
-                                                PresentationDecision::Stop { clear_preview: true },
+                                                PresentationDecision::Stop {
+                                                    clear_preview: true
+                                                },
                                                 "Stale surface did not clear preview: {input:?}"
                                             );
                                         }
 
                                         // Invariant 3: Explicit preview overrides inhibited
-                                        if preview_name.is_some() && !session_locked && surface_visible
-                                            && (!is_active || current_saver != preview_name.unwrap()) {
-                                                assert!(
-                                                    matches!(decision, PresentationDecision::Start { reason: "preview", .. }),
-                                                    "Explicit preview did not produce Start: {input:?} -> {decision:?}"
-                                                );
-                                            }
+                                        if preview_name.is_some()
+                                            && !session_locked
+                                            && surface_visible
+                                            && (!is_active
+                                                || current_saver != preview_name.unwrap())
+                                        {
+                                            assert!(
+                                                matches!(
+                                                    decision,
+                                                    PresentationDecision::Start {
+                                                        reason: "preview",
+                                                        ..
+                                                    }
+                                                ),
+                                                "Explicit preview did not produce Start: {input:?} -> {decision:?}"
+                                            );
+                                        }
                                     }
                                 }
                             }
@@ -89,11 +108,16 @@ mod tests {
         let overlay_presenter = match OverlayPresenter::new() {
             Some(p) => Arc::new(p),
             None => {
-                let decision = PresentationDecision::Stop { clear_preview: true };
+                let decision = PresentationDecision::Stop {
+                    clear_preview: true,
+                };
                 if clear_preview_from_decision(&decision) {
                     preview_name = None;
                 }
-                assert_eq!(preview_name, None, "Session lock did not clear sticky preview name");
+                assert_eq!(
+                    preview_name, None,
+                    "Session lock did not clear sticky preview name"
+                );
                 return;
             }
         };
@@ -122,7 +146,9 @@ mod tests {
         // Fault Scenario 2: Rapid toggle from preview active -> Session Lock -> Clear preview
         preview_name = Some("beams".to_string());
         actor.execute(
-            PresentationDecision::Stop { clear_preview: true },
+            PresentationDecision::Stop {
+                clear_preview: true,
+            },
             &overlay_presenter,
             &mut presentation,
             &mut preview_name,

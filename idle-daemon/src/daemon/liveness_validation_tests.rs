@@ -9,9 +9,7 @@ mod tests {
 
     use crate::config::DaemonConfig;
     use crate::daemon::idle_decision::PresentationDecision;
-    use crate::daemon::presentation::{
-        ActivePresentation, start_presentation,
-    };
+    use crate::daemon::presentation::{ActivePresentation, start_presentation};
     use crate::ooda::act::OodaActor;
 
     #[test]

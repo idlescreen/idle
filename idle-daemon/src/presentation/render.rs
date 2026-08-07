@@ -12,7 +12,10 @@ pub fn present_frame(state: &mut FrameLoopState) {
     if state.independent_rendering {
         for s in state.sessions.iter_mut() {
             let (scanlines, dirty) = s.session.draw_frame(s.cols, s.rows);
-            if !dirty && state.frame_start.duration_since(state.session_start) >= Duration::from_millis(500) {
+            if !dirty
+                && state.frame_start.duration_since(state.session_start)
+                    >= Duration::from_millis(500)
+            {
                 continue;
             }
             if let Some(layout) = state.layouts.iter().find(|l| l.id == s.output_id) {
@@ -27,9 +30,20 @@ pub fn present_frame(state: &mut FrameLoopState) {
                     layout.height
                 };
 
-                let mut pixels = state.presenter.get_frame_buffer((target_w * target_h * 4) as usize);
+                let mut pixels = state
+                    .presenter
+                    .get_frame_buffer((target_w * target_h * 4) as usize);
                 s.session.raster_viewport(
-                    0, 0, s.cols, s.rows, s.cols, s.rows, target_w, target_h, scanlines, &mut pixels
+                    0,
+                    0,
+                    s.cols,
+                    s.rows,
+                    s.cols,
+                    s.rows,
+                    target_w,
+                    target_h,
+                    scanlines,
+                    &mut pixels,
                 );
                 apply_fade_in(
                     &mut pixels,
@@ -54,7 +68,9 @@ pub fn present_frame(state: &mut FrameLoopState) {
         }
         let s = &mut state.sessions[0];
         let (scanlines, dirty) = s.session.draw_frame(s.cols, s.rows);
-        if !dirty && state.frame_start.duration_since(state.session_start) >= Duration::from_millis(500) {
+        if !dirty
+            && state.frame_start.duration_since(state.session_start) >= Duration::from_millis(500)
+        {
             return;
         }
         for layout in state.layouts {
@@ -80,7 +96,9 @@ pub fn present_frame(state: &mut FrameLoopState) {
                 (layout.width, layout.height)
             };
 
-            let mut pixels = state.presenter.get_frame_buffer((target_w * target_h * 4) as usize);
+            let mut pixels = state
+                .presenter
+                .get_frame_buffer((target_w * target_h * 4) as usize);
             s.session.raster_viewport(
                 bounds.start_col,
                 bounds.start_row,

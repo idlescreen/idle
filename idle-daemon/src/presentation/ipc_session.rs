@@ -23,7 +23,7 @@ pub struct IpcPluginSession {
     upscaler: FrameUpscaler,
     pub(crate) grid: Vec<TerminalCell>,
     content_buf: Vec<u8>,
-        hardware_scaling: bool,
+    hardware_scaling: bool,
 
     pub(crate) child: Option<Child>,
     pub(crate) socket: Option<UnixStream>,
@@ -54,7 +54,7 @@ impl IpcPluginSession {
             upscaler,
             grid: Vec::new(),
             content_buf: Vec::new(),
-                        hardware_scaling: false,
+            hardware_scaling: false,
             child: None,
             socket: None,
             shm: None,

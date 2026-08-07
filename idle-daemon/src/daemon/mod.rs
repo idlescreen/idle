@@ -8,16 +8,16 @@
 pub mod battery;
 pub(crate) mod idle_decision;
 pub(crate) mod idle_logic;
+#[cfg(test)]
+mod liveness_validation_tests;
+#[cfg(test)]
+mod m2_concurrency_stress_tests;
 pub(crate) mod pidfile;
 pub(crate) mod presentation;
 pub(crate) mod preview_queue;
 pub(crate) mod recovery;
 pub(crate) mod runtime;
 pub(crate) mod tick_loop;
-#[cfg(test)]
-mod liveness_validation_tests;
-#[cfg(test)]
-mod m2_concurrency_stress_tests;
 
 use std::sync::Arc;
 use std::sync::atomic::Ordering;

@@ -215,5 +215,3 @@ fn apply_commands(state: &mut SessionState, command_rx: &Receiver<PresenterComma
         }
     }
 }
-
-

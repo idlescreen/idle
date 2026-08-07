@@ -11,7 +11,10 @@ impl DaemonController {
     where
         F: FnOnce(&mut DaemonConfig),
     {
-        let mut config = self.config.lock().unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
+        let mut config = self
+            .config
+            .lock()
+            .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
         let previous = config.clone();
         f(&mut config);
         if *config != previous {
@@ -37,7 +40,9 @@ impl DaemonController {
             }
             DaemonCommand::SetSaver(name) => {
                 let normalized = match name.as_deref() {
-                    Some(s) if s.is_empty() || s == "random" || s == "none" || s == "shuffle" => None,
+                    Some(s) if s.is_empty() || s == "random" || s == "none" || s == "shuffle" => {
+                        None
+                    }
                     other => other.map(String::from),
                 };
                 validate_saver_choice(normalized.as_deref())?;

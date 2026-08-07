@@ -191,7 +191,7 @@ fn create_open_roundtrip_name() {
 
 #[test]
 fn test_immune_rail_shm_security_and_bounds() {
-    use crate::{is_valid_shm_name, SharedMemory, compute_shm_size, SHM_MAGIC};
+    use crate::{SHM_MAGIC, SharedMemory, compute_shm_size, is_valid_shm_name};
 
     // 1. Path traversal & invalid prefix rejection
     assert!(!is_valid_shm_name("/idle-shm-../etc/passwd"));
@@ -218,7 +218,9 @@ fn test_immune_rail_shm_security_and_bounds() {
         shm_over.header_mut().magic = SHM_MAGIC;
         shm_over.header_mut().cols = 10_000;
         shm_over.header_mut().rows = 10_000;
-        let err = shm_over.cells_mut().expect_err("oversized cell dims must fail");
+        let err = shm_over
+            .cells_mut()
+            .expect_err("oversized cell dims must fail");
         assert!(err.contains("need") || err.contains("map"));
     }
 }

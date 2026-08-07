@@ -84,7 +84,10 @@ impl InhibitorState {
         }
         #[cfg(not(test))]
         {
-            let mut cache = self.logind_cache.lock().unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
+            let mut cache = self
+                .logind_cache
+                .lock()
+                .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
             if cache.1.elapsed() >= Duration::from_secs(2) {
                 cache.0 = !list_external().is_empty();
                 cache.1 = Instant::now();
@@ -104,7 +107,10 @@ impl InhibitorState {
             return Err("application_name or reason exceeds maximum length of 1024 bytes");
         }
 
-        let mut inhibitors = self.inhibitors.lock().unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
+        let mut inhibitors = self
+            .inhibitors
+            .lock()
+            .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
         if let Some(existing) = inhibitors.iter().find(|entry| {
             entry.client == client
                 && entry.application_name == application_name
@@ -131,7 +137,10 @@ impl InhibitorState {
 
     /// Remove an inhibitor only when `cookie` belongs to `client`.
     pub fn remove_for_client(&self, cookie: u32, client: &UniqueName<'_>) -> bool {
-        let mut inhibitors = self.inhibitors.lock().unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
+        let mut inhibitors = self
+            .inhibitors
+            .lock()
+            .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
         if let Some(index) = inhibitors
             .iter()
             .position(|entry| entry.cookie == cookie && entry.client == *client)
@@ -144,13 +153,19 @@ impl InhibitorState {
     }
 
     pub fn remove_client(&self, client: &UniqueName<'_>) {
-        let mut inhibitors = self.inhibitors.lock().unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
+        let mut inhibitors = self
+            .inhibitors
+            .lock()
+            .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
         inhibitors.retain(|entry| entry.client.as_str() != client.as_str());
     }
 
     /// Drop holds whose D-Bus unique name is no longer on the session bus.
     pub fn prune_not_in_live_set(&self, live_unique: &HashSet<String>) -> usize {
-        let mut inhibitors = self.inhibitors.lock().unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
+        let mut inhibitors = self
+            .inhibitors
+            .lock()
+            .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
         let before = inhibitors.len();
         inhibitors.retain(|entry| live_unique.contains(entry.client.as_str()));
         before.saturating_sub(inhibitors.len())
@@ -163,7 +178,10 @@ impl InhibitorState {
         }
         #[cfg(not(test))]
         {
-            let mut last = self.prune_cache.lock().unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
+            let mut last = self
+                .prune_cache
+                .lock()
+                .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
             if last.elapsed() < Duration::from_secs(2) {
                 return;
             }
@@ -181,7 +199,10 @@ impl InhibitorState {
     /// IdleScreen cookies only (D-Bus UnInhibit targets these).
     pub fn list(&self) -> Vec<(u32, String, String)> {
         self.maybe_prune_dead_clients();
-        let inhibitors = self.inhibitors.lock().unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
+        let inhibitors = self
+            .inhibitors
+            .lock()
+            .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
         inhibitors
             .iter()
             .map(|entry| {

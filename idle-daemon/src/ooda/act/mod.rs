@@ -8,9 +8,7 @@ use wayland_present::OverlayPresenter;
 
 use crate::config::DaemonConfig;
 use crate::daemon::idle_decision::PresentationDecision;
-use crate::daemon::presentation::{
-    ActivePresentation, start_presentation, stop_presentation,
-};
+use crate::daemon::presentation::{ActivePresentation, start_presentation, stop_presentation};
 
 #[derive(Default)]
 pub struct OodaActor;
@@ -150,7 +148,9 @@ mod tests {
         let config = DaemonConfig::default();
 
         actor.execute(
-            PresentationDecision::Stop { clear_preview: false },
+            PresentationDecision::Stop {
+                clear_preview: false,
+            },
             &overlay_presenter,
             &mut presentation,
             &mut preview_name,
@@ -199,4 +199,3 @@ mod tests {
         assert_eq!(preview_name, None);
     }
 }
-

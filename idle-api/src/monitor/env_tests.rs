@@ -7,7 +7,9 @@
 //! Per AUDIT.md §7: tests must exercise the real `monitor::env` module and
 //! would fail if the fix were reverted.
 
-use crate::{MonitorCellBounds, clear_primary_bounds, get_primary_monitor_bounds, publish_primary_bounds};
+use crate::{
+    MonitorCellBounds, clear_primary_bounds, get_primary_monitor_bounds, publish_primary_bounds,
+};
 use std::sync::Mutex;
 
 /// Serialize tests that mutate process-global env vars so they don't race

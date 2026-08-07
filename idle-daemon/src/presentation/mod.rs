@@ -8,7 +8,6 @@
 
 mod frame_loop;
 mod frame_pacing;
-mod render;
 mod hw_scaling;
 mod ipc_init;
 mod ipc_lifecycle;
@@ -18,6 +17,7 @@ mod layout;
 mod overlays;
 mod plugin_loop;
 mod refresh;
+mod render;
 pub mod topology;
 
 use std::sync::Arc;
@@ -145,4 +145,3 @@ mod tests {
         assert_eq!(preview_name, None);
     }
 }
-

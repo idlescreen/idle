@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 //! Integration test suite validating state synchronization across idle-daemon and idle-dbus.
 
-use std::sync::Arc;
 use idle_daemon::config::DaemonConfig;
 use idle_daemon::controller::{DaemonCommand, DaemonController};
 use idle_daemon::dbus_server::service_helpers::{apply_config_command, live_status};
+use std::sync::Arc;
 
 #[test]
 fn test_live_status_contract_completeness() {
@@ -97,12 +97,21 @@ fn test_idempotent_config_mutation_no_double_save() {
     assert_eq!(status2.idle_timeout_mins, 10);
 
     // Test SetShowFpsOverlay idempotent behavior
-    apply_config_command(&controller, DaemonCommand::SetShowFpsOverlay(true), "SetFps").unwrap();
+    apply_config_command(
+        &controller,
+        DaemonCommand::SetShowFpsOverlay(true),
+        "SetFps",
+    )
+    .unwrap();
     let status3 = live_status(&controller);
     assert!(status3.show_fps_overlay);
 
-    apply_config_command(&controller, DaemonCommand::SetShowFpsOverlay(true), "SetFps").unwrap();
+    apply_config_command(
+        &controller,
+        DaemonCommand::SetShowFpsOverlay(true),
+        "SetFps",
+    )
+    .unwrap();
     let status4 = live_status(&controller);
     assert!(status4.show_fps_overlay);
 }
-

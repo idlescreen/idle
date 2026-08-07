@@ -60,7 +60,9 @@ pub fn start_presentation(
 ) -> bool {
     tracing::info!("starting Wayland screensaver '{saver_name}' ({reason})...");
     if !is_allowed_saver(&saver_name) {
-        tracing::error!("failed to start screensaver: invalid or disallowed saver name '{saver_name}'");
+        tracing::error!(
+            "failed to start screensaver: invalid or disallowed saver name '{saver_name}'"
+        );
         return false;
     }
     let launch_mode = if reason == "preview" {

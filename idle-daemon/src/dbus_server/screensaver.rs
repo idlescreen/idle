@@ -94,7 +94,10 @@ impl ScreenSaverService {
                 .lock()
                 .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p))
                 .clone();
-            let saver = crate::daemon::presentation::pick_saver_name(&config, crate::daemon::presentation::current_time_micros());
+            let saver = crate::daemon::presentation::pick_saver_name(
+                &config,
+                crate::daemon::presentation::current_time_micros(),
+            );
             self.controller
                 .send_command(DaemonCommand::Preview(saver))
                 .map_err(|_| zbus::fdo::Error::LimitsExceeded("Command queue full".into()))?;
@@ -144,7 +147,11 @@ mod tests {
 
         assert!(!service.get_active().await);
 
-        controller.status.lock().unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p)).presentation_active = true;
+        controller
+            .status
+            .lock()
+            .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p))
+            .presentation_active = true;
         assert!(service.get_active().await);
     }
 

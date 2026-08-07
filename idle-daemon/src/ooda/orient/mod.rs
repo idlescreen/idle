@@ -14,8 +14,7 @@ use crate::controller::{DaemonCommand, DaemonController};
 use crate::daemon::presentation::{ActivePresentation, stop_presentation};
 use crate::daemon::preview_queue::{apply_fault_clear_preview, queue_preview, queue_stop};
 use crate::daemon::runtime::{
-    check_runtime_alive, present_cooldown_after_fault, recovery_plan,
-    should_hold_idle_presentation,
+    check_runtime_alive, present_cooldown_after_fault, recovery_plan, should_hold_idle_presentation,
 };
 
 /// Normalized situation assessment synthesized from raw observations.

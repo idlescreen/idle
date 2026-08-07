@@ -32,11 +32,11 @@ fn is_process_idle_daemon(pid: i32) -> bool {
                     }
                 }
                 if line.starts_with("Threads:")
-                    && let Ok(threads) =
-                        line.trim_start_matches("Threads:").trim().parse::<u32>()
-                        && threads == 0 {
-                            return false;
-                        }
+                    && let Ok(threads) = line.trim_start_matches("Threads:").trim().parse::<u32>()
+                    && threads == 0
+                {
+                    return false;
+                }
             }
         } else {
             return false;
@@ -65,9 +65,10 @@ fn is_process_idle_daemon(pid: i32) -> bool {
             }
         }
         if let Ok(comm) = fs::read_to_string(format!("/proc/{pid}/comm"))
-            && comm.trim() == "idle-daemon" {
-                return true;
-            }
+            && comm.trim() == "idle-daemon"
+        {
+            return true;
+        }
         if Path::new(&format!("/proc/{pid}")).exists() {
             return false;
         }
@@ -98,13 +99,11 @@ pub(crate) fn acquire_pidfile() -> anyhow::Result<Option<PathBuf>> {
                 // `O_CREAT|O_EXCL` sees the symlink as an existing file.
                 // We must refuse symlinks here — they may redirect writes
                 // elsewhere — and only operate on a regular file.
-                let md = fs::symlink_metadata(&path)
-                    .map_err(|e| anyhow::Error::new(e).context(format!("stat pidfile {}", path.display())))?;
+                let md = fs::symlink_metadata(&path).map_err(|e| {
+                    anyhow::Error::new(e).context(format!("stat pidfile {}", path.display()))
+                })?;
                 if md.file_type().is_symlink() {
-                    anyhow::bail!(
-                        "refusing to follow symlinked pidfile at {}",
-                        path.display()
-                    );
+                    anyhow::bail!("refusing to follow symlinked pidfile at {}", path.display());
                 }
                 let pid = fs::read_to_string(&path)
                     .ok()

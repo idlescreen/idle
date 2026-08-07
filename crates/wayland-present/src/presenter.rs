@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{self, SyncSender, Sender};
+use std::sync::mpsc::{self, Sender, SyncSender};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use crate::appearance::OverlayAppearance;

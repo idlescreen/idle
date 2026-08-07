@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-use super::status::render_scale_matches;
 use super::DaemonController;
+use super::status::render_scale_matches;
 use crate::config::DaemonConfig;
 use idle_dbus::DaemonStatus;
 
@@ -66,16 +66,7 @@ fn live_fields_idempotent_when_unchanged() {
 fn live_fields_reflect_session_locked() {
     let mut status = DaemonStatus::default();
     let config = DaemonConfig::default();
-    DaemonController::apply_live_fields(
-        &mut status,
-        &config,
-        false,
-        false,
-        false,
-        "",
-        true,
-        false,
-    );
+    DaemonController::apply_live_fields(&mut status, &config, false, false, false, "", true, false);
     assert!(status.session_locked);
     assert!(!status.preview_active);
 }

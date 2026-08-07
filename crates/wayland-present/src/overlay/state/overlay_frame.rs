@@ -139,10 +139,10 @@ impl SessionState {
         overlay
             .surface
             .damage_buffer(0, 0, width as i32, height as i32);
-        
+
         // Request frame callback to wake up `poll()` on VSync, enabling backpressure.
         let _ = overlay.surface.frame(queue, ());
-        
+
         overlay.surface.commit();
         true
     }

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-use std::sync::Arc;
 use crate::config::DaemonConfig;
 use crate::controller::{DaemonCommand, DaemonController};
 use crate::dbus_server::screensaver::ScreenSaverService;
+use std::sync::Arc;
 
 fn fill_command_queue(controller: &DaemonController) {
     for i in 0..16 {
@@ -11,7 +11,10 @@ fn fill_command_queue(controller: &DaemonController) {
         assert!(res.is_ok(), "filling queue failed at index {i}");
     }
     let overflow = controller.send_command(DaemonCommand::Preview("overflow".into()));
-    assert!(overflow.is_err(), "17th non-teardown command should fail when queue is full");
+    assert!(
+        overflow.is_err(),
+        "17th non-teardown command should fail when queue is full"
+    );
 }
 
 #[tokio::test]
@@ -20,10 +23,17 @@ async fn test_send_command_teardown_never_dropped_when_queue_full() {
     fill_command_queue(&controller);
 
     let res = controller.send_command(DaemonCommand::StopPresentation);
-    assert!(res.is_ok(), "StopPresentation must succeed even when queue is full");
+    assert!(
+        res.is_ok(),
+        "StopPresentation must succeed even when queue is full"
+    );
 
     let commands = controller.drain_commands();
-    assert_eq!(commands.len(), 17, "expected 1 teardown + 16 queued preview commands");
+    assert_eq!(
+        commands.len(),
+        17,
+        "expected 1 teardown + 16 queued preview commands"
+    );
     assert_eq!(
         commands[0],
         DaemonCommand::StopPresentation,
@@ -65,7 +75,9 @@ async fn test_screensaver_inhibit_queue_overflow() {
         .unwrap();
     let header = msg.header();
 
-    let res = service.inhibit("test_app", "testing teardown", header).await;
+    let res = service
+        .inhibit("test_app", "testing teardown", header)
+        .await;
     assert!(res.is_ok(), "inhibit must succeed");
 
     let commands = controller.drain_commands();
@@ -133,7 +145,10 @@ async fn test_multiple_teardown_requests_deduplicated() {
         .iter()
         .filter(|c| **c == DaemonCommand::StopPresentation)
         .count();
-    assert_eq!(teardown_count, 1, "multiple teardown requests should be deduplicated to one");
+    assert_eq!(
+        teardown_count, 1,
+        "multiple teardown requests should be deduplicated to one"
+    );
     assert_eq!(commands[0], DaemonCommand::StopPresentation);
 }
 
@@ -151,7 +166,10 @@ async fn test_concurrent_burst_100_threads_stop_presentation_never_dropped() {
             }
             if i == 42 {
                 let res = ctrl.send_command(DaemonCommand::StopPresentation);
-                assert!(res.is_ok(), "StopPresentation send must succeed under high contention");
+                assert!(
+                    res.is_ok(),
+                    "StopPresentation send must succeed under high contention"
+                );
             }
         }));
     }
@@ -230,4 +248,3 @@ async fn test_concurrent_continuous_hammer_stress() {
         "At least one StopPresentation must be captured during heavy concurrent hammer"
     );
 }
-

@@ -152,14 +152,14 @@ fn list_all_includes_local_cookies() {
     );
 }
 
-
 #[test]
 fn add_rejects_excessively_long_strings_negative_selection() {
     let s = InhibitorState::new();
     let c = client(":test.app.Length");
     let long_string = "a".repeat(2000);
     assert!(
-        s.add(long_string.clone(), "reason".to_string(), c.clone()).is_err(),
+        s.add(long_string.clone(), "reason".to_string(), c.clone())
+            .is_err(),
         "must fail if application_name is too long"
     );
     assert!(
@@ -185,11 +185,19 @@ fn test_immune_rail_dbus_inhibitor_limits() {
     assert!(res.unwrap_err().contains("maximum length"));
 
     for i in 0..32 {
-        assert!(state.add("app".into(), format!("reason_{i}"), client1.clone()).is_ok());
+        assert!(
+            state
+                .add("app".into(), format!("reason_{i}"), client1.clone())
+                .is_ok()
+        );
     }
     let overflow = state.add("app".into(), "reason_33".into(), client1.clone());
     assert!(overflow.is_err());
-    assert!(overflow.unwrap_err().contains("too many concurrent inhibitors"));
+    assert!(
+        overflow
+            .unwrap_err()
+            .contains("too many concurrent inhibitors")
+    );
 
     assert!(state.add("app".into(), "reason_1".into(), client2).is_ok());
 }

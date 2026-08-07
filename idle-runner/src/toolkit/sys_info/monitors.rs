@@ -149,15 +149,23 @@ pub fn query_monitors_from_xrandr() -> Option<Vec<XrandrMonitorInfo>> {
             let parts: Vec<&str> = token.split('+').collect();
             if parts.len() >= 3 {
                 let size_part = parts[0];
-                let Ok(x_offset) = parts[1].parse::<i32>() else { continue };
-                let Ok(y_offset) = parts[2].parse::<i32>() else { continue };
+                let Ok(x_offset) = parts[1].parse::<i32>() else {
+                    continue;
+                };
+                let Ok(y_offset) = parts[2].parse::<i32>() else {
+                    continue;
+                };
 
                 let size_subparts: Vec<&str> = size_part.split('x').collect();
                 if size_subparts.len() == 2 {
                     let w_part = size_subparts[0].split('/').next().unwrap_or("0");
                     let h_part = size_subparts[1].split('/').next().unwrap_or("0");
-                    let Ok(width) = w_part.parse::<u32>() else { continue };
-                    let Ok(height) = h_part.parse::<u32>() else { continue };
+                    let Ok(width) = w_part.parse::<u32>() else {
+                        continue;
+                    };
+                    let Ok(height) = h_part.parse::<u32>() else {
+                        continue;
+                    };
 
                     if width > 0 && height > 0 {
                         monitors.push((is_primary, width, height, x_offset, y_offset));

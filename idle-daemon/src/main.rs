@@ -40,7 +40,7 @@ fn main() -> anyhow::Result<()> {
         .set(idle_runner::toolkit::sys_info::is_secondary_monitor);
 
     let args: Vec<String> = std::env::args().collect();
-    
+
     if args.len() > 1 {
         let sub = &args[1];
         match sub.as_str() {
@@ -104,6 +104,14 @@ fn run_ipc_runner_subcmd(args: &[String]) -> anyhow::Result<()> {
     } else {
         args[8].parse().ok()
     };
-    ipc_runner::run_ipc_runner(saver, socket_path, shm_name, cols, rows, gpu_enabled, render_scale)
-        .map_err(|e| anyhow::anyhow!("{e}"))
+    ipc_runner::run_ipc_runner(
+        saver,
+        socket_path,
+        shm_name,
+        cols,
+        rows,
+        gpu_enabled,
+        render_scale,
+    )
+    .map_err(|e| anyhow::anyhow!("{e}"))
 }

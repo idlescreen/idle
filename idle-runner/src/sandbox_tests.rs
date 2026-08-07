@@ -1,6 +1,5 @@
 // Test files legitimately panic; suppress the lint at file scope.
 #![allow(clippy::panic)]
-
 // SPDX-License-Identifier: MIT
 
 //! Adversarial tests for F-006 (Landlock-before-Library).
@@ -66,8 +65,7 @@ fn plugin_loaders_order_sandbox_before_library_new() {
 }
 
 fn check_order(path: &str) {
-    let src = std::fs::read_to_string(path)
-        .unwrap_or_else(|e| panic!("read {path}: {e}"));
+    let src = std::fs::read_to_string(path).unwrap_or_else(|e| panic!("read {path}: {e}"));
     // Strip line comments to avoid matching the docstring mention of
     // "Library::new" while still catching the actual call site.
     let code_only: String = src

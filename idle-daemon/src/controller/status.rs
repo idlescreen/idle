@@ -24,7 +24,10 @@ impl DaemonController {
             .clone();
         let session_locked = self.session_locked.load(Ordering::Relaxed);
         let inhibited = effective_inhibited || self.inhibitors.is_inhibited();
-        let mut status = self.status.lock().unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
+        let mut status = self
+            .status
+            .lock()
+            .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
         let changed = Self::apply_live_fields(
             &mut status,
             &config,
@@ -46,7 +49,10 @@ impl DaemonController {
             return None;
         }
         let reloaded = crate::config::DaemonConfig::load();
-        let mut config = self.config.lock().unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
+        let mut config = self
+            .config
+            .lock()
+            .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
         let previous_timeout = config.idle_timeout_mins;
         if *config != reloaded {
             *config = reloaded;

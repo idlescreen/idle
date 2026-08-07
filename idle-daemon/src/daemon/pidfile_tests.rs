@@ -1,6 +1,5 @@
 // Test files legitimately panic; suppress the lint at file scope.
 #![allow(clippy::panic)]
-
 // SPDX-License-Identifier: MIT
 
 //! Adversarial tests for F-008 (pidfile `O_NOFOLLOW | O_CREAT | O_EXCL`).

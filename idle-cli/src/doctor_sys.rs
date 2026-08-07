@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 
 use super::doctor_checks::{CheckResult, chk};
+use crate::pkg_query::{query_dpkg, query_dpkg_file, query_rpm_file};
 use std::path::PathBuf;
 use std::process::Command;
-use crate::pkg_query::{query_dpkg, query_dpkg_file, query_rpm_file};
 
 pub fn check_fonts() -> CheckResult {
     if font_check_via_fc_list() {

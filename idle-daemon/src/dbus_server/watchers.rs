@@ -107,7 +107,10 @@ pub async fn watch_external_dbus_inhibits(
     }
     // Keep this task alive so spawned sniffer tasks are not the only owners;
     // they outlive us via the runtime. Loop until shutdown requested.
-    while !controller.shutdown.load(std::sync::atomic::Ordering::Relaxed) {
+    while !controller
+        .shutdown
+        .load(std::sync::atomic::Ordering::Relaxed)
+    {
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
     }
 }

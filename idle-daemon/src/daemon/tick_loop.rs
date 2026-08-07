@@ -17,7 +17,9 @@ pub fn tick_loop_until_shutdown(controller: Arc<DaemonController>) -> anyhow::Re
     while !controller.shutdown.load(Ordering::Relaxed) {
         std::thread::sleep(MAIN_LOOP_INTERVAL);
 
-        if let Err(err) = ooda_loop.step_tick(&controller, &mut idle_monitor, &mut overlay_presenter) {
+        if let Err(err) =
+            ooda_loop.step_tick(&controller, &mut idle_monitor, &mut overlay_presenter)
+        {
             tracing::error!("error in openOODA tick cycle: {err:#}");
         }
     }

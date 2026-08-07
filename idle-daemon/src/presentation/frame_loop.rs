@@ -9,8 +9,8 @@ use std::time::{Duration, Instant};
 use super::ipc_session::IpcPluginSession;
 use wayland_present::{OutputLayout, OverlayPresenter};
 
-use crate::presentation::PresentationOptions;
 use super::render::present_frame;
+use crate::presentation::PresentationOptions;
 
 pub struct ActiveSession {
     pub output_id: u32,
@@ -157,11 +157,11 @@ fn update_fps_counter(state: &mut FrameLoopState, frame_index: u64) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::presentation::PresentationOptions;
     use std::sync::atomic::AtomicBool;
     use std::time::Duration;
     use wayland_present::{OutputLayout, OverlayPresenter};
-    use crate::presentation::PresentationOptions;
-    
+
     // Test negative selection: empty sessions slice securely returns error instead of panicking on [0]
     #[test]
     fn test_empty_sessions_returns_error() {
@@ -170,12 +170,20 @@ mod tests {
             return; // Skip if no Wayland environment available (e.g., in headless CI)
         }
         let presenter = presenter_result.unwrap();
-        
+
         let stop = AtomicBool::new(false);
         let mut sessions = vec![];
         let layouts = vec![];
-        let primary = OutputLayout { id: 0, width: 800, height: 600, scale: 1, x: 0, y: 0, refresh_rate_hz: 60 };
-        
+        let primary = OutputLayout {
+            id: 0,
+            width: 800,
+            height: 600,
+            scale: 1,
+            x: 0,
+            y: 0,
+            refresh_rate_hz: 60,
+        };
+
         let mut last_frame = Instant::now();
         let mut frame_counter = 0;
         let mut fps_report = Instant::now();
@@ -188,11 +196,11 @@ mod tests {
             &layouts,
             primary,
             false,
-            PresentationOptions { 
-                gpu_enabled: false, 
-                show_fps_overlay: false, 
-                render_scale: None, 
-                launch_mode: idle_runner::launcher::LaunchMode::Daemon 
+            PresentationOptions {
+                gpu_enabled: false,
+                show_fps_overlay: false,
+                render_scale: None,
+                launch_mode: idle_runner::launcher::LaunchMode::Daemon,
             },
             60.0,
             60.0,
@@ -204,6 +212,9 @@ mod tests {
         );
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "No active sessions provided to frame loop");
+        assert_eq!(
+            result.unwrap_err(),
+            "No active sessions provided to frame loop"
+        );
     }
 }

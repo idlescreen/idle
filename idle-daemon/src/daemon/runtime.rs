@@ -2,8 +2,8 @@
 
 //! Wayland runtime initialization and liveness checks.
 
-use std::sync::Arc;
 use anyhow::anyhow;
+use std::sync::Arc;
 use wayland_idle::IdleMonitor;
 use wayland_present::OverlayPresenter;
 
@@ -21,7 +21,7 @@ pub fn initialize_runtime(
             poisoned.into_inner().idle_timeout_mins
         }
     };
-    
+
     let idle_monitor = IdleMonitor::new(idle_timeout).ok_or_else(|| {
         anyhow!(
             "DEGRADED: Wayland idle monitoring unavailable (need ext-idle-notify-v1). IdleScreen is a compositor client — this DE/compositor does not expose the idle protocol. See docs/BOUNDARIES.md. Run: idle doctor --json"

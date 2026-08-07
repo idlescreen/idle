@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-use super::*;
 use super::external::ExternalInhibitor;
+use super::*;
 
 #[test]
 fn merge_includes_real_logind_external() {

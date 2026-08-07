@@ -37,7 +37,9 @@ fn catch_unwind_silent<F, R>(f: F) -> std::thread::Result<R>
 where
     F: FnOnce() -> R,
 {
-    let _lock = PANIC_HOOK_LOCK.lock().unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
+    let _lock = PANIC_HOOK_LOCK
+        .lock()
+        .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
     let _guard = PanicHookGuard::suppress();
     catch_unwind(AssertUnwindSafe(f))
 }

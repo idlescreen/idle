@@ -11,7 +11,6 @@ pub mod shm;
 #[cfg(test)]
 mod shm_stress;
 
-
 pub use ffi_cell::{
     FfiTerminalCell, MAX_GRID_CELLS, MAX_GRID_DIM, SHM_MAGIC, SharedMemoryHeader, compute_shm_size,
     validate_grid_dims,
@@ -48,8 +47,14 @@ mod tests {
     fn test_ipc_responses() {
         let resps = vec![
             IpcResponse::Ready,
-            IpcResponse::FrameReady { scanlines: true, dirty: true },
-            IpcResponse::FrameReady { scanlines: false, dirty: false },
+            IpcResponse::FrameReady {
+                scanlines: true,
+                dirty: true,
+            },
+            IpcResponse::FrameReady {
+                scanlines: false,
+                dirty: false,
+            },
             IpcResponse::Ack,
         ];
 
@@ -152,15 +157,31 @@ mod tests {
         let mut buf1 = vec![0u8];
         buf1.extend_from_slice(&u32::MAX.to_le_bytes());
         buf1.extend_from_slice(&u32::MAX.to_le_bytes());
-        assert_eq!(IpcCommand::read_from(&buf1[..]).unwrap_err().kind(), ErrorKind::InvalidData);
+        assert_eq!(
+            IpcCommand::read_from(&buf1[..]).unwrap_err().kind(),
+            ErrorKind::InvalidData
+        );
 
         let mut buf2 = vec![0u8];
         buf2.extend_from_slice(&4097u32.to_le_bytes());
         buf2.extend_from_slice(&1u32.to_le_bytes());
-        assert_eq!(IpcCommand::read_from(&buf2[..]).unwrap_err().kind(), ErrorKind::InvalidData);
+        assert_eq!(
+            IpcCommand::read_from(&buf2[..]).unwrap_err().kind(),
+            ErrorKind::InvalidData
+        );
 
-        assert_eq!(IpcCommand::read_from(&[0x05u8, 0, 0, 0][..]).unwrap_err().kind(), ErrorKind::InvalidData);
-        assert_eq!(IpcCommand::read_from(&[0x00u8, 0x50, 0x00][..]).unwrap_err().kind(), ErrorKind::UnexpectedEof);
+        assert_eq!(
+            IpcCommand::read_from(&[0x05u8, 0, 0, 0][..])
+                .unwrap_err()
+                .kind(),
+            ErrorKind::InvalidData
+        );
+        assert_eq!(
+            IpcCommand::read_from(&[0x00u8, 0x50, 0x00][..])
+                .unwrap_err()
+                .kind(),
+            ErrorKind::UnexpectedEof
+        );
     }
 }
 
@@ -184,7 +205,8 @@ mod proptests {
     fn arb_response() -> impl Strategy<Value = IpcResponse> {
         prop_oneof![
             Just(IpcResponse::Ready),
-            (any::<bool>(), any::<bool>()).prop_map(|(scanlines, dirty)| IpcResponse::FrameReady { scanlines, dirty }),
+            (any::<bool>(), any::<bool>())
+                .prop_map(|(scanlines, dirty)| IpcResponse::FrameReady { scanlines, dirty }),
             Just(IpcResponse::Ack),
         ]
     }

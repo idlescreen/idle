@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 
 mod auth;
+#[cfg(test)]
+mod queue_overflow_tests;
 mod screensaver;
 mod service;
 pub mod service_helpers;
 mod sniff_policy;
 mod watchers;
-#[cfg(test)]
-mod queue_overflow_tests;
 
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
@@ -69,7 +69,9 @@ async fn serve(controller: Arc<DaemonController>) -> anyhow::Result<()> {
         .await
         .context("building D-Bus connection")?;
 
-    let _ = connection.request_name_with_flags("org.freedesktop.ScreenSaver", flags).await;
+    let _ = connection
+        .request_name_with_flags("org.freedesktop.ScreenSaver", flags)
+        .await;
 
     controller.set_dbus_connection(connection.clone());
 

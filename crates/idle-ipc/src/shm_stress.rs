@@ -1,19 +1,20 @@
 // Temporary stress verifier for SHM boundary and alignment checks
 #[cfg(test)]
 mod stress_tests {
+    use crate::ffi_cell::{FfiTerminalCell, SHM_MAGIC, SharedMemoryHeader, compute_shm_size};
     use crate::shm::SharedMemory;
-    use crate::ffi_cell::{FfiTerminalCell, SharedMemoryHeader, SHM_MAGIC, compute_shm_size};
-    use std::sync::Mutex;
     use std::sync::Arc;
+    use std::sync::Mutex;
     use std::thread;
 
     #[test]
     fn test_rapid_shm_lifecycle_churn() {
         let name = "/idle-shm-rapid-churn-test-0";
         let size = compute_shm_size(80, 24).unwrap();
-        
+
         for i in 0..500 {
-            let shm = SharedMemory::create(name, size).unwrap_or_else(|_| panic!("create failed at iteration {i}"));
+            let shm = SharedMemory::create(name, size)
+                .unwrap_or_else(|_| panic!("create failed at iteration {i}"));
             assert_eq!(shm.size(), size);
             unsafe {
                 let header = shm.header_mut();
@@ -26,7 +27,10 @@ mod stress_tests {
             }
             drop(shm);
             // Re-open after drop should fail since owner dropped and unlinked
-            assert!(SharedMemory::open(name, size).is_err(), "open should fail after drop at iteration {i}");
+            assert!(
+                SharedMemory::open(name, size).is_err(),
+                "open should fail after drop at iteration {i}"
+            );
         }
     }
 
@@ -35,16 +39,16 @@ mod stress_tests {
         let size = compute_shm_size(100, 100).unwrap();
         let name = "/idle-shm-align-test-0";
         let shm = SharedMemory::create(name, size).unwrap();
-        
+
         // Verify alignment of header and cells
         let ptr = shm.ptr() as usize;
         let header_align = std::mem::align_of::<SharedMemoryHeader>();
         let cell_align = std::mem::align_of::<FfiTerminalCell>();
-        
+
         assert_eq!(header_align, 8);
         assert_eq!(cell_align, 4);
         assert_eq!(ptr % header_align, 0, "Header pointer unaligned!");
-        
+
         let header_sz = std::mem::size_of::<SharedMemoryHeader>();
         assert_eq!(header_sz, 24);
         let cells_ptr = ptr + header_sz;
@@ -82,21 +86,29 @@ mod stress_tests {
 
         unsafe {
             shm.header_mut().magic = SHM_MAGIC;
-            
+
             // cols * rows overflow u32 / usize
             shm.header_mut().cols = u32::MAX;
             shm.header_mut().rows = u32::MAX;
-            assert!(shm.cells_mut().is_err(), "u32::MAX cols*rows should overflow check");
+            assert!(
+                shm.cells_mut().is_err(),
+                "u32::MAX cols*rows should overflow check"
+            );
 
             // cols * rows fits in usize but count * cell_sz overflows
             shm.header_mut().cols = 1 << 30;
             shm.header_mut().rows = 8;
-            assert!(shm.cells_mut().is_err(), "Exceeding size should return error");
+            assert!(
+                shm.cells_mut().is_err(),
+                "Exceeding size should return error"
+            );
 
             // Needed > size check
             shm.header_mut().cols = 11;
             shm.header_mut().rows = 10; // slightly more than 10x10 map
-            let err = shm.cells_mut().expect_err("Oversized dims within map bounds");
+            let err = shm
+                .cells_mut()
+                .expect_err("Oversized dims within map bounds");
             assert!(err.contains("need"));
         }
     }

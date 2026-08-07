@@ -143,7 +143,6 @@ fn mpris_status_playing(conn: &zbus::blocking::Connection, name: &str, path: &st
     }
 }
 
-
 #[cfg(any(not(target_os = "linux"), test))]
 pub fn list_logind_idle() -> Vec<ExternalInhibitor> {
     Vec::new()

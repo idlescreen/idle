@@ -53,23 +53,20 @@ fn block_on_future<F: std::future::Future>(future: F) -> F::Output {
 impl GpuCellRenderer {
     pub fn new() -> Result<Self, String> {
         let instance = wgpu::Instance::default();
-        let adapter = block_on_future(instance.request_adapter(
-            &wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::HighPerformance,
-                compatible_surface: None,
-                force_fallback_adapter: false,
-            },
-        ))
+        let adapter = block_on_future(instance.request_adapter(&wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::HighPerformance,
+            compatible_surface: None,
+            force_fallback_adapter: false,
+        }))
         .map_err(|e| format!("No GPU adapter found: {e}"))?;
 
-        let (device, queue) =
-            block_on_future(adapter.request_device(&wgpu::DeviceDescriptor {
-                label: Some("idle-runner headless device"),
-                required_features: wgpu::Features::empty(),
-                required_limits: wgpu::Limits::default(),
-                ..Default::default()
-            }))
-            .map_err(|e| format!("Failed to create wgpu device: {e}"))?;
+        let (device, queue) = block_on_future(adapter.request_device(&wgpu::DeviceDescriptor {
+            label: Some("idle-runner headless device"),
+            required_features: wgpu::Features::empty(),
+            required_limits: wgpu::Limits::default(),
+            ..Default::default()
+        }))
+        .map_err(|e| format!("Failed to create wgpu device: {e}"))?;
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("cell shader"),
@@ -198,7 +195,9 @@ impl GpuCellRenderer {
         size: u64,
         usage: wgpu::BufferUsages,
     ) -> (wgpu::Buffer, bool) {
-        if let Some(buf) = current.as_ref() && buf.size() >= size {
+        if let Some(buf) = current.as_ref()
+            && buf.size() >= size
+        {
             return (buf.clone(), false);
         }
         let new_buf = device.create_buffer(&wgpu::BufferDescriptor {
@@ -221,13 +220,18 @@ impl GpuCellRenderer {
         usage: wgpu::TextureUsages,
     ) -> (wgpu::Texture, bool) {
         if let Some(tex) = current.as_ref()
-            && tex.width() == width && tex.height() == height
+            && tex.width() == width
+            && tex.height() == height
         {
             return (tex.clone(), false);
         }
         let new_tex = device.create_texture(&wgpu::TextureDescriptor {
             label: Some(label),
-            size: wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,

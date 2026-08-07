@@ -86,7 +86,10 @@ fn fix_user_service() -> Result<()> {
     if let Ok(home) = std::env::var("HOME") {
         let config_dir = std::path::PathBuf::from(home).join(".config").join("idle");
         if !config_dir.exists() && std::fs::create_dir_all(&config_dir).is_ok() {
-            println!("  [ok] Checked standard configuration directory {}", config_dir.display());
+            println!(
+                "  [ok] Checked standard configuration directory {}",
+                config_dir.display()
+            );
         }
     }
 

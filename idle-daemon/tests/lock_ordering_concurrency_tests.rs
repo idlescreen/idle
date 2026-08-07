@@ -91,11 +91,10 @@ fn stress_test_concurrent_lock_ordering_and_race_conditions() {
             let client = UniqueName::try_from(client_str).unwrap();
             while !stop.load(Ordering::Relaxed) {
                 iter += 1;
-                if let Ok(cookie) = c.inhibitors.add(
-                    "test_app".into(),
-                    "playing media".into(),
-                    client.clone(),
-                ) {
+                if let Ok(cookie) =
+                    c.inhibitors
+                        .add("test_app".into(), "playing media".into(), client.clone())
+                {
                     let _ = c.inhibitors.is_inhibited();
                     let _ = c.inhibitors.list_all();
                     c.inhibitors.remove_for_client(cookie, &client);
@@ -146,9 +145,14 @@ fn stress_test_concurrent_lock_ordering_and_race_conditions() {
 
     let mut total_ops = 0u64;
     for handle in handles {
-        let ops = handle.join().expect("Worker thread panicked or deadlocked!");
+        let ops = handle
+            .join()
+            .expect("Worker thread panicked or deadlocked!");
         total_ops += ops;
     }
 
-    assert!(total_ops > 10_000, "Expected >10,000 operations, got {total_ops}");
+    assert!(
+        total_ops > 10_000,
+        "Expected >10,000 operations, got {total_ops}"
+    );
 }

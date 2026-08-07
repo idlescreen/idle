@@ -10,7 +10,9 @@ fn test_controller() -> (
     std::path::PathBuf,
     std::sync::MutexGuard<'static, ()>,
 ) {
-    let guard = TEST_MUTEX.lock().unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
+    let guard = TEST_MUTEX
+        .lock()
+        .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
     let temp = std::env::temp_dir().join(format!(
         "idle-daemon-cmd-test-{}",
         std::time::SystemTime::now()
@@ -221,8 +223,6 @@ fn set_saver_none_is_random_mode() {
     );
 }
 
-
-
 #[test]
 fn mark_dirty_sets_status_dirty_flag() {
     let (c, _tmp, _guard) = test_controller();
@@ -238,5 +238,9 @@ fn test_command_queue_backpressure() {
         assert!(c.command_tx.try_send(DaemonCommand::SetTimeout(i)).is_ok());
     }
     // 17th should fail because it's bounded to 16
-    assert!(c.command_tx.try_send(DaemonCommand::SetTimeout(16)).is_err());
+    assert!(
+        c.command_tx
+            .try_send(DaemonCommand::SetTimeout(16))
+            .is_err()
+    );
 }
