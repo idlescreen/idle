@@ -17,15 +17,8 @@ pub(crate) fn is_safe_data_root(path: &str) -> bool {
     !p.components().any(|c| matches!(c, Component::ParentDir))
 }
 
-/// Retrieve directories where screensaver plugins may be installed.
-///
-/// **Order matters for resolution:** system paths are listed first so that
-/// distribution packages under `/usr` win over user-writable trees under
-/// `$HOME` / `$XDG_DATA_HOME`. A local overwrite in `~/.local` can still be
-/// used when no system plugin exists, but cannot shadow a package-installed
-/// `.so` of the same allowlisted name.
-pub fn get_screensaver_dirs() -> Vec<PathBuf> {
-    // 1. System canonical paths (idle first; legacy idlescreen/trance still searched)
+/// System-only plugin roots (Daemon mode). No `$HOME` / XDG user trees.
+pub fn get_system_screensaver_dirs() -> Vec<PathBuf> {
     let mut dirs = vec![
         PathBuf::from("/usr/libexec/idle/screensavers"),
         PathBuf::from("/usr/local/libexec/idle/screensavers"),
@@ -35,17 +28,23 @@ pub fn get_screensaver_dirs() -> Vec<PathBuf> {
         PathBuf::from("/usr/local/libexec/trance/screensavers"),
     ];
 
-    // 2. System paths from XDG_DATA_DIRS (absolute, no `..` only)
     let xdg_data_dirs = std::env::var("XDG_DATA_DIRS")
         .unwrap_or_else(|_| "/usr/local/share:/usr/share".to_string());
     for part in xdg_data_dirs.split(':') {
         if is_safe_data_root(part) {
-            dirs.push(PathBuf::from(part).join("idle").join("screensavers"));
-            dirs.push(PathBuf::from(part).join("trance").join("screensavers"));
+            // Only system-ish prefixes under XDG_DATA_DIRS
+            if part.starts_with("/usr") {
+                dirs.push(PathBuf::from(part).join("idle").join("screensavers"));
+                dirs.push(PathBuf::from(part).join("trance").join("screensavers"));
+            }
         }
     }
+    dirs
+}
 
-    // 3. User paths last (optional overrides only when system copy is absent)
+/// User-writable plugin roots (Preview / explicit local only).
+pub fn get_user_screensaver_dirs() -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
     if let Ok(xdg_data) = std::env::var("XDG_DATA_HOME") {
         if is_safe_data_root(&xdg_data) {
             dirs.push(PathBuf::from(&xdg_data).join("idle").join("screensavers"));
@@ -81,7 +80,16 @@ pub fn get_screensaver_dirs() -> Vec<PathBuf> {
             );
         }
     }
+    dirs
+}
 
+/// All discovery dirs: system first, then user (Preview / listing).
+///
+/// **Daemon load** uses [`get_system_screensaver_dirs`] only via
+/// `LaunchMode::Daemon` in the resolver.
+pub fn get_screensaver_dirs() -> Vec<PathBuf> {
+    let mut dirs = get_system_screensaver_dirs();
+    dirs.extend(get_user_screensaver_dirs());
     dirs
 }
 

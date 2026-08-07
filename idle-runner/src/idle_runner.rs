@@ -89,7 +89,7 @@ pub fn run_plugin_fullscreen(plugin_path: &str) -> Result<isize, Box<dyn std::er
     // failures are fail-closed: refuse to load the plugin rather than run
     // unsandboxed.
     crate::caption_overlay::init_font();
-    crate::sandbox::enforce_sandbox_or_skip_for_render()
+    crate::sandbox::enforce_sandbox_for_plugin(std::path::Path::new(plugin_path))
         .map_err(crate::launcher::PluginError::Sandbox)?;
 
     unsafe {

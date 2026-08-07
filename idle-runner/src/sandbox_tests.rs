@@ -2,66 +2,107 @@
 #![allow(clippy::panic)]
 // SPDX-License-Identifier: MIT
 
-//! Adversarial tests for F-006 (Landlock-before-Library).
+//! Adversarial tests for Landlock sandbox policy.
 //!
-//! Per AUDIT.md §7: tests must exercise the real `sandbox` module and would
-//! fail if the fix were reverted (i.e. `enforce_sandbox_or_skip_for_render`
-//! called *after* `Library::new` instead of before).
-//!
-//! These tests check that:
-//! 1. `enforce_sandbox_or_skip_for_render` returns Ok on a kernel with
-//!    Landlock (this Linux 5.13+ host).
-//! 2. The function is the only entry point used by `run_plugin_fullscreen`
-//!    and `PluginSession::load_with_options` — they must call it before
-//!    `libloading::Library::new`. This is verified statically: the test
-//!    greps the source for the wrong ordering.
-//! 3. When Landlock cannot be applied (kernel too old), the function fails
-//!    closed (returns Err). On the CI host Landlock is available, so we
-//!    simulate failure by inspecting the failure-mode path directly via a
-//!    unit-style test.
+//! 1. With a real plugin path, enforcement succeeds on Landlock kernels.
+//! 2. Escape hatch: debug/release rules for IDLE_DISABLE_SANDBOX.
+//! 3. Static order: `enforce_sandbox_for_plugin` before `Library::new`.
+//! 4. After enforce, opening a disallowed path fails (when Landlock works).
 
 use super::*;
+use std::fs;
+use std::path::PathBuf;
+
+fn temp_plugin_path() -> PathBuf {
+    let dir = std::env::temp_dir().join(format!("idle-sandbox-test-{}", std::process::id()));
+    let _ = fs::create_dir_all(&dir);
+    let p = dir.join("libscreensaver_test.so");
+    if !p.exists() {
+        fs::write(&p, b"not-a-real-elf").expect("write dummy plugin");
+    }
+    p
+}
 
 #[test]
-fn enforce_sandbox_succeeds_on_modern_kernel() {
-    // Skip if Landlock is unavailable (e.g., kernel < 5.13).
+fn enforce_sandbox_for_plugin_succeeds_on_modern_kernel() {
     if !landlock_available() {
         eprintln!("skipping: Landlock unavailable on this kernel");
         return;
     }
-    let r = enforce_sandbox_or_skip_for_render();
+    let p = temp_plugin_path();
+    let r = enforce_sandbox_for_plugin(&p);
     assert!(r.is_ok(), "sandbox enforcement should succeed: {r:?}");
 }
 
 #[test]
-fn skip_path_only_when_disable_env_var_set() {
+fn skip_path_when_disable_env_var_set() {
     // SAFETY: test-only env mutation.
     unsafe {
         std::env::set_var("IDLE_DISABLE_SANDBOX", "1");
+        if !cfg!(debug_assertions) {
+            std::env::set_var("IDLE_RENDER_PIPELINE", "1");
+        }
     }
     let r = enforce_sandbox_or_skip_for_render();
     unsafe {
         std::env::remove_var("IDLE_DISABLE_SANDBOX");
+        std::env::remove_var("IDLE_RENDER_PIPELINE");
     }
     assert!(r.is_ok(), "skip path should succeed when escape hatch set");
 }
 
 #[test]
+fn without_escape_pathless_entry_fails_closed() {
+    unsafe {
+        std::env::remove_var("IDLE_DISABLE_SANDBOX");
+        std::env::remove_var("IDLE_RENDER_PIPELINE");
+    }
+    let r = enforce_sandbox_or_skip_for_render();
+    assert!(r.is_err(), "pathless enforce must fail closed without escape");
+}
+
+#[test]
 fn plugin_loaders_order_sandbox_before_library_new() {
-    // Grep-style guard. If a future change moves enforce_sandbox_or_skip_for_render
-    // to AFTER libloading::Library::new, this assertion catches the regression.
-    //
-    // We check the call order by reading the source files at test time.
     let idr = format!(
-        "{}/../idle-runner/src/idle_runner.rs",
+        "{}/src/idle_runner.rs",
         env!("CARGO_MANIFEST_DIR")
     );
     let loading = format!(
-        "{}/../idle-runner/src/plugin_session/loading.rs",
+        "{}/src/plugin_session/loading.rs",
         env!("CARGO_MANIFEST_DIR")
     );
     check_order(&idr);
     check_order(&loading);
+}
+
+#[test]
+fn post_sandbox_denied_path_unreadable() {
+    if !landlock_available() {
+        eprintln!("skipping: Landlock unavailable");
+        return;
+    }
+    let p = temp_plugin_path();
+    // Fork so Landlock does not poison the parent test process.
+    let pid = unsafe { libc::fork() };
+    assert!(pid >= 0, "fork failed");
+    if pid == 0 {
+        let code = match enforce_sandbox_for_plugin(&p) {
+            Ok(()) => match fs::OpenOptions::new().read(true).open("/etc/passwd") {
+                Err(_) => 0,
+                Ok(_) => 2,
+            },
+            Err(_) => 1,
+        };
+        unsafe { libc::_exit(code) };
+    }
+    let mut status: libc::c_int = 0;
+    let w = unsafe { libc::waitpid(pid, &mut status, 0) };
+    assert_eq!(w, pid);
+    let exit = libc::WEXITSTATUS(status);
+    assert_eq!(
+        exit, 0,
+        "child exit {exit}: 0=denied ok, 1=enforce fail, 2=passwd still readable"
+    );
 }
 
 fn check_order(path: &str) {
@@ -76,7 +117,9 @@ fn check_order(path: &str) {
         })
         .collect::<Vec<_>>()
         .join("\n");
-    let enforce_idx = code_only.find("enforce_sandbox_or_skip_for_render");
+    let enforce_idx = code_only
+        .find("enforce_sandbox_for_plugin")
+        .or_else(|| code_only.find("enforce_sandbox_or_skip_for_render"));
     let lib_idx = code_only.find("Library::new");
     match (enforce_idx, lib_idx) {
         (Some(e), Some(l)) => {
@@ -86,9 +129,7 @@ fn check_order(path: &str) {
                  (got enforce@{e}, Library::new@{l})"
             );
         }
-        (None, None) => {
-            // File doesn't contain either — fine, just a config file.
-        }
+        (None, None) => {}
         _ => {
             panic!(
                 "{path}: inconsistent sandbox/Library::new presence \
@@ -100,12 +141,10 @@ fn check_order(path: &str) {
 
 #[cfg(target_os = "linux")]
 fn landlock_available() -> bool {
-    // Check `/proc/self/status` Landlock line OR try a probe.
     std::path::Path::new("/sys/kernel/security/landlock").exists()
         || std::fs::read_to_string("/proc/sys/kernel/seccomp/actions_avail")
             .map(|_| true)
             .unwrap_or(false)
-        || std::fs::read_to_string("/proc/keys").is_ok() // any successful read
 }
 
 #[cfg(not(target_os = "linux"))]

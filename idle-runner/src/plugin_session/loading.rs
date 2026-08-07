@@ -78,7 +78,7 @@ impl PluginSession {
         // can execute unrestricted. Sandbox failures are fail-closed: refuse to
         // load the plugin rather than run unsandboxed.
         crate::caption_overlay::init_font();
-        crate::sandbox::enforce_sandbox_or_skip_for_render()
+        crate::sandbox::enforce_sandbox_for_plugin(path)
             .map_err(crate::launcher::PluginError::Sandbox)?;
 
         unsafe {

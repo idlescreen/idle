@@ -19,14 +19,10 @@ pub(crate) fn plugin_candidate_names(clean: &str) -> [String; 3] {
 
 /// True when local development plugin trees may be searched.
 ///
-/// Enabled automatically in debug builds. In release builds only when
-/// `IDLE_DEV_PLUGINS=1` is set (Preview mode still gates whether these dirs
-/// enter the search path).
+/// Debug builds: always on. Release: **never** via env (Preview can still use
+/// user XDG dirs from discovery; `~/Projects/...` trees are debug-only).
 fn dev_plugins_env_enabled() -> bool {
-    if cfg!(debug_assertions) {
-        return true;
-    }
-    std::env::var("IDLE_DEV_PLUGINS").ok().as_deref() == Some("1")
+    cfg!(debug_assertions)
 }
 
 pub(crate) fn dev_plugin_dirs(clean: &str) -> Vec<PathBuf> {
@@ -65,11 +61,14 @@ pub(crate) fn dev_plugin_dirs(clean: &str) -> Vec<PathBuf> {
 }
 
 fn trusted_plugin_dirs(clean: &str, mode: &LaunchMode) -> Vec<PathBuf> {
-    let mut dirs = crate::discovery::get_screensaver_dirs();
-    if *mode == LaunchMode::Preview {
-        dirs.extend(dev_plugin_dirs(clean));
+    match mode {
+        LaunchMode::Daemon => crate::discovery::get_system_screensaver_dirs(),
+        LaunchMode::Preview => {
+            let mut dirs = crate::discovery::get_screensaver_dirs();
+            dirs.extend(dev_plugin_dirs(clean));
+            dirs
+        }
     }
-    dirs
 }
 
 fn find_candidate_in_dir(base: &Path, candidates: &[String]) -> Option<PathBuf> {

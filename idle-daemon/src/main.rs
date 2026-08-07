@@ -89,6 +89,8 @@ fn run_plugin_subcmd(args: &[String]) -> anyhow::Result<()> {
 }
 
 fn run_ipc_runner_subcmd(args: &[String]) -> anyhow::Result<()> {
+    // IPC children must never inherit ambient sandbox/dev escapes from the session.
+    idle_runner::sandbox::clear_sandbox_escape_env();
     anyhow::ensure!(
         args.len() >= 9,
         "missing arguments.\nusage: idle-daemon run-ipc-runner <saver> <socket_path> <shm_name> <cols> <rows> <gpu_enabled> <render_scale>"

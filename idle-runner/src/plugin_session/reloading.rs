@@ -29,6 +29,10 @@ impl PluginSession {
 
         self.plugin = None;
 
+        // Re-assert sandbox allow for this path before constructors run.
+        crate::sandbox::enforce_sandbox_for_plugin(&self.plugin_path)
+            .map_err(PluginError::Sandbox)?;
+
         let mut new_guard = unsafe {
             let lib = Library::new(&self.plugin_path)?;
 

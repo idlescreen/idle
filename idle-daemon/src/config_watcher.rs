@@ -35,10 +35,11 @@ pub fn start_config_watcher(controller: Arc<DaemonController>) {
             && event.paths.iter().any(|p| p == &target_path)
         {
             tracing::info!("Config file modified on disk; hot-reloading settings...");
-            let fresh = DaemonConfig::load();
-            let _ = controller_clone.mutate_config(|cfg| {
-                *cfg = fresh;
-            });
+            // Disk is source of truth: apply under lock and **never** save back
+            // (avoids lost-update races with D-Bus mutate_config + self-echo loops).
+            if let Err(e) = controller_clone.reload_config_from_disk() {
+                tracing::warn!("config hot-reload failed: {e:#}");
+            }
         }
     }) {
         Ok(w) => w,

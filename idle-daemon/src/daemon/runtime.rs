@@ -14,13 +14,11 @@ pub use super::recovery::*;
 pub fn initialize_runtime(
     controller: &DaemonController,
 ) -> anyhow::Result<(IdleMonitor, Arc<OverlayPresenter>)> {
-    let idle_timeout = match controller.config.lock() {
-        Ok(guard) => guard.idle_timeout_mins,
-        Err(poisoned) => {
-            tracing::warn!("Config mutex poisoned, using recovered data");
-            poisoned.into_inner().idle_timeout_mins
-        }
-    };
+    let idle_timeout = controller
+        .config
+        .lock()
+        .unwrap_or_else(|p| crate::locks::poison_or_exit("config", p))
+        .idle_timeout_mins;
 
     let idle_monitor = IdleMonitor::new(idle_timeout).ok_or_else(|| {
         anyhow!(

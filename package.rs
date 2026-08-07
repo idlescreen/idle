@@ -11,7 +11,6 @@ use std::process::Command;
 const CRATES: &[&str] = &[
     "idle-daemon",
     "idle-cli",
-    "// applet lives in idlescreen/idle-cosmic"
 ];
 
 fn run_cmd(cmd: &mut Command) -> Result<(), String> {
@@ -44,20 +43,15 @@ fn skip_tests() -> bool {
 
 /// Headless package gate — must pass before shipping packages.
 /// See `scripts/qa_package_gate.sh` and `docs/QA_REGRESSION.md`.
-/// Override: `SKIP_TESTS=1 ./package.rs` (emergency only).
 fn run_qa_unit_gate() -> Result<(), String> {
     let script = Path::new("scripts/qa_package_gate.sh");
     if script.is_file() {
-        println!("------------------------------------------");
         println!("QA package gate (headless): scripts/qa_package_gate.sh");
-        println!("------------------------------------------");
         run_cmd(Command::new("bash").arg(script))?;
         return Ok(());
     }
     // Fallback if script missing (partial checkout).
-    println!("------------------------------------------");
     println!("QA gate fallback: core host crates");
-    println!("------------------------------------------");
     run_cmd(Command::new("cargo").args([
         "test",
         "-p",
@@ -113,9 +107,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rpm_pool = Path::new("../packages/rpm/pool");
 
     for crate_name in CRATES {
-        println!("------------------------------------------");
         println!("Packaging: {}", crate_name);
-        println!("------------------------------------------");
 
         println!("Building Debian package...");
         run_cmd(Command::new("cargo").args(["deb", "--no-build", "-p", crate_name]))?;
@@ -155,7 +147,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 println!("Copied to apt repository packages/apt/pool/main/");
             }
         } else {
-            println!("Warning: Debian package not found for {} (searched for: {}).", crate_name, pkg_name);
+            return Err(format!(
+                "Debian package not found for {crate_name} (searched for: {pkg_name}). Refusing partial release."
+            )
+            .into());
         }
 
         println!("Building RPM package...");
@@ -189,7 +184,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 println!("Copied to rpm repository packages/rpm/pool/");
             }
         } else {
-            println!("Warning: RPM package not found for {} (searched for: {}).", crate_name, pkg_name);
+            return Err(format!(
+                "RPM package not found for {crate_name} (searched for: {pkg_name}). Refusing partial release."
+            )
+            .into());
         }
     }
 
@@ -213,7 +211,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if response == "y" || response == "yes" {
         let version = get_version()?;
         // Tag first (signed if the operator has a signing key configured;
-        // unsigned otherwise — git falls back automatically). Tag must succeed
         // before commit so the package metadata references an existing tag.
         let tag = format!("v{version}");
         let tag_exists = Command::new("git")
@@ -240,7 +237,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("Pushing commit and signed tag...");
         run_cmd(
             Command::new("git")
-                .args(["push", "origin", "main"])
+                .args(["push", "origin", "master"])
                 .current_dir("../packages"),
         )?;
         run_cmd(

@@ -4,11 +4,14 @@ use idle_ipc::{
     IpcCommand, IpcResponse, SHM_MAGIC, SharedMemory, compute_shm_size, validate_grid_dims,
 };
 use std::fs;
+use std::os::unix::fs::PermissionsExt;
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
+
+use super::ipc_peer::{require_child_peer, runtime_socket_dir};
 
 static SESSION_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
@@ -17,17 +20,6 @@ pub struct SessionInitResult {
     pub socket: UnixStream,
     pub shm: SharedMemory,
     pub socket_path: PathBuf,
-}
-
-/// Prefer `XDG_RUNTIME_DIR` (user-private) over world-writable `/tmp` for UDS.
-fn runtime_socket_dir() -> PathBuf {
-    if let Ok(dir) = std::env::var("XDG_RUNTIME_DIR") {
-        let p = PathBuf::from(dir);
-        if p.is_dir() {
-            return p;
-        }
-    }
-    std::env::temp_dir()
 }
 
 /// `Child` Drop neither kills nor waits — explicit reap is required on init failure.
@@ -44,10 +36,6 @@ pub fn initialize_ipc_session(
     gpu_enabled: bool,
     render_scale: f32,
 ) -> Result<SessionInitResult, String> {
-    // Liveness / failsafe for the OOP runner is owned by `IpcPluginSession`
-    // (`is_plugin_alive` + exclusive `Child::try_wait`/`wait`). Do not spawn a
-    // side-thread `waitpid` on the same pid — that race-reaps (ECHILD / lost status).
-
     validate_grid_dims(cols, rows).map_err(|e| e.to_string())?;
     if !render_scale.is_finite() || !(0.0..=1.0).contains(&render_scale) {
         return Err(format!("render_scale out of range: {render_scale}"));
@@ -56,12 +44,14 @@ pub fn initialize_ipc_session(
     let session_idx = SESSION_COUNTER.fetch_add(1, Ordering::Relaxed);
     let rand_val = std::process::id();
     let socket_path =
-        runtime_socket_dir().join(format!("idle-uds-{}-{}.sock", rand_val, session_idx));
+        runtime_socket_dir()?.join(format!("idle-uds-{}-{}.sock", rand_val, session_idx));
     if socket_path.exists() {
         let _ = fs::remove_file(&socket_path);
     }
     let listener = UnixListener::bind(&socket_path)
         .map_err(|e| format!("failed to bind UDS listener: {}", e))?;
+    fs::set_permissions(&socket_path, fs::Permissions::from_mode(0o600))
+        .map_err(|e| format!("chmod 0600 on UDS: {e}"))?;
     listener
         .set_nonblocking(true)
         .map_err(|e| format!("failed to set UDS listener nonblocking: {}", e))?;
@@ -70,7 +60,7 @@ pub fn initialize_ipc_session(
     let shm_size = compute_shm_size(cols, rows).ok_or("shm size overflow")?;
     let shm = SharedMemory::create(&shm_name, shm_size)?;
 
-    // SAFETY: `create` mapped at least a header; single-writer init before spawn.
+    // SAFETY: header init before spawn; single writer.
     unsafe {
         let header = shm.header_mut();
         header.magic = SHM_MAGIC;
@@ -81,7 +71,6 @@ pub fn initialize_ipc_session(
 
     let current_exe =
         std::env::current_exe().map_err(|e| format!("failed to get current exe path: {}", e))?;
-
     let gpu_str = gpu_enabled.to_string();
     let scale_str = format!("{:.6}", render_scale);
 
@@ -101,7 +90,16 @@ pub fn initialize_ipc_session(
     let timeout = Duration::from_secs(5);
     let socket = loop {
         match listener.accept() {
-            Ok((stream, _)) => break stream,
+            Ok((stream, _)) => match require_child_peer(&stream, &child) {
+                Ok(()) => break stream,
+                Err(e) => {
+                    tracing::warn!("rejecting IPC peer: {e}");
+                    if start.elapsed() > timeout {
+                        kill_and_reap(&mut child, &socket_path);
+                        return Err(e);
+                    }
+                }
+            },
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                 if start.elapsed() > timeout {
                     kill_and_reap(&mut child, &socket_path);
@@ -116,29 +114,24 @@ pub fn initialize_ipc_session(
         }
     };
 
-    if let Err(e) = socket.set_nonblocking(false) {
-        kill_and_reap(&mut child, &socket_path);
-        return Err(format!("failed to set blocking on runner stream: {}", e));
-    }
-
-    if let Err(e) = socket.set_read_timeout(Some(Duration::from_millis(500))) {
-        kill_and_reap(&mut child, &socket_path);
-        return Err(format!(
-            "failed to set read timeout on runner stream: {}",
-            e
-        ));
-    }
-
-    if let Err(e) = socket.set_write_timeout(Some(Duration::from_millis(500))) {
-        kill_and_reap(&mut child, &socket_path);
-        return Err(format!(
-            "failed to set write timeout on runner stream: {}",
-            e
-        ));
+    for (label, res) in [
+        ("blocking", socket.set_nonblocking(false)),
+        (
+            "read timeout",
+            socket.set_read_timeout(Some(Duration::from_millis(500))),
+        ),
+        (
+            "write timeout",
+            socket.set_write_timeout(Some(Duration::from_millis(500))),
+        ),
+    ] {
+        if let Err(e) = res {
+            kill_and_reap(&mut child, &socket_path);
+            return Err(format!("failed to set {label} on runner stream: {e}"));
+        }
     }
 
     let mut socket = socket;
-
     match IpcResponse::read_from(&mut socket) {
         Ok(IpcResponse::Ready) => {}
         Ok(resp) => {

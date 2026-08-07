@@ -20,7 +20,7 @@ pub fn query_dark_mode() -> bool {
     {
         return val;
     }
-    let mut cache = cache_rw.write().unwrap_or_else(|e| e.into_inner());
+    let mut cache = cache_rw.write().unwrap_or_else(|e| { tracing::error!("mutex poisoned: {e}"); std::process::abort() });
     if let Some(val) = cache.0
         && cache.1.elapsed() < Duration::from_secs(3)
     {

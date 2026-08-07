@@ -24,6 +24,22 @@ impl DaemonController {
         Ok(())
     }
 
+    /// Apply on-disk config without writing back (file-watcher path).
+    pub fn reload_config_from_disk(&self) -> anyhow::Result<()> {
+        let mut config = self
+            .config
+            .lock()
+            .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
+        // Load while holding the lock so a concurrent mutate_config cannot
+        // lose its in-memory write to a stale pre-lock snapshot.
+        let fresh = DaemonConfig::load();
+        if *config != fresh {
+            *config = fresh;
+            self.mark_dirty();
+        }
+        Ok(())
+    }
+
     #[tracing::instrument(skip_all, fields(command = ?command))]
     pub fn apply_command(&self, command: DaemonCommand) -> anyhow::Result<()> {
         match command {
