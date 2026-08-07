@@ -63,15 +63,19 @@ pub(super) fn check_peer_exe(pid: u32) -> PeerExeCheck {
         return PeerExeCheck::Untrusted;
     }
     let parent = target.parent().and_then(|p| p.to_str()).unwrap_or("");
-    let path_ok = parent == "/usr/bin"
-        || parent == "/usr/local/bin"
-        || (cfg!(debug_assertions) && same_dir_as_current_exe(&target));
+    // Trusted locations:
+    // - packaged install prefixes
+    // - cargo target/{debug,release} (local builds; release daemon used to reject these)
+    // - same directory as this daemon binary (dev / monorepo layout)
+    let path_ok = is_system_bin_dir(parent)
+        || is_cargo_target_bin_dir(parent)
+        || same_dir_as_current_exe(&target);
     if !path_ok {
         tracing::warn!("D-Bus auth check: path {target:?} parent {parent:?} not trusted");
         return PeerExeCheck::Untrusted;
     }
 
-    // Production: root-owned, not world-writable for system prefixes.
+    // Not world-writable; system prefixes must be root-owned (or nobody).
     #[cfg(unix)]
     {
         use std::os::unix::fs::MetadataExt;
@@ -83,15 +87,23 @@ pub(super) fn check_peer_exe(pid: u32) -> PeerExeCheck {
                     );
                     return PeerExeCheck::Untrusted;
                 }
-                if (parent == "/usr/bin" || parent == "/usr/local/bin")
-                    && meta.uid() != 0
-                    && meta.uid() != 65534
-                {
+                if is_system_bin_dir(parent) && meta.uid() != 0 && meta.uid() != 65534 {
                     tracing::warn!(
                         "D-Bus auth check: refusing non-root-owned peer binary {target:?} (uid {})",
                         meta.uid()
                     );
                     return PeerExeCheck::Untrusted;
+                }
+                // Cargo target builds: must be owned by our euid (not another user's tree).
+                if is_cargo_target_bin_dir(parent) {
+                    let our = unsafe { libc::geteuid() };
+                    if meta.uid() != our {
+                        tracing::warn!(
+                            "D-Bus auth check: refusing cargo-target peer {target:?} owned by uid {} (ours {our})",
+                            meta.uid()
+                        );
+                        return PeerExeCheck::Untrusted;
+                    }
                 }
             }
             Err(e) => {
@@ -102,6 +114,15 @@ pub(super) fn check_peer_exe(pid: u32) -> PeerExeCheck {
     }
 
     PeerExeCheck::Trusted
+}
+
+fn is_system_bin_dir(parent: &str) -> bool {
+    parent == "/usr/bin" || parent == "/usr/local/bin"
+}
+
+/// `…/target/debug` or `…/target/release` cargo output directories.
+pub(super) fn is_cargo_target_bin_dir(parent: &str) -> bool {
+    parent.ends_with("/target/debug") || parent.ends_with("/target/release")
 }
 
 fn same_dir_as_current_exe(target: &std::path::Path) -> bool {

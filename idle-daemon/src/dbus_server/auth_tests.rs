@@ -206,6 +206,21 @@ fn trusted_control_peers_exact_set() {
 }
 
 #[test]
+fn cargo_target_bin_dirs_are_recognized() {
+    use super::auth_peer::is_cargo_target_bin_dir;
+    assert!(is_cargo_target_bin_dir(
+        "/home/jeryd/Projects/idlescreen/idle/target/release"
+    ));
+    assert!(is_cargo_target_bin_dir(
+        "/home/jeryd/Projects/idlescreen/idle/target/debug"
+    ));
+    assert!(!is_cargo_target_bin_dir("/usr/bin"));
+    assert!(!is_cargo_target_bin_dir("/tmp/idlescreen"));
+    assert!(!is_cargo_target_bin_dir("/home/x/target/release/foo"));
+    assert!(!is_cargo_target_bin_dir("/home/x/not-target/release"));
+}
+
+#[test]
 fn applet_comm_truncation_still_trusted() {
     // idlescreen-applet is 17 chars → kernel comm first 15.
     assert!(comm_matches_trusted("idlescreen-appl"));

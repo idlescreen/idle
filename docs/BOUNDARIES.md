@@ -86,7 +86,11 @@ control methods gate on the D-Bus peer's identity:
 
 1. **Same-UID check** (defense in depth; refuses cross-user on session bus).
 2. **Trusted-basename check** on `/proc/<pid>/exe`: only `idlescreen`,
-   `idle-tui`, and `idlescreen-applet` (with install-prefix and root ownership).
+   `idle-tui`, and `idlescreen-applet`, under one of:
+   - `/usr/bin` or `/usr/local/bin` (root-owned, not world-writable), or
+   - a cargo `…/target/debug` or `…/target/release` dir (owned by the
+     daemon euid, not world-writable) — local builds, or
+   - the same directory as the running daemon binary.
 3. **Fallback** to `/proc/<pid>/comm` when `/proc/<pid>/exe` is unreadable
    (typical under Yama / systemd `ProtectProc=invisible`).
 
