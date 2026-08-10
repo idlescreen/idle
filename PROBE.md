@@ -34,7 +34,6 @@ A probe does not “verify the code works.” It **destroys assumptions** behind
 | Artifact | Use |
 |----------|-----|
 | `DESIGN.md` | What “aligned” means |
-| `TOOLS.md` | Product metrics/scripts (optional) |
 | Line lock / fmt / lint | Hygiene + \(O\) |
 | Smokes / CI | **Suspects**, not proof |
 | Residual lists | Claim honesty |
@@ -42,11 +41,10 @@ A probe does not “verify the code works.” It **destroys assumptions** behind
 ```bash
 ROOT=<repo>
 test -f "$ROOT/DESIGN.md" && echo HAS_DESIGN=1
-test -f "$ROOT/TOOLS.md" && echo HAS_PRODUCT_TOOLS=1
 test -x "$ROOT/scripts/check_file_lines.sh" && "$ROOT/scripts/check_file_lines.sh"
 ```
 
-**Hard rule:** Smokes and product TOOLS never skip boundary/chaos dual-repro.
+**Hard rule:** Smokes never skip boundary/chaos dual-repro.
 
 ---
 
@@ -185,7 +183,7 @@ Residual after fix? (none | text):
 ```markdown
 ## Session
 ROOT:
-HAS_DESIGN / HAS_PRODUCT_TOOLS:
+HAS_DESIGN:
 Hygiene / line lock:
 Smokes (suspects):
 ```
@@ -204,7 +202,6 @@ Owned source globs:
 MAX_LINES (default 256):
 Line lock / hygiene commands:
 ROOT/DESIGN.md?:
-ROOT/TOOLS.md? (product-only):
 Known residual claims:
 CI / smoke commands (suspects):
 Threat model one-liner:
@@ -217,7 +214,7 @@ Threat model one-liner:
 ```text
 Initialize Code Probe from ~/PROBE.md with ~/AXIOMS.md loaded.
 Target ONE ROOT. Fill the adapter.
-Product DESIGN/TOOLS are inputs only.
+Product DESIGN.md is an input only if present; CI / scripts/ bundles ship the gates.
 Roles: Orchestrator, Worker, Challenger (or one agent wearing all three with dual-repro).
 P0→P8: boundary, chaos, lifecycle, claims, hygiene.
 CRIT: dual independent repro; no pipe-masked exit codes.

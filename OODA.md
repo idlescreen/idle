@@ -7,7 +7,7 @@
 **Always load:** `~/AXIOMS.md`.  
 **When claims need hostility:** `~/PROBE.md`.  
 **Product:** `ROOT/DESIGN.md` (each repo should have one).  
-**Product toolkit (optional):** `ROOT/TOOLS.md` — never replaces home process files.
+**Product toolkit (optional):** CI / scripts/ bundles — never replaces home process files.
 
 ---
 
@@ -32,7 +32,6 @@ Handoff file (e.g. PROGRESS.md):
 Must-not-regress rails (discover under ROOT):
 Hygiene commands (line lock, fmt, lint — if any):
 ROOT/DESIGN.md present?:
-ROOT/TOOLS.md present? (product-only):
 ```
 
 ---
@@ -42,8 +41,7 @@ ROOT/TOOLS.md present? (product-only):
 1. Handoff (PROGRESS / notes)  
 2. Backlog  
 3. **Tree health / hygiene snapshot** — line lock if present; obvious cruft; red rails  
-4. Product TOOLS metrics if `ROOT/TOOLS.md` defines them  
-5. Security-sensitive surfaces (auth, secrets, I/O, exec) if this product has them  
+4. Security-sensitive surfaces (auth, secrets, I/O, exec) if this product has them  
 
 Ask: best next **product** step (E-M / information value)?  
 Plan only enough to Act (AXIOMS: first principles + planning).
@@ -114,7 +112,7 @@ PROBE does **not** replace Lock hygiene; it **adds** hostility.
 ```text
 Run OODA from ~/OODA.md with ~/AXIOMS.md loaded.
 Target ONE repository ROOT. Fill the adapter.
-ROOT/DESIGN.md and ROOT/TOOLS.md are product inputs only if present.
+ROOT/DESIGN.md is a product input only if present; CI / scripts/ bundles ship the gates.
 Observe → Decide (≤5) → Act → Lock (hygiene + rails) → Ship.
 First principles, E-M, fail-closed, reverse entropy, security posture.
 No soft-pass. No foreign product assumptions.

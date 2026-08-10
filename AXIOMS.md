@@ -5,7 +5,7 @@
 **Purpose:** Always-on **first principles** of how we work. Not product scripts. Not DESIGN.
 
 **Siblings:** `~/OODA.md` (rotation) · `~/PROBE.md` (assumption hunt).  
-**Product docs** (`ROOT/DESIGN.md`, `ROOT/TOOLS.md`) are **inputs** — they never replace this file.
+**Product docs** (`ROOT/DESIGN.md`) are **inputs** — they never replace this file.
 
 ---
 
@@ -66,7 +66,7 @@ Hygiene is an **axiom**, not optional polish. Minimum bar before Ship (OODA Lock
 | **Git** | No force-push of shared main unless owner policy; don’t commit secrets or generated trash |
 | **Claims match tree** | Docs don’t assert features the code doesn’t have (or residual is named) |
 
-Product may add hygiene scripts in `ROOT/TOOLS.md` or CI; absence of a script does **not** waive the axiom.
+Product may add hygiene scripts in CI; absence of a script does **not** waive the axiom.
 
 ### 1.8 Short feedback
 Prefer small changes that produce a **true** pass/fail signal quickly.
@@ -89,7 +89,7 @@ Prefer small changes that produce a **true** pass/fail signal quickly.
 | **\(O\)** | Oversize owned files |
 
 Report when used: `S: n (Δ …) — U=_ F=_ W=_ O=_`  
-Repos may extend \(S\) in **ROOT/TOOLS.md** (product-only terms).
+Repos may extend \(S\) in their own product docs or CI config (no separate product-only doc required).
 
 ---
 
@@ -114,7 +114,6 @@ Repos may extend \(S\) in **ROOT/TOOLS.md** (product-only terms).
 | **`ROOT/DESIGN.md`** | What this product is. Don’t edit DESIGN for fake victory. |
 | **Backlog** | What to build after red rails / honesty. |
 | **`ROOT/PROGRESS.md`** | Handoff; update on Ship. |
-| **`ROOT/TOOLS.md`** | Product-only metrics/scripts — **additional** constraints. |
 | **Rails / CI** | Lock suspects; PROBE still challenges claims. |
 
 ---
