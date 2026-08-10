@@ -1,3 +1,6 @@
+> 🌐 **Organization Website:** [idlescreen.github.io](https://idlescreen.github.io)
+> 
+
 # IdleScreen (idle)
 
 Core daemon, CLI, plugin API, and presentation host for **IdleScreen**.
