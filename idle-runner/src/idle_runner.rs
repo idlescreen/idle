@@ -109,8 +109,9 @@ pub fn run_plugin_fullscreen(plugin_path: &str) -> Result<isize, Box<dyn std::er
     // `PluginSession` here closes the wave-3 reviewer hole where `run-plugin`
     // paths bypassed the gate that the IPC child path already enforced.
     let path = std::path::Path::new(plugin_path);
-    let mut session = crate::plugin_session::PluginSession::load_path_with_options(path, None, None)
-        .map_err(|e| -> Box<dyn std::error::Error> { e.to_string().into() })?;
+    let mut session =
+        crate::plugin_session::PluginSession::load_path_with_options(path, None, None)
+            .map_err(|e| -> Box<dyn std::error::Error> { e.to_string().into() })?;
 
     // `load_path_with_options` populates `session.plugin = Some(guard)` on the
     // `Ok` arm; the `Option` only exists for the hot-reload swap in
