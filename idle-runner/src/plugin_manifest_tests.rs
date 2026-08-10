@@ -1,0 +1,153 @@
+// Test files legitimately panic; suppress the lint at file scope.
+#![allow(clippy::panic)]
+// SPDX-License-Identifier: MIT
+
+//! Adversarial tests for the `.idleplugin.toml` manifest gate.
+//!
+//! Every rejection path must fail *closed*: a plugin whose manifest is
+//! missing, stale, mismatched or over-reaching must not load.
+
+use crate::launcher::PluginError;
+use crate::plugin_session::loading::{check_capabilities, check_entry, load_manifest_for};
+use idle_api::plugin_manifest::{self, Manifest};
+use std::fs;
+use std::path::PathBuf;
+use std::sync::Mutex;
+
+/// Serialises the tests that mutate process-global env vars.
+static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+const BASE: &str = r#"schema_version = 1
+plugin_id      = "io.github.idlescreen.beams"
+plugin_version = "2.0.3"
+api_version    = 1
+
+[entry]
+runtime = "native"
+library = "libscreensaver_beams.so"
+
+[capabilities]
+network          = false
+audio_capture    = false
+audio_output     = false
+filesystem_read  = []
+filesystem_write = []
+
+[sandbox]
+profile = "minimal"
+
+[dependencies]
+native = ["libc6"]
+wasm   = []
+
+[headless_render]
+default_fps        = 60
+deterministic_seed = true
+gpu_optional       = true
+"#;
+
+/// Stage `libscreensaver_beams.so` plus an optional sibling manifest.
+fn staged(manifest: Option<&str>) -> (tempfile::TempDir, PathBuf) {
+    let dir = tempfile::tempdir().unwrap();
+    let so = dir.path().join("libscreensaver_beams.so");
+    fs::write(&so, b"not-an-elf").unwrap();
+    if let Some(text) = manifest {
+        fs::write(plugin_manifest::sibling_path(&so), text).unwrap();
+    }
+    (dir, so)
+}
+
+fn parse(text: &str) -> Manifest {
+    plugin_manifest::parse_str(text, &PathBuf::from("test.toml")).unwrap()
+}
+
+#[test]
+fn manifest_missing_fails_closed() {
+    let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    unsafe { std::env::remove_var("IDLE_ALLOW_UNSIGNED_PLUGINS") };
+    let (_d, so) = staged(None);
+    assert!(matches!(
+        load_manifest_for(&so),
+        Err(PluginError::ManifestMissing(_))
+    ));
+}
+
+#[test]
+fn manifest_wrong_schema_version_fails_closed() {
+    let text = BASE.replace("schema_version = 1", "schema_version = 99");
+    let (_d, so) = staged(Some(&text));
+    let err = load_manifest_for(&so).unwrap_err();
+    assert!(
+        matches!(err, PluginError::ManifestUnsupported(ref m) if m.contains("99")),
+        "expected schema refusal, got {err:?}"
+    );
+}
+
+#[test]
+fn manifest_unsupported_runtime_fails_closed() {
+    let m = parse(&BASE.replace(r#"runtime = "native""#, r#"runtime = "wasm""#));
+    let err = check_entry(&m, &PathBuf::from("libscreensaver_beams.so")).unwrap_err();
+    assert!(
+        matches!(err, PluginError::ManifestUnsupported(ref s) if s.contains("DECISION-WASM-01")),
+        "wasm must be refused with the decision reference, got {err:?}"
+    );
+}
+
+#[test]
+fn manifest_library_mismatch_fails_closed() {
+    let m = parse(&BASE.replace("libscreensaver_beams.so", "wrong.so"));
+    let err = check_entry(&m, &PathBuf::from("/x/libscreensaver_beams.so")).unwrap_err();
+    assert!(matches!(err, PluginError::ManifestUnsupported(_)));
+}
+
+#[test]
+fn manifest_invalid_plugin_id_fails() {
+    let m = parse(&BASE.replace(r#""io.github.idlescreen.beams""#, r#""beams""#));
+    assert!(plugin_manifest::validate(&m).is_err(), "bare id must fail");
+}
+
+#[test]
+fn manifest_round_trip_toml() {
+    let first = parse(BASE);
+    let emitted = toml::to_string(&first).unwrap();
+    assert_eq!(
+        first,
+        parse(&emitted),
+        "parse -> emit -> parse must be lossless"
+    );
+}
+
+#[test]
+fn manifest_load_for_returns_manifest() {
+    let (_d, so) = staged(Some(BASE));
+    let m = load_manifest_for(&so).unwrap().unwrap();
+    assert_eq!(m.plugin_id, "io.github.idlescreen.beams");
+    assert_eq!(m.entry.library, "libscreensaver_beams.so");
+    assert_eq!(m.sandbox.profile, "minimal");
+    assert!(m.is_native() && m.library_matches(&so));
+}
+
+#[test]
+fn capability_mismatch_rejects_network() {
+    let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    unsafe { std::env::remove_var("IDLE_PERMIT_NETWORK_PLUGINS") };
+    let m = parse(&BASE.replace("network          = false", "network          = true"));
+    let err = check_capabilities(&m).unwrap_err();
+    assert!(
+        matches!(err, PluginError::CapabilityMismatch(ref s) if s.contains("network")),
+        "network must be refused without the opt-in, got {err:?}"
+    );
+}
+
+#[test]
+fn unsigned_legacy_so_loaded_under_flag() {
+    let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let (_d, so) = staged(None);
+    unsafe { std::env::set_var("IDLE_ALLOW_UNSIGNED_PLUGINS", "1") };
+    let got = load_manifest_for(&so);
+    unsafe { std::env::remove_var("IDLE_ALLOW_UNSIGNED_PLUGINS") };
+    assert!(
+        matches!(got, Ok(None)),
+        "flagged bare .so should load with no manifest, got {got:?}"
+    );
+}

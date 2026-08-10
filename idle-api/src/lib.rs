@@ -68,6 +68,9 @@ pub use terminal_cell::TerminalCell;
 
 pub mod locks;
 
+/// `.idleplugin.toml` capability manifest (schema v1).
+pub mod plugin_manifest;
+
 /// Compatibility module structures for minimal changes in screensaver ports.
 pub mod core {
     pub use crate::{

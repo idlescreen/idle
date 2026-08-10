@@ -21,8 +21,24 @@ pub enum PluginError {
     ApiVersionMismatch { found: u32, expected: u32 },
     #[error("sandbox error: {0}")]
     Sandbox(String),
+    #[error("plugin '{0}' has no .idleplugin.toml manifest")]
+    ManifestMissing(String),
+    #[error("plugin manifest unsupported: {0}")]
+    ManifestUnsupported(String),
+    #[error("plugin capability refused: {0}")]
+    CapabilityMismatch(String),
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
+}
+
+impl From<idle_api::plugin_manifest::ManifestError> for PluginError {
+    fn from(err: idle_api::plugin_manifest::ManifestError) -> Self {
+        use idle_api::plugin_manifest::ManifestError as ME;
+        match err {
+            ME::Missing(path) => Self::ManifestMissing(path.display().to_string()),
+            other => Self::ManifestUnsupported(other.to_string()),
+        }
+    }
 }
 
 /// The canonical list of allowed saver basenames.

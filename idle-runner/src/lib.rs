@@ -35,6 +35,11 @@ mod launcher_resolve;
 mod launcher_trust;
 pub mod plugin_session;
 pub mod sandbox;
+pub mod sandbox_profiles;
 pub mod toolkit;
 
 // Tests can run with `cargo test -- --nocapture` to see tracing output.
+
+#[cfg(test)]
+#[path = "plugin_manifest_tests.rs"]
+mod plugin_manifest_tests;

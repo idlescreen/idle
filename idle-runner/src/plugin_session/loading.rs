@@ -1,15 +1,95 @@
 // SPDX-License-Identifier: MIT
 
 use idle_api::ScreensaverInstance;
+use idle_api::plugin_manifest::{self, Manifest, host};
 use idle_upscaler::{FilterMode, FrameUpscaler, resolve_render_scale};
 use libloading::Library;
 use std::path::Path;
+use std::sync::Arc;
 use std::time::Duration;
 
 use crate::cell_renderer::CellRenderer;
 use crate::launcher::{LaunchMode, PluginError, resolve_saver_binary};
 
 use super::{PluginGuard, PluginSession};
+
+/// Read, validate and capability-check the manifest beside `path`.
+///
+/// Returns `Ok(None)` only for the operator-gated unsigned escape hatch; a
+/// missing manifest is otherwise a hard refusal.
+pub(crate) fn load_manifest_for(path: &Path) -> Result<Option<Arc<Manifest>>, PluginError> {
+    let manifest = match plugin_manifest::load_for(path) {
+        Ok(m) => m,
+        Err(plugin_manifest::ManifestError::Missing(missing)) => {
+            if host::unsigned_plugins_allowed() {
+                // Audited escape hatch: legacy bare .so, no capability claims.
+                tracing::warn!(
+                    plugin = %path.display(),
+                    manifest = %missing.display(),
+                    result = "unsigned_accepted",
+                    "loading plugin WITHOUT a manifest ({}=1); capabilities unverified",
+                    host::ALLOW_UNSIGNED_ENV
+                );
+                return Ok(None);
+            }
+            return Err(PluginError::ManifestMissing(missing.display().to_string()));
+        }
+        Err(other) => return Err(other.into()),
+    };
+
+    plugin_manifest::validate(&manifest)?;
+    check_capabilities(&manifest)?;
+    Ok(Some(Arc::new(manifest)))
+}
+
+/// Refuse capabilities the host cannot mediate at the OS level yet.
+///
+/// Sprint 02 enforces by refusal; seccomp mediation is Sprint 03+ work, so an
+/// operator who needs these must opt in explicitly and knowingly.
+pub(crate) fn check_capabilities(manifest: &Manifest) -> Result<(), PluginError> {
+    let requested = manifest.ambient_capabilities();
+    if requested.is_empty() {
+        return Ok(());
+    }
+    let list = requested.join(", ");
+    if host::network_plugins_permitted() {
+        tracing::warn!(
+            plugin_id = %manifest.plugin_id,
+            capabilities = %list,
+            "plugin declares unmediated capabilities; permitted by {}=1",
+            host::PERMIT_NETWORK_ENV
+        );
+        return Ok(());
+    }
+    tracing::error!(
+        plugin_id = %manifest.plugin_id,
+        capabilities = %list,
+        "refusing plugin: declares capabilities the host cannot enforce"
+    );
+    Err(PluginError::CapabilityMismatch(format!(
+        "plugin '{}' declares [{}]; set {}=1 to permit",
+        manifest.plugin_id,
+        list,
+        host::PERMIT_NETWORK_ENV
+    )))
+}
+
+/// Assert the manifest's entry block describes the library we resolved.
+pub(crate) fn check_entry(manifest: &Manifest, resolved: &Path) -> Result<(), PluginError> {
+    if !manifest.is_native() {
+        return Err(PluginError::ManifestUnsupported(
+            "wasm runtime not built in this build; see DECISION-WASM-01 in PM.md".to_string(),
+        ));
+    }
+    if !manifest.library_matches(resolved) {
+        return Err(PluginError::ManifestUnsupported(format!(
+            "manifest entry.library '{}' does not match resolved library '{}'",
+            manifest.entry.library,
+            resolved.display()
+        )));
+    }
+    Ok(())
+}
 
 impl PluginSession {
     #[tracing::instrument(skip_all, fields(saver_name = %saver_name))]
@@ -78,8 +158,16 @@ impl PluginSession {
         // can execute unrestricted. Sandbox failures are fail-closed: refuse to
         // load the plugin rather than run unsandboxed.
         crate::caption_overlay::init_font();
-        crate::sandbox::enforce_sandbox_for_plugin(path)
-            .map_err(crate::launcher::PluginError::Sandbox)?;
+
+        // Manifest gate: read and validate the capability declaration before
+        // any plugin code can run, so the sandbox is shaped by what the plugin
+        // admits to needing.
+        let manifest = load_manifest_for(path)?;
+        match manifest.as_deref() {
+            Some(m) => crate::sandbox::enforce_sandbox_for_plugin_with_manifest(path, m),
+            None => crate::sandbox::enforce_sandbox_for_plugin(path),
+        }
+        .map_err(crate::launcher::PluginError::Sandbox)?;
 
         unsafe {
             let lib = Library::new(path)?;
@@ -105,6 +193,12 @@ impl PluginSession {
                 }
             }
 
+            // Entry-point assertions: the manifest must describe the library we
+            // actually resolved, or the declaration it carries is meaningless.
+            if let Some(m) = manifest.as_deref() {
+                check_entry(m, path)?;
+            }
+
             let create_fn: libloading::Symbol<unsafe extern "C" fn() -> *mut ScreensaverInstance> =
                 lib.get(b"create_screensaver")
                     .map_err(|_| PluginError::SymbolMissing("create_screensaver"))?;
@@ -126,6 +220,7 @@ impl PluginSession {
             Ok(Self {
                 plugin: Some(guard),
                 plugin_path: path.to_path_buf(),
+                manifest,
                 renderer,
                 upscaler,
                 render_scale,
