@@ -1,14 +1,32 @@
-
+# ==========================================
+# GLOBAL ORG IGNORES (Agent, OS, IDE, Build)
+# ==========================================
+.agents/
+scratch/
+.env
+.env.*
+.envrc
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+/target/
+target/
+**/*.rs.bk
+*.pdb
+__pycache__/
+*.pyc
+# ==========================================
 .cursor/
 data/
 dist/
-.DS_Store
-.env
 .env.*.local
 .env.local
 frontend/dist/
 frontend/target/
-.idea/
 # IDE/Editor config
 # Local configuration
 # Local databases and user data
@@ -18,11 +36,5 @@ mutants.out.old/
 # OS specific files
 package
 # Rust build artifacts
-*.swo
-*.swp
-**/target/
-target/
-Thumbs.db
 # Trunk build artifacts
 uploads/
-.vscode/
