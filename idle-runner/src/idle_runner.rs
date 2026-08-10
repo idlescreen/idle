@@ -79,58 +79,51 @@ fn run_preview_stub(_saver: &mut dyn Screensaver) -> isize {
 }
 
 /// Loads a screensaver plugin dynamic library and runs it fullscreen.
+///
+/// Routed through [`crate::plugin_session::PluginSession::load_path_with_options`]
+/// so the **manifest gate** applies to the `idle-daemon run-plugin <saver>` CLI
+/// subcommand, the TUI preview fallback, and the COSMIC preview fallback (all
+/// three of which call this function directly). The loader runs, in order:
+///
+/// 1. read the sibling `.idleplugin.toml` manifest,
+/// 2. validate it (`schema_version`, `plugin_id`, `[entry]`, …),
+/// 3. capability-check it (refuse unmediated network/audio unless opted in),
+/// 4. enforce Landlock using the manifest's `sandbox.profile` + capability
+///    trees (falling back to the `minimal` profile when no manifest is
+///    present),
+/// 5. `dlopen` the `.so` (ELF constructors only fire once the sandbox is
+///    already on, so plugin code cannot escape it),
+/// 6. ABI-version-negotiate,
+/// 7. assert `manifest.entry.library` matches the resolved path, and
+/// 8. resolve the `create_screensaver` / `destroy_screensaver` symbols and
+///    instantiate the screensaver.
+///
+/// A bare `.so` with no manifest is refused by default. The operator escape
+/// hatch is `IDLE_ALLOW_UNSIGNED_PLUGINS=1` (see
+/// `idle_api::plugin_manifest::host::ALLOW_UNSIGNED_ENV`). Every gate is
+/// fail-closed: any error from the loader propagates here and the plugin is
+/// not run.
 #[tracing::instrument(skip_all, fields(plugin_path = %plugin_path))]
 pub fn run_plugin_fullscreen(plugin_path: &str) -> Result<isize, Box<dyn std::error::Error>> {
-    use idle_api::ScreensaverInstance;
+    // Manifest gate entry point: see the doc comment above. Routing through
+    // `PluginSession` here closes the wave-3 reviewer hole where `run-plugin`
+    // paths bypassed the gate that the IPC child path already enforced.
+    let path = std::path::Path::new(plugin_path);
+    let mut session = crate::plugin_session::PluginSession::load_path_with_options(path, None, None)
+        .map_err(|e| -> Box<dyn std::error::Error> { e.to_string().into() })?;
 
-    // Order matters: load caption font, then enforce Landlock **before** loading
-    // the plugin .so. ELF constructors run on `Library::new`, so the sandbox
-    // must already be active or plugin code can execute unrestricted. Sandbox
-    // failures are fail-closed: refuse to load the plugin rather than run
-    // unsandboxed.
-    crate::caption_overlay::init_font();
-    crate::sandbox::enforce_sandbox_for_plugin(std::path::Path::new(plugin_path))
-        .map_err(crate::launcher::PluginError::Sandbox)?;
-
-    unsafe {
-        let lib = libloading::Library::new(plugin_path)?;
-
-        let create_fn: libloading::Symbol<unsafe extern "C" fn() -> *mut ScreensaverInstance> =
-            lib.get(b"create_screensaver")?;
-        let destroy_fn: libloading::Symbol<unsafe extern "C" fn(*mut ScreensaverInstance)> =
-            lib.get(b"destroy_screensaver")?;
-
-        let raw_ptr = create_fn();
-        if raw_ptr.is_null() {
-            return Err("failed to create screensaver instance (null pointer)".into());
-        }
-
-        struct PluginGuard {
-            ptr: *mut ScreensaverInstance,
-            destroy: unsafe extern "C" fn(*mut ScreensaverInstance),
-            _lib: libloading::Library,
-        }
-
-        impl Drop for PluginGuard {
-            fn drop(&mut self) {
-                unsafe {
-                    (self.destroy)(self.ptr);
-                }
-            }
-        }
-
-        let guard = PluginGuard {
-            ptr: raw_ptr,
-            destroy: *destroy_fn,
-            _lib: lib,
-        };
-
-        let exit_code = match run_fullscreen(&mut *(*guard.ptr).inner) {
-            Ok(()) => 0,
-            Err(_) => 1,
-        };
-        Ok(exit_code)
-    }
+    // `load_path_with_options` populates `session.plugin = Some(guard)` on the
+    // `Ok` arm; the `Option` only exists for the hot-reload swap in
+    // `PluginSession::reload`. Treat the (unreachable) `None` arm as a
+    // load failure rather than panicking, to keep this fail-closed.
+    let Some(guard) = session.plugin.as_mut() else {
+        return Err("plugin loader returned Ok but no plugin guard".into());
+    };
+    let exit_code = match run_fullscreen(guard.saver_mut()) {
+        Ok(()) => 0,
+        Err(_) => 1,
+    };
+    Ok(exit_code)
 }
 
 // ---------------------------------------------------------------------------
