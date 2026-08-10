@@ -1,6 +1,6 @@
-# Creating Custom Screensavers for Trance
+# Creating Custom Screensavers for Idlescreen
 
-Trance supports dynamic screensaver plugins compiled as Rust shared libraries (`.so` on Linux). This guide walks you through setting up, implementing, compiling, and previewing your own custom screensaver.
+Idlescreen supports dynamic screensaver plugins compiled as Rust shared libraries (`.so` on Linux). This guide walks you through setting up, implementing, compiling, and previewing your own custom screensaver.
 
 ---
 
@@ -27,7 +27,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 # Link to the idle-api dependency
-idle-api = { git = "https://github.com/idlescreen/idle-core.git", branch = "master" }
+idle-api = { git = "https://github.com/idlescreen/idle.git", branch = "master" }
 ```
 
 ---
@@ -92,7 +92,7 @@ impl Screensaver for MyEffect {
 
 ## 3. Registering FFI Entrypoints
 
-The Trance daemon loads plugins dynamically using FFI (Foreign Function Interface). You must export the following unmangled FFI functions at the bottom of your `src/lib.rs` to allow creation and destruction:
+The Idlescreen daemon loads plugins dynamically using FFI (Foreign Function Interface). You must export the following unmangled FFI functions at the bottom of your `src/lib.rs` to allow creation and destruction:
 
 ```rust
 #[unsafe(no_mangle)]
@@ -133,17 +133,17 @@ This will produce the compiled shared library:
 ## 5. Previewing and Running
 
 ### Development Preview
-You can run and test your compiled `.so` plugin directly using the `trance` CLI command without installing it:
+You can run and test your compiled `.so` plugin directly using the `idle` CLI command without installing it:
 
 ```bash
-trance preview target/release/libscreensaver_myplugin.so
+idle preview target/release/libscreensaver_myplugin.so
 ```
 
 ### Production Installation
 To make the plugin permanently available to your `idle-daemon` session:
 1. Copy the `.so` file to the user screensavers directory:
    ```bash
-   mkdir -p ~/.local/share/trance/screensavers
-   cp target/release/libscreensaver_myplugin.so ~/.local/share/trance/screensavers/
+   mkdir -p ~/.local/share/idlescreen/screensavers
+   cp target/release/libscreensaver_myplugin.so ~/.local/share/idlescreen/screensavers/
    ```
 2. The daemon will automatically discover the new screensaver on next start or configuration reload.

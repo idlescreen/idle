@@ -172,7 +172,6 @@ By design IdleScreen does **not** aim to be:
 - Treat this file as architecture law for the org.
 - Product PRs that cross a boundary (e.g. raw KMS, lock-screen replacement,
   compositor-in-process) require an explicit design decision and an update here.
-- Related maps: [TARGET.md](TARGET.md) (repo inventory), idle-core
-  `docs/BOUNDARIES.md` (engine-local copy).
+- Related maps: [TARGET.md](../../.github/docs/TARGET.md) (repo inventory), idle-core docs/BOUNDARIES.md (engine-local copy).
 
 Last locked: 2026-07-23.
