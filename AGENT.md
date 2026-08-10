@@ -39,3 +39,12 @@ Enforce on every change in this repository.
   (org canonical copy: idlescreen/.github `docs/BOUNDARIES.md`).
 - Stay a Wayland client and plugin host. Do not become a compositor, lock
   screen, or raw DRM/KMS application.
+
+## Process kit
+
+This repo follows the global process kit — local copies of the always-on process documents live next to this file:
+
+- `AXIOMS.md` — always-on axioms (hygiene, security, entropy)
+- `OODA.md` — Observe/Orient/Decide/Act rotation
+- `PROBE.md` — assumption-hunt protocol
+
