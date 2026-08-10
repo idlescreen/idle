@@ -91,7 +91,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let path = std::env::var("PATH")?;
     let cargo_bin = format!("{}/.cargo/bin", home);
     if !path.contains(&cargo_bin) {
-        std::env::set_var("PATH", format!("{}:{}", cargo_bin, path));
+        // SAFETY: single-threaded QA-gate setup before any other threads exist.
+        unsafe {
+            std::env::set_var("PATH", format!("{}:{}", cargo_bin, path));
+        }
     }
 
     if skip_tests() {
