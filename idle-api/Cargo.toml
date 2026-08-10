@@ -7,6 +7,9 @@ license = "Apache-2.0"
 
 [dependencies]
 bytemuck = { version = "1.21", features = ["derive"] }
+toml = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
 
 [dev-dependencies]
 proptest = "1"
