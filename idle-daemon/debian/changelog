@@ -1,3 +1,17 @@
+idle-daemon (3.0.3-1) unstable; urgency=medium
+
+  * Audit hardening release:
+    - F-009 (MED): release push gate requires IDLE_RELEASE_TAG env var and
+      a GPG-signed tag; commit-then-tag-then-push order so the tag points
+      at the release commit (not the parent).
+    - F-012 (MED): clippy::unwrap_used / clippy::expect_used deny lints
+      enabled in idle-api, idle-runner, idle-cli crates (with test
+      cfg_attr allow); mirrors the existing idle-daemon policy.
+    - F-016 / PROBE F-006: extract inline test modules out of
+      idle-ipc/src/lib.rs to restore the ≤256-line cap.
+
+ -- IdleScreen <jerydleuck@gmail.com>  Mon, 10 Aug 2026 05:30:00 +0200
+
 idle-daemon (3.0.2-1) unstable; urgency=medium
 
   * D-Bus activation: drop invalid User=session (dbus-broker rejects it).

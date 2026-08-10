@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 IdleScreen
 
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
+
 use std::process::ExitCode;
 
 use anyhow::{Context, Result, bail};

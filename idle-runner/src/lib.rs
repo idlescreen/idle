@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 IdleScreen
 
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
+
 //! Vendored subset of the `library` crate, scoped to what screensaver-security
 //! actually uses. See `LIBRARY_VENDORED.md` for the full list of source
 //! provenance and what was deliberately omitted.

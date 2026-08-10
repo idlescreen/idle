@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 IdleScreen
 
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
+
 //! Lightweight shared API definitions, traits, and math utilities for terminal
 //! screensaver plugins. Host applications register callbacks for live system
 //! queries; plugins depend only on this crate for portable drawing primitives.
