@@ -17,7 +17,7 @@ use super::{PluginGuard, PluginSession};
 ///
 /// Returns `Ok(None)` only for the operator-gated unsigned escape hatch; a
 /// missing manifest is otherwise a hard refusal.
-pub(super) fn load_manifest_for(path: &Path) -> Result<Option<Arc<Manifest>>, PluginError> {
+pub(crate) fn load_manifest_for(path: &Path) -> Result<Option<Arc<Manifest>>, PluginError> {
     let manifest = match plugin_manifest::load_for(path) {
         Ok(m) => m,
         Err(plugin_manifest::ManifestError::Missing(missing)) => {
@@ -46,7 +46,7 @@ pub(super) fn load_manifest_for(path: &Path) -> Result<Option<Arc<Manifest>>, Pl
 ///
 /// Sprint 02 enforces by refusal; seccomp mediation is Sprint 03+ work, so an
 /// operator who needs these must opt in explicitly and knowingly.
-pub(super) fn check_capabilities(manifest: &Manifest) -> Result<(), PluginError> {
+pub(crate) fn check_capabilities(manifest: &Manifest) -> Result<(), PluginError> {
     let requested = manifest.ambient_capabilities();
     if requested.is_empty() {
         return Ok(());
@@ -75,7 +75,7 @@ pub(super) fn check_capabilities(manifest: &Manifest) -> Result<(), PluginError>
 }
 
 /// Assert the manifest's entry block describes the library we resolved.
-pub(super) fn check_entry(manifest: &Manifest, resolved: &Path) -> Result<(), PluginError> {
+pub(crate) fn check_entry(manifest: &Manifest, resolved: &Path) -> Result<(), PluginError> {
     if !manifest.is_native() {
         return Err(PluginError::ManifestUnsupported(
             "wasm runtime not built in this build; see DECISION-WASM-01 in PM.md".to_string(),

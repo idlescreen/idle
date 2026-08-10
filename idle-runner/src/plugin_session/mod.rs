@@ -7,7 +7,7 @@ use idle_api::{Screensaver, ScreensaverInstance, TerminalCell};
 use idle_upscaler::FrameUpscaler;
 use std::time::Duration;
 
-mod loading;
+pub(crate) mod loading;
 mod reloading;
 
 pub(crate) struct PluginGuard {

@@ -115,3 +115,7 @@ fn user_data_root() -> Option<PathBuf> {
     };
     base.is_absolute().then(|| base.join("idle"))
 }
+
+#[cfg(test)]
+#[path = "sandbox_profile_tests.rs"]
+mod sandbox_profile_tests;
