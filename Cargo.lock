@@ -629,7 +629,7 @@ checksum = "dfa686283ad6dd069f105e5ab091b04c62850d3e4cf5d67debad1933f55023df"
 
 [[package]]
 name = "idle-api"
-version = "3.0.1"
+version = "3.1.0"
 dependencies = [
  "bytemuck",
  "proptest",
@@ -640,7 +640,7 @@ dependencies = [
 
 [[package]]
 name = "idle-cli"
-version = "3.0.1"
+version = "3.1.0"
 dependencies = [
  "anyhow",
  "idle-dbus",
@@ -652,7 +652,7 @@ dependencies = [
 
 [[package]]
 name = "idle-daemon"
-version = "3.0.3"
+version = "3.1.0"
 dependencies = [
  "anyhow",
  "futures-lite",
@@ -693,11 +693,11 @@ dependencies = [
 
 [[package]]
 name = "idle-plugins-all"
-version = "3.0.1"
+version = "3.1.0"
 
 [[package]]
 name = "idle-runner"
-version = "3.0.1"
+version = "3.1.0"
 dependencies = [
  "bytemuck",
  "crossterm",
