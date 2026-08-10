@@ -151,3 +151,45 @@ fn unsigned_legacy_so_loaded_under_flag() {
         "flagged bare .so should load with no manifest, got {got:?}"
     );
 }
+
+/// Regression test for the wave-3 reviewer finding: `run_plugin_fullscreen`
+/// (the entry point used by `idle-daemon run-plugin <saver>`, the TUI preview
+/// fallback, and the COSMIC preview fallback) used to call `libloading::Library::new`
+/// directly, bypassing the manifest gate that the IPC child path already had.
+///
+/// After the fix, `run_plugin_fullscreen` is routed through
+/// `PluginSession::load_path_with_options`, so the gate is on every code path
+/// that resolves a saver binary.
+#[test]
+fn run_plugin_fullscreen_refuses_bare_so_without_flag() {
+    let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    unsafe { std::env::remove_var("IDLE_ALLOW_UNSIGNED_PLUGINS") };
+    let (_d, so) = staged(None);
+    let err = crate::idle_runner::run_plugin_fullscreen(so.to_string_lossy().as_ref())
+        .expect_err("bare .so must be refused by the manifest gate, not loaded");
+    let msg = err.to_string();
+    assert!(
+        msg.contains("idleplugin.toml") || msg.contains("ManifestMissing"),
+        "expected ManifestMissing error from the gate, got: {msg}"
+    );
+}
+
+/// Companion to `run_plugin_fullscreen_refuses_bare_so_without_flag`: when
+/// `IDLE_ALLOW_UNSIGNED_PLUGINS=1` is set, the manifest gate must *pass* (i.e.
+/// the error must not be `ManifestMissing`). The staged `.so` is `not-an-elf`
+/// so a downstream gate (the `Library::new` step) is expected to reject it,
+/// which proves the manifest step let it through.
+#[test]
+fn run_plugin_fullscreen_passes_gate_under_flag() {
+    let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let (_d, so) = staged(None);
+    unsafe { std::env::set_var("IDLE_ALLOW_UNSIGNED_PLUGINS", "1") };
+    let result = crate::idle_runner::run_plugin_fullscreen(so.to_string_lossy().as_ref());
+    unsafe { std::env::remove_var("IDLE_ALLOW_UNSIGNED_PLUGINS") };
+    let err = result.expect_err("fake .so must fail somewhere; the point is *where*");
+    let msg = err.to_string();
+    assert!(
+        !msg.contains("idleplugin.toml"),
+        "manifest gate must pass under IDLE_ALLOW_UNSIGNED_PLUGINS=1, got: {msg}"
+    );
+}
