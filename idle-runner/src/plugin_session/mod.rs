@@ -34,6 +34,9 @@ impl PluginGuard {
 pub struct PluginSession {
     pub(crate) plugin: Option<PluginGuard>,
     pub(crate) plugin_path: std::path::PathBuf,
+    /// Capability declaration this plugin was admitted under. `None` only for
+    /// the operator-gated unsigned escape hatch.
+    pub(crate) manifest: Option<std::sync::Arc<idle_api::plugin_manifest::Manifest>>,
     pub(crate) renderer: CellRenderer,
     pub(crate) upscaler: FrameUpscaler,
     pub(crate) render_scale: f32,
@@ -53,6 +56,11 @@ pub struct PluginSession {
 impl PluginSession {
     pub fn grid(&self) -> &[TerminalCell] {
         &self.grid
+    }
+
+    /// Capability declaration this session was admitted under, if any.
+    pub fn manifest(&self) -> Option<&idle_api::plugin_manifest::Manifest> {
+        self.manifest.as_deref()
     }
 
     pub fn render_scale(&self) -> f32 {

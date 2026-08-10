@@ -29,12 +29,26 @@ impl PluginSession {
 
         self.plugin = None;
 
+        // Re-read the manifest: the file on disk changed, so the capability
+        // claims we admitted the old library under may no longer hold. Falling
+        // back to the cached manifest would let a swapped .so inherit trust.
+        let manifest = super::loading::load_manifest_for(&self.plugin_path)?;
+
         // Re-assert sandbox allow for this path before constructors run.
-        crate::sandbox::enforce_sandbox_for_plugin(&self.plugin_path)
-            .map_err(PluginError::Sandbox)?;
+        match manifest.as_deref() {
+            Some(m) => {
+                crate::sandbox::enforce_sandbox_for_plugin_with_manifest(&self.plugin_path, m)
+            }
+            None => crate::sandbox::enforce_sandbox_for_plugin(&self.plugin_path),
+        }
+        .map_err(PluginError::Sandbox)?;
 
         let mut new_guard = unsafe {
             let lib = Library::new(&self.plugin_path)?;
+
+            if let Some(m) = manifest.as_deref() {
+                super::loading::check_entry(m, &self.plugin_path)?;
+            }
 
             let create_fn: libloading::Symbol<unsafe extern "C" fn() -> *mut ScreensaverInstance> =
                 lib.get(b"create_screensaver")
@@ -65,6 +79,7 @@ impl PluginSession {
         }
 
         self.plugin = Some(new_guard);
+        self.manifest = manifest;
         tracing::info!("Plugin successfully reloaded and state restored.");
         Ok(())
     }
