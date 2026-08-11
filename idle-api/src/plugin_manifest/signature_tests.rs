@@ -51,6 +51,26 @@ fn missing_signature_refuses_when_required() {
 }
 
 #[test]
+fn default_off_with_forged_signature_passes_permissively() {
+    // Documents the rollout-safety default: with IDLE_REQUIRE_MANIFEST_SIGNATURE
+    // unset, even a garbage sig is accepted. Operators who want fail-closed
+    // enforcement MUST opt in. The test pins this contract so a future
+    // refactor doesn't accidentally flip the default.
+    let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    unsafe { std::env::remove_var("IDLE_REQUIRE_MANIFEST_SIGNATURE") };
+    let dir = tempfile::tempdir().unwrap();
+    let m = make_manifest(dir.path());
+    let s = signature_path(&m);
+    fs::write(&s, b"-----BEGIN PGP SIGNATURE-----\ndeadbeef\n-----END PGP SIGNATURE-----\n").unwrap();
+    assert!(
+        verify_signature(&m).is_ok(),
+        "default-off must accept forged sig (rollout safety); \
+         set IDLE_REQUIRE_MANIFEST_SIGNATURE=1 to enforce"
+    );
+    fs::remove_file(&s).ok();
+}
+
+#[test]
 fn signature_present_without_requirement_warns_but_passes() {
     let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     unsafe { std::env::remove_var("IDLE_REQUIRE_MANIFEST_SIGNATURE") };
