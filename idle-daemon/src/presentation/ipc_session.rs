@@ -185,6 +185,7 @@ impl IpcPluginSession {
 
     /// True when the saver subprocess has exited (either cleanly or after
     /// `kill_child`). The IPC socket closing is the parent-side signal.
+    #[allow(dead_code)]
     pub fn child_is_dead(&mut self) -> bool {
         match self.child.as_mut() {
             Some(child) => matches!(child.try_wait(), Ok(Some(_))),
