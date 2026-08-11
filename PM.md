@@ -3,7 +3,7 @@
 **Sources:** `DESIGN.md` is the vision. PM.md lists what is done and
 what is not.
 
-**Last pass:** 2026-08-10 (Sprint 03 close-out: per-capability gates + cgroup CPU budget + per-plugin watchdog)
+**Last pass:** 2026-08-10 (Sprint 04 close-out: GPU budget, render-loop watchdog, signature verification, presentation refactor onto `Arc<dyn OverlaySurface>`, OODA sweep including F-101 frame-loop panic fix, F-102 ABI version required, F-202 audit log JSON escape. Mac/Windows shims remain out of scope per user.)
 
 ---
 
@@ -26,10 +26,15 @@ what is not.
 | Headless render mode (PNG/MP4/stdout) | **done** | merged to render/master (0b7a11c) | 2026-08-10 |
 | Homebrew / scoop / winget / MSI channels | **deferred** (DECISION-CHANNEL-MORE = Option A) | — | — |
 | Audio capture capability gate | **done** | per-capability opt-in (`IDLE_PERMIT_AUDIO_CAPTURE` / `_OUTPUT`); profile-aware network gate | 2026-08-10 |
-| Per-saver GPU/CPU budget enforcement | **partial** | CPU via cgroup v2 done; GPU residual (no portable API) | 2026-08-10 |
-| Watchdog on render loop + per-plugin | **partial** | per-plugin tick watchdog done; render-loop watchdog residual (daemon-side, Sprint 04) | 2026-08-10 |
-| macOS / Windows sandbox (Seatbelt / AppContainer) | **not** | — | — |
-| Multi-platform idle detection (IOKit, GetLastInputInfo) | **not** | — | — |
+| Per-saver GPU/CPU budget enforcement | **done** | CPU via cgroup v2 done; GPU via 3 vendor backends (nvidia-smi / intel_gpu_top / amdgpu_top) with health watchdog | 2026-08-10 |
+| Watchdog on render loop + per-plugin | **done** | per-plugin tick watchdog (wall-clock); render-loop heartbeat (AtomicU64) → AtomicBool escalation; IPC timeout → `kill_child()` on hung saver | 2026-08-10 |
+| GPG manifest signature verification | **done** (opt-in) | `IDLE_REQUIRE_MANIFEST_SIGNATURE=1` → refuse unsig'd; `~/.config/idle/trusted-keys.d/` keyring | 2026-08-10 |
+| Subprocess plugin isolation | **done** | IPC child + SIGKILL on hang; `kill_child()` idempotent | 2026-08-10 |
+| Install-time audit log (F-202 escape fix) | **done** | JSONL `~/.config/idle/install-audit.jsonl`; full RFC 8259 control-char escape | 2026-08-10 |
+| macOS / Windows sandbox (Seatbelt / AppContainer) | **not** | — | out of scope per user |
+| Multi-platform idle detection (IOKit, GetLastInputInfo) | **not** | — | out of scope per user |
+| ABI version enforcement (F-102) | **done** | loader requires `idle_api_version` symbol; 10/10 savers export it | 2026-08-10 |
+| Frame-loop panic fix (F-101) | **done** | `saturating_sub` on `frame_duration - elapsed` at 2 callsites | 2026-08-10 |
 
 ## Channel — last cut vs Pages
 
@@ -48,6 +53,11 @@ what is not.
 | F-002 (channel lag) | **closed** | v4.0.4 cut sealed 3.0.3 in Pages |
 | F-007 (comm fallback) | documented residual | opt-out `IDLE_STRICT_CONTROL=1` |
 | F-004 / F-005 / F-006 / F-008 | closed | see `audit/PROBE-*.md` |
+| F-101 (frame-loop panic) | **closed** | `saturating_sub` fix at 2 callsites |
+| F-102 (ABI version fallback) | **closed** | all 10 savers export `idle_api_version`; loader requires it |
+| F-201 (install.sh SCRIPT_DIR fallback) | **closed** | fail-closed when `cd` cannot resolve |
+| F-202 (audit log JSON escape) | **closed** | RFC 8259 control-char escape |
+| F-203 (idle-tui comm spoof) | noted residual | narrow attack surface (daemon `O_NOFOLLOW` pidfile); combined mitigation deferred |
 
 ## Recent releases
 
