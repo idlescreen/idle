@@ -20,6 +20,44 @@ use idle_api::{IdleSource, OverlaySurface};
 
 pub use super::recovery::*;
 
+/// Log the daemon's posture w.r.t. fail-OPEN defaults. Operators who want
+/// full enforcement must opt in (see `DEPLOYMENT.md` in the org repo).
+/// The daemon never refuses to start on permissive defaults — but it
+/// does log them loudly so the deployment audit log shows the posture.
+pub fn log_posture() {
+    let manifest_sig = std::env::var_os("IDLE_REQUIRE_MANIFEST_SIGNATURE").is_some();
+    let gpu_budget = std::env::var_os("IDLE_GPU_BUDGET").is_some();
+    let cpu_fail_closed = std::env::var_os("IDLE_REQUIRE_CPU_BUDGET").is_some();
+    let sandbox_off = std::env::var_os("IDLE_DISABLE_SANDBOX").is_some();
+    let unsigned_off = std::env::var_os("IDLE_ALLOW_UNSIGNED_PLUGINS").is_some();
+
+    if !manifest_sig || !gpu_budget || !cpu_fail_closed {
+        tracing::warn!(
+            manifest_signature_enforced = manifest_sig,
+            gpu_budget_enforced = gpu_budget,
+            cpu_budget_fail_closed = cpu_fail_closed,
+            "IdleScreen starting with one or more fail-OPEN defaults; \
+             see DEPLOYMENT.md for the recommended systemd Environment= lines. \
+             At minimum set IDLE_REQUIRE_MANIFEST_SIGNATURE=1, IDLE_GPU_BUDGET=1, \
+             IDLE_REQUIRE_CPU_BUDGET=1 in production."
+        );
+    }
+    if sandbox_off {
+        tracing::error!(
+            "IDLE_DISABLE_SANDBOX=1 — Landlock sandbox BYPASSED. \
+             Plugins run with full filesystem + network access. \
+             This is a debug-only flag; production deployments MUST NOT set it."
+        );
+    }
+    if unsigned_off {
+        tracing::error!(
+            "IDLE_ALLOW_UNSIGNED_PLUGINS=1 — manifest gate BYPASSED. \
+             Plugins without an .idleplugin.toml are accepted. \
+             This is a debug-only flag; production deployments MUST NOT set it."
+        );
+    }
+}
+
 pub fn initialize_runtime(
     controller: &DaemonController,
 ) -> anyhow::Result<(Box<dyn IdleSource>, Arc<dyn OverlaySurface>)> {

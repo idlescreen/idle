@@ -189,8 +189,27 @@ fn run_plugin_fullscreen_passes_gate_under_flag() {
     unsafe { std::env::remove_var("IDLE_ALLOW_UNSIGNED_PLUGINS") };
     let err = result.expect_err("fake .so must fail somewhere; the point is *where*");
     let msg = err.to_string();
+    // B4 (PROBE.md) — the gate passed; the dlopen() must fail closed at
+    // the Library::new step. A regression that flipped the order (e.g.
+    // dlopen before the manifest check) would silently accept a bogus
+    // binary; a regression that swallowed the dlopen error entirely
+    // would crash or hang. We assert the error is *not* a manifest
+    // error (gate passed) and *not* a cap-mismatch (caps were checked
+    // only after gate).
     assert!(
         !msg.contains("idleplugin.toml"),
         "manifest gate must pass under IDLE_ALLOW_UNSIGNED_PLUGINS=1, got: {msg}"
+    );
+    assert!(
+        !msg.to_lowercase().contains("capability"),
+        "capability check must happen after dlopen (which fails first), got: {msg}"
+    );
+    // The dlopen of a not-an-elf payload yields a libloading error
+    // surfaced via `?` as a Box<dyn Error>. libloading's message
+    // contains "failed to load" or "is not a valid" depending on
+    // platform; the contract is just that an error is returned.
+    assert!(
+        !msg.is_empty(),
+        "B4: dlopen failure must produce a non-empty error message"
     );
 }

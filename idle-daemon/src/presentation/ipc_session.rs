@@ -147,6 +147,14 @@ impl IpcPluginSession {
                 dt_micros: frame_dt.as_micros() as u64,
             };
             if let Err(e) = cmd.write_to(&mut *socket) {
+                if is_timeout(&e) {
+                    tracing::error!(
+                        saver = %self.saver_name,
+                        "IPC write timed out — saver hung inside TickAndDraw; killing child"
+                    );
+                    self.kill_child();
+                    return;
+                }
                 tracing::error!("failed to send TickAndDraw: {}", e);
                 self.socket = None;
             }
@@ -221,6 +229,15 @@ impl IpcPluginSession {
                     self.socket = None;
                 }
                 Err(e) => {
+                    if is_timeout(&e) {
+                        tracing::error!(
+                            saver = %self.saver_name,
+                            "IPC read timed out — saver hung inside TickAndDraw; killing child"
+                        );
+                        self.kill_child();
+                        self.socket = None;
+                        return (false, false);
+                    }
                     tracing::error!("failed to read response to TickAndDraw: {}", e);
                     self.socket = None;
                 }
@@ -262,4 +279,31 @@ impl IpcPluginSession {
             scanlines,
         );
     }
+}
+
+/// Default per-IPC-call read timeout. The platform layer sets a
+/// `read_timeout` / `write_timeout` on the UnixStream at session init;
+/// if the saver doesn't respond in time, we treat it as hung and kill
+/// the child. Operators can tighten via `IDLE_IPC_READ_TIMEOUT_MS`.
+pub const DEFAULT_IPC_READ_TIMEOUT: Duration = Duration::from_millis(500);
+
+pub(crate) fn read_timeout() -> Duration {
+    std::env::var("IDLE_IPC_READ_TIMEOUT_MS")
+        .ok()
+        .and_then(|s| s.parse::<u64>().ok())
+        .map(Duration::from_millis)
+        .unwrap_or(DEFAULT_IPC_READ_TIMEOUT)
+}
+
+/// Classify an `std::io::Error` as a socket timeout (read/write deadline
+/// elapsed). The platform layer sets a `read_timeout` / `write_timeout`
+/// on the UnixStream at session init; on deadline the kernel returns
+/// `TimedOut` (Unix) or `WouldBlock` (fallback). When we see either,
+/// the peer hung inside an IPC command — `kill_child()` is the right
+/// call.
+pub(crate) fn is_timeout(err: &std::io::Error) -> bool {
+    matches!(
+        err.kind(),
+        std::io::ErrorKind::TimedOut | std::io::ErrorKind::WouldBlock
+    )
 }

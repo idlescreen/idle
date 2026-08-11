@@ -6,6 +6,34 @@
 
 use super::ipc_session::IpcPluginSession;
 use idle_runner::launcher::LaunchMode;
+use std::sync::atomic::AtomicBool;
+
+#[test]
+fn is_timeout_classifies_timed_out_and_would_block() {
+    use super::ipc_session::is_timeout;
+    let timed_out = std::io::Error::new(std::io::ErrorKind::TimedOut, "test");
+    let would_block = std::io::Error::new(std::io::ErrorKind::WouldBlock, "test");
+    let other = std::io::Error::new(std::io::ErrorKind::BrokenPipe, "test");
+    assert!(is_timeout(&timed_out));
+    assert!(is_timeout(&would_block));
+    assert!(!is_timeout(&other), "BrokenPipe is not a timeout");
+}
+
+#[test]
+fn read_timeout_env_override_works() {
+    use super::ipc_session::read_timeout;
+    unsafe { std::env::set_var("IDLE_IPC_READ_TIMEOUT_MS", "123") };
+    let t = read_timeout();
+    unsafe { std::env::remove_var("IDLE_IPC_READ_TIMEOUT_MS") };
+    assert_eq!(t, std::time::Duration::from_millis(123));
+}
+
+#[test]
+fn read_timeout_default_when_env_unset() {
+    use super::ipc_session::{read_timeout, DEFAULT_IPC_READ_TIMEOUT};
+    unsafe { std::env::remove_var("IDLE_IPC_READ_TIMEOUT_MS") };
+    assert_eq!(read_timeout(), DEFAULT_IPC_READ_TIMEOUT);
+}
 
 #[test]
 fn kill_child_is_idempotent_without_child() {
@@ -73,7 +101,6 @@ fn expected_stop_is_set_after_kill() {
 fn kill_child_reaps_real_process() {
     use std::process::Command;
 
-    // `sleep` is in coreutils; available on every Unix CI we target.
     let child = Command::new("sleep")
         .arg("30")
         .spawn()
@@ -81,7 +108,6 @@ fn kill_child_reaps_real_process() {
     let pid = child.id() as i32;
     assert!(pid > 0, "spawn returned a real pid");
 
-    // Inject the live child into the session.
     let mut s = IpcPluginSession::load_with_options(
         "beams",
         &LaunchMode::Daemon,
@@ -91,14 +117,11 @@ fn kill_child_reaps_real_process() {
     .expect("load");
     s.child = Some(child);
 
-    // Sanity: process is alive before kill.
     let before = unsafe { libc::kill(pid, 0) };
     assert_eq!(before, 0, "child must be alive before kill_child()");
 
     s.kill_child();
 
-    // The reap must have happened: try_wait reports the exit, the
-    // process is no longer alive, and the slot is cleared.
     assert!(s.child.is_none(), "kill_child must consume the Child handle");
     let after = unsafe { libc::kill(pid, 0) };
     assert_ne!(
@@ -106,8 +129,6 @@ fn kill_child_reaps_real_process() {
         "process pid {} must be reaped (kill returned {})",
         pid, after
     );
-    // ESRCH is the canonical "no such process" errno; the child of
-    // that on Linux is -1 from libc.
     if after == -1 {
         let err = std::io::Error::last_os_error().raw_os_error().unwrap_or(0);
         assert_eq!(
@@ -116,6 +137,5 @@ fn kill_child_reaps_real_process() {
         );
     }
 
-    // Second kill is a no-op (idempotent).
     s.kill_child();
 }

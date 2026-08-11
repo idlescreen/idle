@@ -48,6 +48,7 @@ pub fn run_daemon() -> anyhow::Result<()> {
     crate::config_watcher::start_config_watcher(controller.clone());
     install_signal_handlers(&controller)?;
     log_daemon_startup();
+    runtime::log_posture();
     let dbus_handle = spawn_dbus_thread(Arc::clone(&controller))?;
     let result = tick_loop_until_shutdown(Arc::clone(&controller));
     controller.shutdown.store(true, Ordering::Relaxed);
