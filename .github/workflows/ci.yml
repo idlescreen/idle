@@ -7,9 +7,61 @@ on:
     branches: [ "master", "main" ]
 
 jobs:
-  build:
+  fmt:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - name: Run checks
-      run: echo "Replace with actual build/test commands"
+    - name: rustup
+      run: |
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+        echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+    - name: fmt check
+      run: cargo fmt --workspace --all -- --check
+
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: rustup MSRV (1.96.0)
+      run: |
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain 1.96.0
+        echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+        rustc --version
+    - name: MSRV build
+      # Cheap MSRV gate: ensure the workspace builds on the floor toolchain.
+      # Don't run tests (some tests need newer compilers); the goal is to
+      # catch MSRV regressions early.
+      run: cargo build --workspace --all-targets
+
+  build:
+    runs-on: ubuntu-latest
+    needs: fmt
+    steps:
+    - uses: actions/checkout@v4
+    - name: System deps
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libdbus-1-dev libwayland-dev libxkbcommon-dev libssl-dev pkg-config libudev-dev
+    - name: rustup + clippy
+      run: |
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+        echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+        rustup component add clippy
+    - name: clippy
+      run: cargo clippy --workspace --all-targets -- -D warnings
+
+  test:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+    - uses: actions/checkout@v4
+    - name: System deps
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libdbus-1-dev libwayland-dev libxkbcommon-dev libssl-dev pkg-config libudev-dev
+    - name: rustup
+      run: |
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+        echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+    - name: cargo test
+      run: cargo test --workspace --no-fail-fast
