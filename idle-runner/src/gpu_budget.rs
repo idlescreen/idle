@@ -85,6 +85,7 @@ impl GpuBudget {
     pub fn detect() -> GpuStatus {
         for tool in ["nvidia-smi", "intel_gpu_top", "amdgpu_top"] {
             if tool_on_path(tool) {
+                #[allow(clippy::unreachable)]
                 let backend = match tool {
                     "nvidia-smi" => GpuBackend::Nvidia,
                     "intel_gpu_top" => GpuBackend::Intel,

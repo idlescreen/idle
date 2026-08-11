@@ -54,10 +54,8 @@ pub(crate) fn sample_intel() -> io::Result<u32> {
     let text = String::from_utf8_lossy(&out.stdout);
     let mut max_pct: u32 = 0;
     for token in text.split(|c: char| !c.is_ascii_digit()) {
-        if let Ok(n) = token.parse::<u32>() {
-            if n <= 100 && n > max_pct {
-                max_pct = n;
-            }
+        if let Ok(n) = token.parse::<u32>() && n <= 100 && n > max_pct {
+            max_pct = n;
         }
     }
     Ok(max_pct)
@@ -95,10 +93,8 @@ pub(crate) fn sample_amd() -> io::Result<u32> {
             continue;
         }
         for token in line.split(|c: char| !c.is_ascii_digit()) {
-            if let Ok(n) = token.parse::<u32>() {
-                if n <= 100 {
-                    return Ok(n);
-                }
+            if let Ok(n) = token.parse::<u32>() && n <= 100 {
+                return Ok(n);
             }
         }
     }

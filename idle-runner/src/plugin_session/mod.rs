@@ -115,52 +115,48 @@ impl PluginSession {
 
     #[tracing::instrument(skip_all)]
     pub fn tick(&mut self, frame_dt: Duration) {
-        if let Some(budget) = &self.cpu_budget {
-            if budget.exceeded_hard_limit() {
-                tracing::error!(
-                    plugin = %self.plugin_path.display(),
-                    usage_us = budget.usage_micros(),
-                    limit_us = budget.hard_limit_us(),
-                    "CPU budget exceeded — dropping plugin session"
-                );
-                self.plugin = None; // Drop calls destroy_screensaver.
-                self.needs_reload.store(true, std::sync::atomic::Ordering::Release);
-                return;
-            }
+        if let Some(budget) = &self.cpu_budget && budget.exceeded_hard_limit() {
+            tracing::error!(
+                plugin = %self.plugin_path.display(),
+                usage_us = budget.usage_micros(),
+                limit_us = budget.hard_limit_us(),
+                "CPU budget exceeded — dropping plugin session"
+            );
+            self.plugin = None; // Drop calls destroy_screensaver.
+            self.needs_reload.store(true, std::sync::atomic::Ordering::Release);
+            return;
         }
-        if let Some(budget) = &mut self.gpu_budget {
-            if budget.sample_due() {
-                match budget.sample() {
-                    Ok(pct) if budget.exceeded() => {
-                        tracing::error!(
+        if let Some(budget) = &mut self.gpu_budget && budget.sample_due() {
+            match budget.sample() {
+                Ok(pct) if budget.exceeded() => {
+                    tracing::error!(
+                        plugin = %self.plugin_path.display(),
+                        backend = budget.backend().as_str(),
+                        usage_pct = pct,
+                        ceiling_pct = budget.hard_ceiling(),
+                        "GPU budget exceeded — dropping plugin session"
+                    );
+                    self.plugin = None;
+                    self.needs_reload.store(true, std::sync::atomic::Ordering::Release);
+                    return;
+                }
+                Ok(_) => {
+                    if budget.unhealthy() {
+                        tracing::warn!(
                             plugin = %self.plugin_path.display(),
                             backend = budget.backend().as_str(),
-                            usage_pct = pct,
-                            ceiling_pct = budget.hard_ceiling(),
-                            "GPU budget exceeded — dropping plugin session"
-                        );
-                        self.plugin = None;
-                        self.needs_reload.store(true, std::sync::atomic::Ordering::Release);
-                        return;
-                    }
-                    Ok(_) => {
-                        if budget.unhealthy() {
-                            tracing::warn!(
-                                plugin = %self.plugin_path.display(),
-                                backend = budget.backend().as_str(),
-                                consecutive_failures = crate::gpu_budget::DEFAULT_FAILURE_STREAK,
-                                "GPU budget tool reporting persistent failures — \
-                                 budget is silently unenforced; \
-                                 set IDLE_GPU_BUDGET=0 to disable until resolved"
-                            );
-                        }
-                    }
-                    Err(err) => {
-                        tracing::debug!(
-                            backend = budget.backend().as_str(),
-                            "gpu sample failed: {err}"
+                            consecutive_failures = crate::gpu_budget::DEFAULT_FAILURE_STREAK,
+                            "GPU budget tool reporting persistent failures — \
+                             budget is silently unenforced; \
+                             set IDLE_GPU_BUDGET=0 to disable until resolved"
                         );
                     }
+                }
+                Err(err) => {
+                    tracing::debug!(
+                        backend = budget.backend().as_str(),
+                        "gpu sample failed: {err}"
+                    );
                 }
             }
         }
