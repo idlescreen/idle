@@ -19,6 +19,8 @@ pub enum PluginError {
     SymbolMissing(&'static str),
     #[error("plugin API version {found} incompatible with host {expected}")]
     ApiVersionMismatch { found: u32, expected: u32 },
+    #[error("plugin does not export the required 'idle_api_version' symbol")]
+    MissingVersion,
     #[error("sandbox error: {0}")]
     Sandbox(String),
     #[error("plugin '{0}' has no .idleplugin.toml manifest")]

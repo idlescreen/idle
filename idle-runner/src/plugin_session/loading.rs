@@ -158,32 +158,24 @@ impl PluginSession {
         unsafe {
             let lib = Library::new(path)?;
 
-            // ABI negotiation: try the modern symbol, then the legacy one.
-            // If neither is exported, accept the plugin anyway (per the
-            // `Optional ABI negotiation` doc-comment above). This is the
-            // *live* path for every plugin shipped today (Sprint 02
-            // contract: no version symbol required). A future tightening
-            // to require the symbol would be a breaking change for the
-            // 10 current idle-saver-* crates.
+            // ABI negotiation: REQUIRED. Every idle-saver-* crate ships
+            // an `idle_api_version` symbol (added in this rotation); plugins
+            // that don't are refused as `MissingVersion` so a malicious or
+            // stale plugin cannot slip past the version check.
             let ver_sym = lib
-                .get::<unsafe extern "C" fn() -> u32>(b"idle_api_version")
-                .or_else(|_| lib.get::<unsafe extern "C" fn() -> u32>(b"trance_api_version"));
-            match ver_sym {
-                Ok(ver_fn) => {
-                    let found = ver_fn();
-                    let expected = idle_api::API_VERSION;
-                    if found != expected {
-                        return Err(PluginError::ApiVersionMismatch { found, expected });
-                    }
-                    tracing::info!(found, expected, "plugin API version ok");
-                }
+                .get::<unsafe extern "C" fn() -> u32>(b"idle_api_version");
+            let ver_fn = match ver_sym {
+                Ok(f) => f,
                 Err(_) => {
-                    tracing::debug!(
-                        "plugin has no idle_api_version / trance_api_version symbol; \
-                         assuming host-compatible (Sprint-02 legacy contract)"
-                    );
+                    return Err(PluginError::MissingVersion);
                 }
+            };
+            let found = ver_fn();
+            let expected = idle_api::API_VERSION;
+            if found != expected {
+                return Err(PluginError::ApiVersionMismatch { found, expected });
             }
+            tracing::info!(found, expected, "plugin API version ok");
 
             if let Some(m) = manifest.as_deref() {
                 check_entry(m, path)?;
