@@ -52,7 +52,7 @@ what is not.
 |----|--------|----------|
 | F-002 (channel lag) | **closed** | v4.0.4 cut sealed 3.0.3 in Pages |
 | F-007 (comm fallback) | documented residual | opt-out `IDLE_STRICT_CONTROL=1` |
-| F-004 / F-005 / F-006 / F-008 | closed | see `audit/PROBE-*.md` |
+| F-004 / F-005 / F-006 / F-008 | closed | resolutions in commit messages; no separate audit/ dir (deleted with the stale `audit/AUDIT-FINDINGS.md` in this session) |
 | F-101 (frame-loop panic) | **closed** | `saturating_sub` fix at 2 callsites |
 | F-102 (ABI version fallback) | **closed** | all 10 savers export `idle_api_version`; loader requires it |
 | F-201 (install.sh SCRIPT_DIR fallback) | **closed** | fail-closed when `cd` cannot resolve |
