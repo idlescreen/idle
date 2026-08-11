@@ -181,12 +181,16 @@ see `budget.rs` doc).
     winget -> MSI. Apple-Silicon-only for v1 (no Intel bottles).
 ```
 
-### Drift fixed this pass
-The Sprint 04+ block previously listed items #11–#14 as `done`, which
-contradicted PM.md (still `not`). The block above replaces that with the
-honest split: items 1, 4, 5, 7 → Sprint 04; items 2, 3, 6 → Sprint 05.
+### Drift (historical)
+
+Sprint 04+ once listed items #11–#14 as `done`, which contradicted
+PM.md (still `not`). The block above replaces that with the honest
+split: items 1, 4, 5, 7 → Sprint 04; items 2, 3, 6 → Sprint 05.
 Sprint 04 + 05 sequencing respects the engine-portability precondition
-(G3 must land before H1/H2).
+(G3 must land before H1/H2). The OODA sweep closed F-101 through
+F-203 and added CI matrix coverage; see the 'Audit findings closed
+by OODA sweep' and 'CI matrix coverage' tables above for the
+current state.
 
 ## Released this sprint (2026-08-10)
 
