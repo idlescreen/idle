@@ -222,19 +222,18 @@ pub(super) fn drive_plugin_loop(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     /// PROBE #1 finding regression: `frame_duration.saturating_sub(elapsed)`
     /// must NOT panic when `elapsed > frame_duration` (frame overrun under load).
     /// Reproduces the L1 lifecycle bug found in idle-runner + idle-daemon
     /// frame loop on 2026-08-10; both call sites now use saturating_sub.
     #[test]
     fn frame_overrun_does_not_panic() {
-        let frame_duration = std::time::Duration::from_millis(16);
-        let elapsed = std::time::Duration::from_millis(20);
+        use std::time::Duration;
+        let frame_duration = Duration::from_millis(16);
+        let elapsed = Duration::from_millis(20);
         // The old code did `frame_duration - elapsed` which panicked.
         // The fix uses saturating_sub which returns ZERO on underflow.
         let sleep_for = frame_duration.saturating_sub(elapsed);
-        assert_eq!(sleep_for, std::time::Duration::ZERO);
+        assert_eq!(sleep_for, Duration::ZERO);
     }
 }

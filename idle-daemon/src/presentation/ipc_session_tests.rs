@@ -6,7 +6,6 @@
 
 use super::ipc_session::IpcPluginSession;
 use idle_runner::launcher::LaunchMode;
-use std::sync::atomic::AtomicBool;
 
 #[test]
 fn is_timeout_classifies_timed_out_and_would_block() {

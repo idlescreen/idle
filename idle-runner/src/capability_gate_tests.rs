@@ -126,7 +126,7 @@ fn network_admitted_under_renderer_with_opt_in() {
 #[test]
 fn filesystem_read_rejects_relative_path() {
     let text = BASE.replace(
-        r#"filesystem_read  = []"#,
+        "filesystem_read  = []",
         r#"filesystem_read  = ["relative/path"]"#,
     );
     let m = parse(&text);
@@ -140,7 +140,7 @@ fn filesystem_read_rejects_relative_path() {
 #[test]
 fn filesystem_read_rejects_parent_traversal() {
     let text = BASE.replace(
-        r#"filesystem_read  = []"#,
+        "filesystem_read  = []",
         r#"filesystem_read  = ["/var/data/../etc/passwd"]"#,
     );
     let m = parse(&text);
@@ -154,7 +154,7 @@ fn filesystem_read_rejects_parent_traversal() {
 #[test]
 fn filesystem_read_rejects_empty_path() {
     let text = BASE.replace(
-        r#"filesystem_read  = []"#,
+        "filesystem_read  = []",
         r#"filesystem_read  = [""]"#,
     );
     let m = parse(&text);
@@ -168,7 +168,7 @@ fn filesystem_read_rejects_empty_path() {
 #[test]
 fn filesystem_read_accepts_absolute_path() {
     let text = BASE.replace(
-        r#"filesystem_read  = []"#,
+        "filesystem_read  = []",
         r#"filesystem_read  = ["/var/lib/idle/data"]"#,
     );
     let m = parse(&text);
@@ -181,7 +181,7 @@ fn filesystem_read_accepts_absolute_path() {
 #[test]
 fn filesystem_write_rejects_relative_path() {
     let text = BASE.replace(
-        r#"filesystem_write = []"#,
+        "filesystem_write = []",
         r#"filesystem_write = ["./out"]"#,
     );
     let m = parse(&text);

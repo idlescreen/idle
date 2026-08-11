@@ -5,7 +5,6 @@ mod tests {
     use std::sync::Arc;
 
     use idle_runner::launcher::is_allowed_saver;
-    use wayland_present::OverlayPresenter;
 
     use crate::config::DaemonConfig;
     use crate::daemon::idle_decision::PresentationDecision;

@@ -44,6 +44,10 @@ pub mod watchdog;
 // Tests can run with `cargo test -- --nocapture` to see tracing output.
 
 #[cfg(test)]
+#[path = "abi_version_tests.rs"]
+mod abi_version_tests;
+
+#[cfg(test)]
 #[path = "plugin_manifest_tests.rs"]
 mod plugin_manifest_tests;
 

@@ -169,7 +169,7 @@ mod tests {
     /// `hide()` on it; verify the trait dispatch lands correctly.
     #[test]
     fn plugin_presentation_stop_calls_hide_via_dyn_surface() {
-        let mut presenter_obj = CountingSurface::new().unwrap();
+        let presenter_obj = CountingSurface::new().unwrap();
         let stop = Arc::new(AtomicBool::new(false));
         let thread = std::thread::spawn(|| {});
         std::thread::sleep(std::time::Duration::from_millis(20));

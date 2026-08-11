@@ -10,7 +10,6 @@ mod tests {
     use crate::daemon::presentation::ActivePresentation;
     use crate::ooda::act::OodaActor;
     use std::sync::Arc;
-    use wayland_present::OverlayPresenter;
 
     #[test]
     fn test_exhaustive_policy_matrix_invariants() {

@@ -54,7 +54,7 @@ fn quota_clamps_out_of_range() {
     unsafe { std::env::set_var("IDLE_CPU_QUOTA_PCT", "0") };
     let b = CpuBudget::attach("budget-test-clamp-low").expect("attach");
     unsafe { std::env::remove_var("IDLE_CPU_QUOTA_PCT") };
-    assert_eq!(b.quota_us(), 100_000 * 1 / 100);
+    assert_eq!(b.quota_us(), 100_000 / 100);
 }
 
 #[test]
