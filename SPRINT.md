@@ -127,23 +127,46 @@ see `budget.rs` doc).
 
 **H1 + H2 sequencing**: macOS first (DECISION-MAC-01 Option A — engine-on-Mac link already rides with the headless-render primitive). Windows second, gated on H1 success in production.
 
-### Open PM.md rows (post-Sprint 04 — all 5 rotations closed + residual fit)
+### Open PM.md rows (post-Sprint 04 + OODA sweep + F-101/F-102/F-201/F-202/F-203 closure)
 
 | # | PM.md row | Sprint | Status |
 |---|-----------|--------|--------|
-| 1 | Engine (platform-agnostic core) | 04 / G3 + G3-cont | **done-ish** (IdleSource trait + Linux impl consumed by daemon; OverlaySurface trait now carries the full surface API (`is_visible` / `show_blank` / `show_screensaver` / `hide` / `supports_scaling` / `output_layouts`). Daemon presentation pipeline refactor onto `Arc<dyn OverlaySurface>` is the next small ship.) |
-| 2 | macOS shim | 05 / H1 | not → planned |
-| 3 | Windows shim | 05 / H2 | not → planned |
-| 4 | Per-saver GPU/CPU budget (GPU) | 04 / G1 | **done** (CPU budget + GPU probe + drop hook + 3 vendor backends with line-anchored AMD heuristic) |
-| 5 | Watchdog on render loop + per-plugin (render-loop) | 04 / G2 | **done** (per-plugin drop + render-loop heartbeat + escalation to shutdown) |
-| 6 | macOS / Windows sandbox (Seatbelt / AppContainer) | 05 / H3 | **partial+** (profile names accepted; ProfileError::UnsupportedPlatform rejects on Linux; Sprint 05 H1/H2 ship real enforcers) |
+| 1 | Engine (platform-agnostic core) | 04 / G3 + G3-cont | **done** (IdleSource + OverlaySurface traits; Linux impls consumed by daemon via `Box<dyn IdleSource>` / `Arc<dyn OverlaySurface>`) |
+| 2 | macOS shim | 05 / H1 | not → out of scope per user |
+| 3 | Windows shim | 05 / H2 | not → out of scope per user |
+| 4 | Per-saver GPU/CPU budget (GPU) | 04 / G1 | **done** (CPU cgroup v2 + GPU 3-vendor probe + health watchdog + drop hook) |
+| 5 | Watchdog (render-loop + per-plugin) | 04 / G2 | **done** (per-plugin wall-clock + render-loop heartbeat → `controller.shutdown` + IPC timeout → `kill_child()`) |
+| 6 | macOS / Windows sandbox (Seatbelt / AppContainer) | 05 / H3 | **partial+** (profile names accepted; `ProfileError::UnsupportedPlatform` on Linux; vendor escape shipped for libcosmic pin) |
 | 7 | Multi-platform idle detection (IOKit, GetLastInputInfo) | 04 / G4 | **partial+** (trait + stub; real IOKit / GetLastInputInfo in Sprint 05) |
 
-**Residual fit this turn**:
-- `OverlaySurface` trait completed with `show_blank` / `show_screensaver` / `hide` / `supports_scaling` / `output_layouts` + `BlankAppearance` and `OutputLayout` types. `WaylandOverlay` adapter implements all; `StubOverlay` no-ops everything. idle-api 56 → 57 tests.
-- `render/unraid/render.xml` annotated as template-only; honest comment + Overview + Description note that no published image exists (ref `ghcr.io/idlescreen/render:latest`).
-- AMD GPU heuristic tightened: line-anchored on "GPU" / "GFX" tokens (vs. scanning the whole stream). False negatives (under-reporting) are safer than false positives (over-reporting → spurious drops).
-- IdleWindows / idle-steam / idle-pro pre-existing stubs: untouched (out of scope for this rotation).
+### Audit findings closed by OODA sweep
+
+| ID | Severity | Closed by | Commit |
+|---|---|---|---|
+| F-101 | HIGH | saturating_sub on `frame_duration - elapsed` (2 call sites) + regression test | `idle/30a9382` |
+| F-102 | MED | tightened loader to require `idle_api_version`; 10/10 savers export the symbol; 2 anti-synthetic tests pin contract | `idle/9549062` + 10 saver commits |
+| F-201 | MED | `install.sh` `SCRIPT_DIR` fail-closed when `cd` cannot resolve | `packages/6ada41a` |
+| F-202 | LOW | RFC 8259 control-char escape in `_audit_json_scalar`; 11/11 test cases | `packages/70ef3e0` |
+| F-203 | LOW | `pid_targets_idle_daemon` requires BOTH cmdline argv0 AND comm (belt + suspenders); comm spoof via `prctl(PR_SET_NAME)` no longer sufficient | `idle-cosmic/46db830` |
+
+### CI matrix coverage (closed K2 from PROBE.md)
+
+| Repo | CI job | Notes |
+|---|---|---|
+| `idlescreen/idle` | pre-existing (rust + clippy + test + doctest) | unchanged |
+| `idlescreen/idle-cosmic` | rust + clippy -D warnings + fmt check on ubuntu-24.04 with `libclang-dev` | matrix added in this OODA; matrix split: fmt, clippy, test, smoke |
+| `idlescreen/idle-tui` | rust + clippy + fmt on ubuntu-latest | matrix added |
+| `idlescreen/idle-studio` | rust + clippy + fmt on ubuntu-latest | matrix added |
+| `idlescreen/packages` | shellcheck + bash -n on every install script + F-202 regression test | matrix added |
+| `idlescreen/render` | split into fmt / clippy / test / smoke / msrv / docs jobs | matrix upgraded |
+
+### Out of scope (user-excluded)
+
+- macOS shim (DECISION-MAC-01 = Option A, Sprint 05 H1)
+- Windows shim (DECISION-WIN-01 = Option A, Sprint 05 H2)
+- idle-windows / idle-steam / idle-pro stubs
+
+### Long-term / trigger-gated (no sprint date; revisit on trigger)
 
 ### Long-term / trigger-gated (no sprint date; revisit on trigger)
 
