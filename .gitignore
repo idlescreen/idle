@@ -20,21 +20,5 @@ target/
 __pycache__/
 *.pyc
 # ==========================================
-.cursor/
-data/
-dist/
-.env.*.local
-.env.local
-frontend/dist/
-frontend/target/
-# IDE/Editor config
-# Local configuration
-# Local databases and user data
-local_uploads/
-mutants.out/
-mutants.out.old/
-# OS specific files
-package
-# Rust build artifacts
-# Trunk build artifacts
-uploads/
+**/*.deb
+**/*.rpm

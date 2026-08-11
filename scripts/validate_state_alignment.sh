@@ -5,13 +5,51 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+PROJECT_ROOT="$SCRIPT_DIR/.."
 
 echo "=== Running State Alignment Integration Tests ==="
 cd "$PROJECT_ROOT/idle"
 cargo test --test state_sync_tests
 
+echo "=== Running clippy (-D warnings, gating) ==="
+cd "$PROJECT_ROOT/idle"
+cargo clippy --workspace --all-targets -- -D warnings
+CLIPPY_RC=$?
+if [ "$CLIPPY_RC" -ne 0 ]; then
+    echo "  clippy gate FAILED (exit=$CLIPPY_RC)"
+    exit "$CLIPPY_RC"
+fi
+echo "  clippy gate PASSED"
+
 echo "=== Verifying File Line Count Constraints (<=256 lines) ==="
+cd "$PROJECT_ROOT"
 "$PROJECT_ROOT/scripts/check_file_lines.sh"
+
+echo "=== Poison fail-open gate (no production into_inner recovery) ==="
+# Ban silent poison recovery outside tests/docs.
+if grep -RIn --include='*.rs' 'into_inner()' \
+    "$PROJECT_ROOT/idle/idle-daemon/src" \
+    "$PROJECT_ROOT/idle/idle-runner/src" \
+    2>/dev/null \
+    | grep -v '/tests' \
+    | grep -v '_tests\.rs' \
+    | grep -v 'mod tests' \
+    | grep -v 'locks\.rs' \
+    | grep -v '#\[cfg(test)\]' \
+    | grep -v 'poison_or_exit' \
+    | grep -q .; then
+    echo "  FAIL: production into_inner() poison recovery found:"
+    grep -RIn --include='*.rs' 'into_inner()' \
+        "$PROJECT_ROOT/idle/idle-daemon/src" \
+        "$PROJECT_ROOT/idle/idle-runner/src" \
+        2>/dev/null \
+        | grep -v '/tests' | grep -v '_tests\.rs' | grep -v 'locks\.rs' || true
+    exit 1
+fi
+echo "  poison gate PASSED"
+
+echo "=== RULES.md §1.7 hygiene bundle (axioms_check.sh) ==="
+bash "$PROJECT_ROOT/scripts/axioms_check.sh"
+echo "  axioms bundle PASSED"
 
 echo "=== All Milestone 2 State Alignment Checks Passed Successfully ==="

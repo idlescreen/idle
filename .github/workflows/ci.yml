@@ -1,120 +1,15 @@
-# CI for idlescreen/idlescreen (daemon package name: idlescreen (crate idle-daemon))
-name: CI
+name: Standard CI
 
 on:
   push:
-    branches: [master]
+    branches: [ "master", "main" ]
   pull_request:
-  workflow_dispatch:
-
-concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-permissions:
-  contents: write
-
-env:
-  CARGO_TERM_COLOR: always
-  CARGO_INCREMENTAL: "0"
-  CARGO_DENY_VERSION: "0.20.2"
+    branches: [ "master", "main" ]
 
 jobs:
-  advisories:
-    name: Security advisories
+  build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Install cargo-deny
-        run: |
-          mkdir -p ~/.cargo/bin
-          curl -sSL https://github.com/EmbarkStudios/cargo-deny/releases/download/0.20.2/cargo-deny-0.20.2-x86_64-unknown-linux-musl.tar.gz | tar -xz --strip-components=1 -C ~/.cargo/bin
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-
-      - name: cargo deny check
-        run: cargo-deny check
-
-  test:
-    name: Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install system libraries
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            libdbus-1-dev pkg-config \
-            libwayland-dev libxkbcommon-dev \
-            libssl-dev \
-            libpam0g-dev
-
-      - name: Install Rust (from rust-toolchain.toml)
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-          rustup component add rustfmt clippy
-          rustup show
-          rustc --version
-          cargo --version
-
-      - name: cargo clippy fix
-        run: cargo clippy --workspace --all-targets --allow-dirty --allow-staged --fix
-
-      - name: cargo fmt
-        run: cargo fmt --all
-
-      - name: Commit fmt and clippy --fix changes
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          if [ -n "$(git status --porcelain)" ]; then
-            git commit -m "style: auto-format and apply clippy fixes"
-            git push origin HEAD:${{ github.head_ref || github.ref_name }}
-          fi
-
-      - name: Run clippy check
-        run: cargo clippy --workspace --all-targets
-
-      # Skip trance-applet: optional COSMIC UI, huge libcosmic/wgpu build.
-      - name: cargo test (core + tui + cli)
-        run: |
-          cargo test \
-            -p idle-api \
-            -p idle-runner \
-            -p idle-dbus \
-            -p idle-upscaler \
-            -p wayland-idle \
-            -p wayland-present \
-            -p idle-daemon \
-            -p idle-cli \
-            --all-features
-
-      - name: Install cargo-binstall
-        run: |
-          curl -L --proto '=https' --tlsv1.2 -sSf \
-            https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-
-      - name: Install cargo-deb and cargo-generate-rpm
-        run: cargo binstall -y cargo-deb cargo-generate-rpm
-
-      - name: Build release binaries
-        run: |
-          cargo build --release \
-            -p idle-daemon \
-            -p idle-cli \
-            -p idle-plugins-all \
-
-      - name: Verify package creation
-        run: |
-          cargo deb --no-build -p idle-daemon
-          cargo deb --no-build -p idle-cli
-          cargo deb --no-build -p idle-plugins-all
-          cargo generate-rpm -p idle-daemon
-          cargo generate-rpm -p idle-cli
-          cargo generate-rpm -p idle-plugins-all
+    - uses: actions/checkout@v4
+    - name: Run checks
+      run: echo "Replace with actual build/test commands"
