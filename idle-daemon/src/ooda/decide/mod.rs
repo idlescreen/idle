@@ -2,8 +2,6 @@
 
 //! openOODA Pillar 3: Decide (Pure Presentation Policy Engine)
 
-use std::sync::Arc;
-
 use idle_api::OverlaySurface;
 
 use super::orient::SituationAssessment;
@@ -47,6 +45,7 @@ impl OodaDecisionEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Arc;
     use crate::config::DaemonConfig;
 
     #[test]

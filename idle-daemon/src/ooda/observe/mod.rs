@@ -6,8 +6,6 @@ use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
 use idle_api::IdleSource;
-#[cfg(target_os = "linux")]
-use wayland_idle::IdleMonitor;
 
 use crate::config::DaemonConfig;
 use crate::controller::{DaemonCommand, DaemonController};
