@@ -24,11 +24,13 @@
 //! - [`idle_runner`] — fullscreen plugin runner for manual testing
 
 pub mod apps;
+pub mod budget;
 pub mod caption_overlay;
 pub mod cell_renderer;
 pub mod core;
 pub mod discovery;
 pub mod fps_overlay;
+pub mod gpu_budget;
 pub mod idle_runner;
 pub mod launcher;
 mod launcher_resolve;
@@ -37,9 +39,14 @@ pub mod plugin_session;
 pub mod sandbox;
 pub mod sandbox_profiles;
 pub mod toolkit;
+pub mod watchdog;
 
 // Tests can run with `cargo test -- --nocapture` to see tracing output.
 
 #[cfg(test)]
 #[path = "plugin_manifest_tests.rs"]
 mod plugin_manifest_tests;
+
+#[cfg(test)]
+#[path = "capability_gate_tests.rs"]
+mod capability_gate_tests;

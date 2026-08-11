@@ -3,7 +3,7 @@
 use std::thread;
 use std::time::{Duration, Instant};
 
-use wayland_present::{OutputLayout, OverlayPresenter};
+use idle_api::{OverlaySurface, OutputLayout};
 
 /// Presentation FPS target refresh rate.
 ///
@@ -17,24 +17,24 @@ pub fn presentation_refresh_hz(layouts: &[OutputLayout], primary: OutputLayout) 
     if layouts.len() <= 1 {
         return layouts
             .first()
-            .map(|layout| layout.refresh_rate_hz)
+            .map(|layout| layout.refresh_mhz)
             .unwrap_or(60)
             .max(60);
     }
 
     let min_hz = layouts
         .iter()
-        .map(|layout| layout.refresh_rate_hz)
+        .map(|layout| layout.refresh_mhz)
         .min()
         .unwrap_or(60)
         .max(60);
     let max_hz = layouts
         .iter()
-        .map(|layout| layout.refresh_rate_hz)
+        .map(|layout| layout.refresh_mhz)
         .max()
         .unwrap_or(60)
         .max(60);
-    let primary_hz = primary.refresh_rate_hz.max(60);
+    let primary_hz = primary.refresh_mhz.max(60);
 
     match idle_api::env_var_first(&["IDLE_PRESENT_SYNC"]).as_deref() {
         Some("min") => min_hz,
@@ -44,7 +44,7 @@ pub fn presentation_refresh_hz(layouts: &[OutputLayout], primary: OutputLayout) 
 }
 
 pub fn wait_for_output_layouts(
-    presenter: &OverlayPresenter,
+    presenter: &dyn OverlaySurface,
     timeout: Duration,
 ) -> Result<Vec<OutputLayout>, String> {
     let deadline = Instant::now() + timeout;
@@ -72,14 +72,13 @@ pub fn wait_for_output_layouts(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use wayland_present::OutputLayout;
 
     fn layout(id: u32, hz: u32) -> OutputLayout {
         OutputLayout {
             id,
             width: 1920,
             height: 1080,
-            refresh_rate_hz: hz,
+            refresh_mhz: hz,
             x: 0,
             y: 0,
             scale: 1,

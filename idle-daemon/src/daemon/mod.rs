@@ -18,6 +18,7 @@ pub(crate) mod preview_queue;
 pub(crate) mod recovery;
 pub(crate) mod runtime;
 pub(crate) mod tick_loop;
+pub(crate) mod watchdog;
 
 use std::sync::Arc;
 use std::sync::atomic::Ordering;

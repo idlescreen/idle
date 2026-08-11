@@ -6,7 +6,7 @@ use std::sync::{OnceLock, RwLock};
 
 use super::ipc_session::IpcPluginSession;
 use idle_api::MonitorCellBounds;
-use wayland_present::OutputLayout;
+use idle_api::OutputLayout;
 
 #[derive(Clone, Copy)]
 struct ScaledBoundsState {

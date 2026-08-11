@@ -4,8 +4,7 @@ use std::sync::atomic::AtomicBool;
 use std::time::Duration;
 
 use super::ipc_session::IpcPluginSession;
-use idle_api::{clear_caption, clear_primary_bounds};
-use wayland_present::{OutputLayout, OverlayPresenter};
+use idle_api::{OverlaySurface, clear_caption, clear_primary_bounds, OutputLayout};
 
 use super::frame_loop::ActiveSession;
 use super::frame_pacing::{FramePacing, log_run_startup};
@@ -18,7 +17,7 @@ use crate::presentation::PresentationOptions;
 #[tracing::instrument(skip_all, fields(saver_name = %saver_name))]
 /// Run presentation using **out-of-process** plugin sessions only (crash isolation).
 pub fn run_plugin_loop(
-    presenter: &OverlayPresenter,
+    presenter: &dyn OverlaySurface,
     saver_name: &str,
     stop: &AtomicBool,
     options: PresentationOptions,
@@ -37,7 +36,6 @@ pub fn run_plugin_loop(
             layout.y = topo.y;
             layout.width = topo.width;
             layout.height = topo.height;
-            layout.scale = topo.scale;
         }
     }
     log_output_layouts(&layouts);
@@ -145,14 +143,13 @@ fn build_sessions(
 fn log_output_layouts(layouts: &[OutputLayout]) {
     for layout in layouts {
         tracing::info!(
-            "output {} @ ({}, {}) — {}x{} @ {} Hz (scale: {})",
+            "output {} @ ({}, {}) — {}x{} @ {} Hz",
             layout.id,
             layout.x,
             layout.y,
             layout.width,
             layout.height,
-            layout.refresh_rate_hz,
-            layout.scale
+            layout.refresh_mhz
         );
     }
 }

@@ -15,6 +15,7 @@
 mod schema;
 
 pub mod host;
+pub mod signature;
 
 pub use schema::{Capabilities, Dependencies, Entry, HeadlessRender, Manifest, Sandbox};
 
@@ -24,7 +25,14 @@ use std::path::{Path, PathBuf};
 pub const SCHEMA_VERSION: u32 = 1;
 
 /// Sandbox profiles recognised by the host, loosest last.
-pub const PROFILES: &[&str] = &["minimal", "renderer", "asset-author", "experimental"];
+pub const PROFILES: &[&str] = &[
+    "minimal",
+    "renderer",
+    "asset-author",
+    "experimental",
+    "seatbelt",     // macOS — Sprint 05 H1
+    "appcontainer", // Windows — Sprint 05 H2
+];
 
 /// Why a manifest was rejected. Every variant is fail-closed at the loader.
 #[derive(Debug, thiserror::Error)]
@@ -42,6 +50,10 @@ pub enum ManifestError {
     InvalidPluginId(PathBuf, String),
     #[error("manifest {1} invalid: {0}")]
     Invalid(String, PathBuf),
+    #[error("manifest signature required but missing: {0} (set IDLE_REQUIRE_MANIFEST_SIGNATURE=1 to enforce)")]
+    SignatureMissing(String),
+    #[error("manifest signature invalid: {0}")]
+    SignatureInvalid(String),
 }
 
 /// Path of the manifest that belongs to `plugin_path`.
@@ -97,6 +109,38 @@ pub fn validate(manifest: &Manifest) -> Result<(), ManifestError> {
     }
     if !PROFILES.contains(&manifest.sandbox.profile.as_str()) {
         return invalid("sandbox.profile is not a known profile");
+    }
+    validate_capability_paths(&manifest.capabilities.filesystem_read, "filesystem_read", &invalid)?;
+    validate_capability_paths(&manifest.capabilities.filesystem_write, "filesystem_write", &invalid)?;
+    Ok(())
+}
+
+/// Each declared FS path must be absolute, non-empty, free of `..` and NUL —
+/// relative paths would resolve against an attacker-influenced cwd and `..`
+/// would widen the sandbox beyond what the manifest claims.
+fn validate_capability_paths<F>(
+    paths: &[String],
+    field: &str,
+    invalid: &F,
+) -> Result<(), ManifestError>
+where
+    F: Fn(&str) -> Result<(), ManifestError>,
+{
+    use std::path::{Component, Path};
+    for raw in paths {
+        let p = Path::new(raw);
+        if raw.is_empty() {
+            return invalid(&format!("{field}: empty path"));
+        }
+        if raw.contains('\0') {
+            return invalid(&format!("{field}: NUL byte in path"));
+        }
+        if !p.is_absolute() {
+            return invalid(&format!("{field}: path must be absolute: {raw}"));
+        }
+        if p.components().any(|c| matches!(c, Component::ParentDir)) {
+            return invalid(&format!("{field}: path contains '..': {raw}"));
+        }
     }
     Ok(())
 }

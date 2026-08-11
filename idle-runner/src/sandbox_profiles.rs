@@ -48,6 +48,12 @@ pub enum ProfileError {
          (refusing to widen the sandbox implicitly)"
     )]
     ExperimentalNotAllowed,
+    #[error(
+        "sandbox profile '{profile}' is not built on this platform; \
+         see Sprint 05 (macOS shim / Windows shim) for the seatbelt / \
+         appcontainer enforcers"
+    )]
+    UnsupportedPlatform { profile: String },
 }
 
 /// Font roots every profile may read; caption rendering needs them.
@@ -82,6 +88,15 @@ pub fn profile_rules_for(name: &str, plugin_id: &str) -> Result<Vec<AccessRule>,
             }
             push_shared_read(&mut rules, plugin_id);
             push_user_write(&mut rules, plugin_id);
+        }
+        // Cross-platform stubs (Sprint 05). Names are accepted so manifests
+        // can declare them; the Landlock enforcement (this file) only knows
+        // Linux, so the runner short-circuits to a clear refusal until the
+        // Seatbelt / AppContainer enforcers land.
+        "seatbelt" | "appcontainer" => {
+            return Err(ProfileError::UnsupportedPlatform {
+                profile: name.to_string(),
+            });
         }
         other => return Err(ProfileError::Unknown(other.to_string())),
     }

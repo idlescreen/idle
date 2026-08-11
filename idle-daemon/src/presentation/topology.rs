@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 use std::collections::HashMap;
-use wayland_present::OutputLayout;
+use idle_api::OutputLayout;
 
 #[derive(Debug, Clone)]
 pub struct MonitorTopology {
@@ -12,7 +12,7 @@ pub struct MonitorTopology {
     pub height: u32,
     pub scale: i32,
     #[allow(dead_code)]
-    pub refresh_rate_hz: u32,
+    pub refresh_mhz: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -64,7 +64,7 @@ impl DisplayTopologyMap {
                 width: w,
                 height: h,
                 scale,
-                refresh_rate_hz: layout.refresh_rate_hz,
+                refresh_mhz: layout.refresh_mhz,
             });
         }
 

@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 
+use std::sync::Arc;
 use std::time::Duration;
+
+use idle_api::OutputId;
 
 use super::frame_loop::FrameLoopState;
 use super::layout::{monitor_cell_bounds, virtual_desktop};
@@ -57,9 +60,9 @@ pub fn present_frame(state: &mut FrameLoopState) {
                     state.options.show_fps_overlay,
                     state.achieved_fps,
                 );
-                state
-                    .presenter
-                    .submit_frame(layout.id, target_w, target_h, pixels);
+state
+                .presenter
+                .submit_frame(OutputId(layout.id), Arc::new(pixels), target_w, target_h);
             }
         }
     } else {
@@ -125,7 +128,7 @@ pub fn present_frame(state: &mut FrameLoopState) {
             );
             state
                 .presenter
-                .submit_frame(layout.id, target_w, target_h, pixels);
+                .submit_frame(OutputId(layout.id), Arc::new(pixels), target_w, target_h);
         }
     }
 }

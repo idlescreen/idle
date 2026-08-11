@@ -2,7 +2,9 @@
 
 //! openOODA Pillar 3: Decide (Pure Presentation Policy Engine)
 
-use wayland_present::OverlayPresenter;
+use std::sync::Arc;
+
+use idle_api::OverlaySurface;
 
 use super::orient::SituationAssessment;
 use crate::daemon::idle_decision::{IdlePolicyInput, PresentationDecision, decide_presentation};
@@ -21,7 +23,7 @@ impl OodaDecisionEngine {
         &self,
         situation: &SituationAssessment,
         presentation: &ActivePresentation,
-        overlay_presenter: &OverlayPresenter,
+        overlay_presenter: &dyn OverlaySurface,
         preview_name: Option<&str>,
         current_saver: &str,
     ) -> PresentationDecision {
@@ -64,8 +66,9 @@ mod tests {
             cooldown_active: false,
         };
         let presentation = ActivePresentation::None;
-        let overlay_presenter = match OverlayPresenter::new() {
-            Some(p) => p,
+        let overlay_presenter: Arc<dyn idle_api::OverlaySurface> =
+            match idle_api::WaylandOverlay::new() {
+            Some(p) => Arc::new(p),
             None => return,
         };
 
@@ -73,7 +76,7 @@ mod tests {
         let decision_start = engine.decide(
             &situation,
             &presentation,
-            &overlay_presenter,
+            &*overlay_presenter,
             Some("beams"),
             "matrix",
         );
@@ -98,15 +101,16 @@ mod tests {
             cooldown_active: false,
         };
         let presentation = ActivePresentation::None;
-        let overlay_presenter = match OverlayPresenter::new() {
-            Some(p) => p,
+        let overlay_presenter: Arc<dyn idle_api::OverlaySurface> =
+            match idle_api::WaylandOverlay::new() {
+            Some(p) => Arc::new(p),
             None => return,
         };
 
         let decision = engine.decide(
             &situation,
             &presentation,
-            &overlay_presenter,
+            &*overlay_presenter,
             Some("matrix"),
             "",
         );
@@ -130,15 +134,16 @@ mod tests {
             cooldown_active: false,
         };
         let presentation = ActivePresentation::None;
-        let overlay_presenter = match OverlayPresenter::new() {
-            Some(p) => p,
+        let overlay_presenter: Arc<dyn idle_api::OverlaySurface> =
+            match idle_api::WaylandOverlay::new() {
+            Some(p) => Arc::new(p),
             None => return,
         };
 
         let decision = engine.decide(
             &situation,
             &presentation,
-            &overlay_presenter,
+            &*overlay_presenter,
             Some("matrix"),
             "",
         );
@@ -163,12 +168,13 @@ mod tests {
             cooldown_active: false,
         };
         let presentation = ActivePresentation::None;
-        let overlay_presenter = match OverlayPresenter::new() {
-            Some(p) => p,
+        let overlay_presenter: Arc<dyn idle_api::OverlaySurface> =
+            match idle_api::WaylandOverlay::new() {
+            Some(p) => Arc::new(p),
             None => return,
         };
 
-        let decision = engine.decide(&situation, &presentation, &overlay_presenter, None, "");
+        let decision = engine.decide(&situation, &presentation, &*overlay_presenter, None, "");
 
         assert_eq!(decision, PresentationDecision::Hold);
     }

@@ -105,9 +105,10 @@ mod tests {
         let mut current_saver = String::new();
         let config = DaemonConfig::default();
 
-        let overlay_presenter = match OverlayPresenter::new() {
-            Some(p) => Arc::new(p),
-            None => {
+        let overlay_presenter: Arc<dyn idle_api::OverlaySurface> =
+            match idle_api::WaylandOverlay::new() {
+                Some(p) => Arc::new(p),
+                None => {
                 let decision = PresentationDecision::Stop {
                     clear_preview: true,
                 };

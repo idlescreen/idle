@@ -4,7 +4,7 @@
 
 use std::sync::Arc;
 
-use wayland_present::OverlayPresenter;
+use idle_api::OverlaySurface;
 
 use super::idle_decision::{IdlePolicyInput, PresentationDecision, decide_presentation};
 use super::presentation::{
@@ -14,7 +14,7 @@ use crate::config::DaemonConfig;
 
 #[allow(dead_code)]
 pub fn update_presentation_state(
-    overlay_presenter: &Arc<OverlayPresenter>,
+    overlay_presenter: &Arc<dyn OverlaySurface>,
     presentation: &mut ActivePresentation,
     preview_name: &mut Option<String>,
     current_saver: &mut String,

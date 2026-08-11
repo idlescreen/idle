@@ -7,7 +7,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use super::ipc_session::IpcPluginSession;
-use wayland_present::{OutputLayout, OverlayPresenter};
+use idle_api::{OverlaySurface, OutputLayout};
 
 use super::render::present_frame;
 use crate::presentation::PresentationOptions;
@@ -21,7 +21,7 @@ pub struct ActiveSession {
 
 /// Per-frame loop locals: inputs + state mutated across iterations.
 pub struct FrameLoopState<'a> {
-    pub presenter: &'a OverlayPresenter,
+    pub presenter: &'a dyn OverlaySurface,
     pub stop: &'a AtomicBool,
     pub sessions: &'a mut [ActiveSession],
     pub layouts: &'a [OutputLayout],
@@ -41,7 +41,7 @@ pub struct FrameLoopState<'a> {
 }
 
 pub fn run_frame_loop(
-    presenter: &OverlayPresenter,
+    presenter: &dyn OverlaySurface,
     stop: &AtomicBool,
     sessions: &mut [ActiveSession],
     layouts: &[OutputLayout],
@@ -158,18 +158,30 @@ fn update_fps_counter(state: &mut FrameLoopState, frame_index: u64) {
 mod tests {
     use super::*;
     use crate::presentation::PresentationOptions;
+    use idle_api::OverlaySurface;
     use std::sync::atomic::AtomicBool;
     use std::time::Duration;
-    use wayland_present::{OutputLayout, OverlayPresenter};
+
+    /// Stub surface for tests — always reports dead so we can exercise
+    /// the empty-sessions early-return without a Wayland environment.
+    struct TestStub;
+    impl OverlaySurface for TestStub {
+        fn is_available() -> bool { false }
+        fn new() -> Option<Self> { Some(Self) }
+        fn submit_frame(&self, _: idle_api::OutputId, _: std::sync::Arc<Vec<u8>>, _: u32, _: u32) {}
+        fn is_alive(&self) -> bool { false }
+        fn is_visible(&self) -> bool { false }
+        fn show_blank(&self, _: idle_api::BlankAppearance) {}
+        fn show_screensaver(&self) {}
+        fn hide(&self) {}
+        fn supports_scaling(&self) -> bool { false }
+        fn output_layouts(&self) -> Vec<OutputLayout> { Vec::new() }
+    }
 
     // Test negative selection: empty sessions slice securely returns error instead of panicking on [0]
     #[test]
     fn test_empty_sessions_returns_error() {
-        let presenter_result = OverlayPresenter::new();
-        if presenter_result.is_none() {
-            return; // Skip if no Wayland environment available (e.g., in headless CI)
-        }
-        let presenter = presenter_result.unwrap();
+        let presenter: Box<dyn OverlaySurface> = Box::new(TestStub);
 
         let stop = AtomicBool::new(false);
         let mut sessions = vec![];
@@ -178,10 +190,10 @@ mod tests {
             id: 0,
             width: 800,
             height: 600,
-            scale: 1,
             x: 0,
             y: 0,
-            refresh_rate_hz: 60,
+            refresh_mhz: 60,
+            scale: 1,
         };
 
         let mut last_frame = Instant::now();
@@ -190,7 +202,7 @@ mod tests {
         let mut achieved_fps = 0.0;
 
         let result = run_frame_loop(
-            &presenter,
+            &*presenter,
             &stop,
             &mut sessions,
             &layouts,

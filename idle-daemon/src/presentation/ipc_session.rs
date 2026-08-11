@@ -153,6 +153,37 @@ impl IpcPluginSession {
         }
     }
 
+    /// Kill the saver child process. Idempotent: a second call after the
+    /// child has already exited is a no-op. The caller is responsible for
+    /// clearing `socket` / `shm` / `socket_path` after kill — `init` will
+    /// recover them on the next session start.
+    ///
+    /// Subprocess isolation primitive: when the saver hangs inside an IPC
+    /// command, the daemon calls this from the per-plugin watchdog. We send
+    /// `SIGKILL` (not `SIGTERM`) because plugin code that ignores signals
+    /// inside its own `update()` cannot be reasoned with politely.
+    pub fn kill_child(&mut self) {
+        if let Some(mut child) = self.child.take() {
+            tracing::warn!(
+                saver = %self.saver_name,
+                "subprocess isolation: killing hung saver child (pid {})",
+                child.id()
+            );
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+        self.expected_stop.store(true, std::sync::atomic::Ordering::Release);
+    }
+
+    /// True when the saver subprocess has exited (either cleanly or after
+    /// `kill_child`). The IPC socket closing is the parent-side signal.
+    pub fn child_is_dead(&mut self) -> bool {
+        match self.child.as_mut() {
+            Some(child) => matches!(child.try_wait(), Ok(Some(_))),
+            None => true,
+        }
+    }
+
     pub fn draw_frame(&mut self, grid_cols: usize, grid_rows: usize) -> (bool, bool) {
         if let Some(ref mut socket) = self.socket {
             match IpcResponse::read_from(&mut *socket) {

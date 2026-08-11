@@ -2,13 +2,16 @@
 
 #![allow(clippy::too_many_arguments)]
 
+use crate::budget::CpuBudget;
 use crate::cell_renderer::CellRenderer;
 use idle_api::{Screensaver, ScreensaverInstance, TerminalCell};
 use idle_upscaler::FrameUpscaler;
 use std::time::Duration;
 
 pub(crate) mod loading;
+pub(crate) mod manifest_gate;
 mod reloading;
+mod viewport;
 
 pub(crate) struct PluginGuard {
     pub(crate) ptr: *mut ScreensaverInstance,
@@ -51,6 +54,8 @@ pub struct PluginSession {
     pub(crate) hardware_scaling: bool,
     pub(crate) watcher: Option<notify::RecommendedWatcher>,
     pub(crate) needs_reload: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    pub(crate) cpu_budget: Option<CpuBudget>,
+    pub(crate) gpu_budget: Option<crate::gpu_budget::GpuBudget>,
 }
 
 impl PluginSession {
@@ -110,6 +115,55 @@ impl PluginSession {
 
     #[tracing::instrument(skip_all)]
     pub fn tick(&mut self, frame_dt: Duration) {
+        if let Some(budget) = &self.cpu_budget {
+            if budget.exceeded_hard_limit() {
+                tracing::error!(
+                    plugin = %self.plugin_path.display(),
+                    usage_us = budget.usage_micros(),
+                    limit_us = budget.hard_limit_us(),
+                    "CPU budget exceeded — dropping plugin session"
+                );
+                self.plugin = None; // Drop calls destroy_screensaver.
+                self.needs_reload.store(true, std::sync::atomic::Ordering::Release);
+                return;
+            }
+        }
+        if let Some(budget) = &mut self.gpu_budget {
+            if budget.sample_due() {
+                match budget.sample() {
+                    Ok(pct) if budget.exceeded() => {
+                        tracing::error!(
+                            plugin = %self.plugin_path.display(),
+                            backend = budget.backend().as_str(),
+                            usage_pct = pct,
+                            ceiling_pct = budget.hard_ceiling(),
+                            "GPU budget exceeded — dropping plugin session"
+                        );
+                        self.plugin = None;
+                        self.needs_reload.store(true, std::sync::atomic::Ordering::Release);
+                        return;
+                    }
+                    Ok(_) => {
+                        if budget.unhealthy() {
+                            tracing::warn!(
+                                plugin = %self.plugin_path.display(),
+                                backend = budget.backend().as_str(),
+                                consecutive_failures = crate::gpu_budget::DEFAULT_FAILURE_STREAK,
+                                "GPU budget tool reporting persistent failures — \
+                                 budget is silently unenforced; \
+                                 set IDLE_GPU_BUDGET=0 to disable until resolved"
+                            );
+                        }
+                    }
+                    Err(err) => {
+                        tracing::debug!(
+                            backend = budget.backend().as_str(),
+                            "gpu sample failed: {err}"
+                        );
+                    }
+                }
+            }
+        }
         if let Some(plugin) = self.plugin.as_mut() {
             plugin.saver_mut().update_frame_time(frame_dt);
         }
@@ -125,7 +179,24 @@ impl PluginSession {
             let cols = self.simulation_cols;
             let rows = self.simulation_rows;
             if let Some(plugin) = self.plugin.as_mut() {
+                // Watchdog (Sprint 03 C): if the plugin runs longer than the
+                // configured tick budget, drop the session rather than letting
+                // a runaway saver stall the frame loop. This is wall-clock
+                // only — true infinite-loop protection would require process
+                // isolation, tracked as a residual.
+                let guard = crate::watchdog::CallGuard::new(crate::watchdog::watchdog_timeout());
                 plugin.saver_mut().update(dt, cols, rows);
+                if guard.overflowed() {
+                    tracing::error!(
+                        plugin = %self.plugin_path.display(),
+                        elapsed_ms = guard.elapsed().as_millis(),
+                        budget_ms = crate::watchdog::watchdog_timeout().as_millis(),
+                        "plugin tick exceeded watchdog — dropping session"
+                    );
+                    self.plugin = None;
+                    self.needs_reload.store(true, std::sync::atomic::Ordering::Release);
+                    break;
+                }
             }
             self.physics_accumulator -= dt;
         }
@@ -155,87 +226,5 @@ impl PluginSession {
         } else {
             false
         }
-    }
-
-    #[tracing::instrument(skip_all, fields(cols, rows, width, height))]
-    pub fn render(
-        &mut self,
-        cols: usize,
-        rows: usize,
-        width: u32,
-        height: u32,
-    ) -> std::sync::Arc<Vec<u8>> {
-        let scanlines = self.draw_frame(cols, rows);
-        self.raster_viewport_internal(0, 0, cols, rows, cols, rows, width, height, scanlines);
-        self.pixel_buf.clone()
-    }
-
-    pub fn raster_viewport(
-        &mut self,
-        col_start: usize,
-        row_start: usize,
-        cols: usize,
-        rows: usize,
-        grid_cols: usize,
-        grid_rows: usize,
-        width: u32,
-        height: u32,
-        scanlines: bool,
-    ) -> std::sync::Arc<Vec<u8>> {
-        self.raster_viewport_internal(
-            col_start, row_start, cols, rows, grid_cols, grid_rows, width, height, scanlines,
-        );
-        self.pixel_buf.clone()
-    }
-
-    fn raster_viewport_internal(
-        &mut self,
-        col_start: usize,
-        row_start: usize,
-        cols: usize,
-        rows: usize,
-        grid_cols: usize,
-        _grid_rows: usize,
-        width: u32,
-        height: u32,
-        scanlines: bool,
-    ) {
-        let hardware_scaling = self.hardware_scaling && !self.using_gpu_upscale();
-        let out_pixel_buf = std::sync::Arc::make_mut(&mut self.pixel_buf);
-        if hardware_scaling {
-            self.renderer.render_content_viewport_into(
-                &self.grid,
-                grid_cols,
-                col_start,
-                row_start,
-                cols,
-                rows,
-                scanlines,
-                out_pixel_buf,
-            );
-            return;
-        }
-
-        let content_w = self.renderer.content_width(cols);
-        let content_h = self.renderer.content_height(rows);
-        self.renderer.render_content_viewport_into(
-            &self.grid,
-            grid_cols,
-            col_start,
-            row_start,
-            cols,
-            rows,
-            scanlines,
-            &mut self.content_buf,
-        );
-
-        self.upscaler.upscale_stretch_into(
-            &self.content_buf,
-            content_w,
-            content_h,
-            width,
-            height,
-            out_pixel_buf,
-        );
     }
 }

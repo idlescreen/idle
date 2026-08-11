@@ -9,6 +9,7 @@ license = "Apache-2.0"
 workspace = true
 
 [dependencies]
+idle-api = { path = "../../idle-api" }
 libc = { workspace = true }
 tracing.workspace = true
 wayland-client = "0.31"

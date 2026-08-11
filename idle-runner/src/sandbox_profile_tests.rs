@@ -52,6 +52,24 @@ fn unknown_profile_rejects_at_load() {
 }
 
 #[test]
+fn seatbelt_profile_unsupported_on_linux() {
+    let err = profile_rules_for("seatbelt", PLUGIN_ID).unwrap_err();
+    assert!(
+        matches!(err, ProfileError::UnsupportedPlatform { ref profile } if profile == "seatbelt"),
+        "seatbelt must refuse on Linux until Sprint 05, got {err:?}"
+    );
+}
+
+#[test]
+fn appcontainer_profile_unsupported_on_linux() {
+    let err = profile_rules_for("appcontainer", PLUGIN_ID).unwrap_err();
+    assert!(
+        matches!(err, ProfileError::UnsupportedPlatform { ref profile } if profile == "appcontainer"),
+        "appcontainer must refuse on Linux until Sprint 05, got {err:?}"
+    );
+}
+
+#[test]
 fn filesystem_read_declarations_allow_file() {
     let dir = tempfile::tempdir().expect("tempdir");
     let asset = dir.path().join("asset.txt");

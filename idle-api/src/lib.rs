@@ -38,12 +38,16 @@ mod callbacks;
 mod caption;
 mod color;
 mod env_dual;
+mod idle_source;
 mod layout;
 mod logo_block;
 mod monitor;
 mod palette;
 mod rng;
 mod screensaver;
+mod surface;
+#[cfg(target_os = "linux")]
+mod wayland_overlay;
 
 pub use env_dual::{env_is_set, env_truthy, env_var_first, set_env};
 mod system_info;
@@ -65,6 +69,13 @@ pub use rng::{LcgRng, SEED_ENV_KEYS, seed_from_env};
 pub use screensaver::{GpuSpotlight, Screensaver, ScreensaverInstance, ScreensaverState};
 pub use system_info::SystemInfo;
 pub use terminal_cell::TerminalCell;
+pub use idle_source::{IdleSource, StubIdleSource, platform_idle};
+pub use surface::{
+    BlankAppearance, OverlaySurface, OutputId, OutputLayout, StubOverlay, platform_surface,
+};
+pub use plugin_manifest::signature::{verify_signature, signature_path, signature_required};
+#[cfg(target_os = "linux")]
+pub use wayland_overlay::WaylandOverlay;
 
 pub mod locks;
 

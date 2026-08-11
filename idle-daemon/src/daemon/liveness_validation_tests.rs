@@ -28,10 +28,11 @@ mod tests {
 
     #[test]
     fn test_start_presentation_preflight_rejects_invalid_savers() {
-        let overlay_presenter = match OverlayPresenter::new() {
-            Some(p) => Arc::new(p),
-            None => return,
-        };
+        let overlay_presenter: Arc<dyn idle_api::OverlaySurface> =
+            match idle_api::WaylandOverlay::new() {
+                Some(p) => Arc::new(p),
+                None => return,
+            };
 
         let mut presentation = ActivePresentation::None;
         let mut current_saver = String::new();
@@ -70,10 +71,11 @@ mod tests {
     #[test]
     fn test_rapid_saver_switching_liveness_and_validation() {
         let mut actor = OodaActor::new();
-        let overlay_presenter = match OverlayPresenter::new() {
-            Some(p) => Arc::new(p),
-            None => return,
-        };
+        let overlay_presenter: Arc<dyn idle_api::OverlaySurface> =
+            match idle_api::WaylandOverlay::new() {
+                Some(p) => Arc::new(p),
+                None => return,
+            };
 
         let mut presentation = ActivePresentation::None;
         let mut preview_name = None;

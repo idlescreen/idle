@@ -12,10 +12,9 @@ pub mod orient;
 pub mod state;
 
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
-use wayland_idle::IdleMonitor;
-use wayland_present::OverlayPresenter;
+use idle_api::{IdleSource, OverlaySurface};
 
 use self::act::OodaActor;
 use self::decide::OodaDecisionEngine;
@@ -67,8 +66,8 @@ impl OodaLoopController {
     pub fn step_tick(
         &mut self,
         controller: &Arc<DaemonController>,
-        idle_monitor: &mut IdleMonitor,
-        overlay_presenter: &mut Arc<OverlayPresenter>,
+        idle_monitor: &mut Box<dyn IdleSource>,
+        overlay_presenter: &mut Arc<dyn OverlaySurface>,
     ) -> anyhow::Result<()> {
         self.tick_counter = self.tick_counter.saturating_add(1);
         self.presentation
@@ -98,14 +97,16 @@ impl OodaLoopController {
 
         // Handle dynamic config reload interval if due
         if let Some(timeout) = controller.reload_config_if_due(self.tick_counter) {
-            idle_monitor.set_timeout(timeout);
+            idle_monitor
+            .as_mut()
+            .set_timeout(Duration::from_secs(timeout.saturating_mul(60) as u64));
         }
 
         // 3. DECIDE: Evaluate pure policy matrix to determine presentation target
         let decision = self.decision_engine.decide(
             &situation,
             &self.presentation,
-            overlay_presenter,
+            overlay_presenter.as_ref(),
             self.preview_name.as_deref(),
             &self.current_saver,
         );
@@ -114,7 +115,7 @@ impl OodaLoopController {
         if overlay_presenter.is_alive() {
             self.actor.execute(
                 decision,
-                overlay_presenter,
+overlay_presenter,
                 &mut self.presentation,
                 &mut self.preview_name,
                 &mut self.current_saver,
@@ -139,7 +140,7 @@ impl OodaLoopController {
     }
 
     /// Shutdown cleanup.
-    pub fn shutdown(&mut self, overlay_presenter: &Arc<OverlayPresenter>) {
+    pub fn shutdown(&mut self, overlay_presenter: &Arc<dyn OverlaySurface>) {
         stop_presentation(Some(overlay_presenter), &mut self.presentation);
     }
 }

@@ -1,0 +1,199 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 IdleScreen
+
+//! Platform-agnostic overlay-surface contract (Sprint 04 G3 continuation).
+//!
+//! Linux today ships a Wayland `zwlr-layer-shell-v1` impl via the
+//! `wayland-present` crate; macOS / Windows are stubbed and return `None`
+//! until Sprint 05 lands the real `NSWindow` / DXGI shims.
+//!
+//! Trait shape mirrors [`crate::IdleSource`]: an `is_available()` gate, a
+//! `new()` constructor returning `Option<Self>` so the daemon can refuse
+//! to start rather than fall back to a less-secure surface.
+
+use std::sync::Arc;
+
+/// A platform-specific overlay surface that hosts a BGRA screensaver frame.
+///
+/// `new()` returns `None` when the platform surface is unavailable (no
+/// Wayland compositor, no NSWindow, no DXGI output). Callers must treat
+/// `None` as a hard refusal.
+pub trait OverlaySurface: Send + Sync + 'static {
+    /// True when the implementation can attach to its platform surface in
+    /// this environment (e.g. `WAYLAND_DISPLAY` is set on Linux).
+    fn is_available() -> bool
+    where
+        Self: Sized;
+
+    /// Attach to the platform overlay surface and begin presenting.
+    ///
+    /// Returns `None` when the surface is unavailable.
+    fn new() -> Option<Self>
+    where
+        Self: Sized;
+
+    /// Submit a per-output BGRA frame for presentation. Frame buffer is
+    /// `width * height * 4` bytes; row-major, BGRA.
+    fn submit_frame(
+        &self,
+        output: OutputId,
+        frame: Arc<Vec<u8>>,
+        width: u32,
+        height: u32,
+    );
+
+    /// True when the surface is still attached and rendering. Returns
+    /// `false` to signal the daemon that the surface is gone (compositor
+    /// restart, display unplug) and the host needs to re-attach.
+    fn is_alive(&self) -> bool;
+
+    /// True when a screensaver frame is currently displayed. The stub
+    /// returns `false`; the Wayland adapter forwards to the presenter.
+    fn is_visible(&self) -> bool;
+
+    /// Begin presenting a solid-color "screen-blank" appearance. Used when
+    /// no saver is active. Stub: no-op.
+    fn show_blank(&self, _appearance: BlankAppearance);
+
+    /// Begin presenting the screensaver surface. Stub: no-op.
+    fn show_screensaver(&self);
+
+    /// Stop presenting. Stub: no-op.
+    fn hide(&self);
+
+    /// True when the surface supports hardware-scaled frame presentation.
+    /// Used by the frame loop to choose GPU upscale vs CPU upscale.
+    /// Stub: returns `false`.
+    fn supports_scaling(&self) -> bool;
+
+    /// Snapshot of the platform's logical outputs. Stub: empty.
+    fn output_layouts(&self) -> Vec<OutputLayout>;
+
+    /// Allocate a frame buffer the presenter can write into. The returned
+    /// `Vec<u8>` is BGRA, `width * height * 4` bytes. Used by the frame
+    /// loop's two-buffer ping-pong. Stub: returns an empty `Vec<u8>` of
+    /// the requested length (the host never reads it).
+    fn get_frame_buffer(&self, size: usize) -> Vec<u8> {
+        vec![0u8; size]
+    }
+}
+
+/// Solid-color "screen blank" appearance. Real impls translate this to
+/// platform-specific surface config; the stub ignores it.
+#[derive(Debug, Clone, Copy)]
+pub struct BlankAppearance {
+    pub color: [u8; 4],
+}
+
+impl Default for BlankAppearance {
+    fn default() -> Self {
+        Self { color: [0, 0, 0, 255] }
+    }
+}
+
+/// Per-output layout. Stub returns empty.
+#[derive(Debug, Clone, Copy)]
+pub struct OutputLayout {
+    pub id: u32,
+    pub x: i32,
+    pub y: i32,
+    pub width: u32,
+    pub height: u32,
+    pub refresh_mhz: u32,
+    pub scale: i32,
+}
+
+/// Stable identifier for a logical output (monitor). Implementations map
+/// this to whatever native id the platform uses (Wayland output, NSScreen,
+/// DXGI_OUTPUT_DESC, etc.).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct OutputId(pub u32);
+
+/// Select the overlay surface for the current target OS at compile time.
+///
+/// On non-Linux targets, returns a `StubOverlay` that fails closed
+/// (`is_alive() == false`, `submit_frame` is a no-op). The daemon must
+/// observe `is_alive() == false` immediately and refuse to start rather
+/// than spin.
+#[cfg(target_os = "linux")]
+pub fn platform_surface() -> Option<Arc<dyn OverlaySurface>> {
+    // Linux: the `wayland-present` crate is the canonical impl. We avoid
+    // a hard dep here so `idle-api` does not pull `wayland-client`;
+    // callers on Linux pass their own `Arc<dyn OverlaySurface>` from the
+    // `wayland-present` crate. This function therefore returns `None`
+    // unconditionally on Linux; the runner's Linux path constructs the
+    // surface directly. On other targets the stub below applies.
+    None
+}
+
+#[cfg(not(target_os = "linux"))]
+pub fn platform_surface() -> Option<Arc<dyn OverlaySurface>> {
+    Some(Arc::new(StubOverlay))
+}
+
+/// Stub surface for non-Linux targets. Always reports dead so the daemon
+/// refuses to start until Sprint 05 lands real macOS / Windows impls.
+pub struct StubOverlay;
+
+impl OverlaySurface for StubOverlay {
+    fn is_available() -> bool {
+        false
+    }
+
+    fn new() -> Option<Self> {
+        Some(Self)
+    }
+
+    fn submit_frame(
+        &self,
+        _output: OutputId,
+        _frame: Arc<Vec<u8>>,
+        _width: u32,
+        _height: u32,
+    ) {
+        // No-op: the stub never presents. Real impls forward to the
+        // platform's compositor / window system.
+    }
+
+    fn is_alive(&self) -> bool {
+        false
+    }
+
+    fn is_visible(&self) -> bool {
+        false
+    }
+
+    fn show_blank(&self, _appearance: BlankAppearance) {}
+
+    fn show_screensaver(&self) {}
+
+    fn hide(&self) {}
+
+    fn supports_scaling(&self) -> bool {
+        false
+    }
+
+    fn output_layouts(&self) -> Vec<OutputLayout> {
+        Vec::new()
+    }
+}
+
+#[cfg(test)]
+#[path = "surface_tests.rs"]
+mod tests;
+
+/// Default `OutputLayout` for test fixtures and stub returns. `scale=1`
+/// matches the Wayland compositor default.
+impl Default for OutputLayout {
+    fn default() -> Self {
+        Self {
+            id: 0,
+            x: 0,
+            y: 0,
+            width: 0,
+            height: 0,
+            refresh_mhz: 60,
+            scale: 1,
+        }
+    }
+}

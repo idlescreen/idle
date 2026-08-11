@@ -5,6 +5,8 @@
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
+use idle_api::IdleSource;
+#[cfg(target_os = "linux")]
 use wayland_idle::IdleMonitor;
 
 use crate::config::DaemonConfig;
@@ -34,7 +36,7 @@ impl OodaObserver {
     pub fn observe(
         &mut self,
         controller: &Arc<DaemonController>,
-        idle_monitor: &mut IdleMonitor,
+        idle_monitor: &mut Box<dyn IdleSource>,
     ) -> RawObservation {
         let system_idle = idle_monitor.is_idle();
         let session_locked = controller.session_locked.load(Ordering::Relaxed);

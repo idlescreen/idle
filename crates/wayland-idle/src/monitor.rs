@@ -3,6 +3,7 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
+use std::time::Duration;
 
 use crate::wayland;
 
@@ -19,10 +20,23 @@ pub struct IdleMonitor {
 
 impl IdleMonitor {
     /// Connect to the current Wayland session and begin monitoring idle state.
+    ///
+    /// `timeout_mins` is the initial inactivity threshold. Use [`Self::new_timeout`]
+    /// to pass a [`Duration`]; this constructor is preserved for callers that
+    /// already pass minutes.
     pub fn new(timeout_mins: u32) -> Option<Self> {
+        Self::new_timeout(Duration::from_secs(timeout_mins.saturating_mul(60) as u64))
+    }
+
+    /// Connect using a [`Duration`]. Internally the Wayland compositor's
+    /// `ext-idle-notify-v1` only accepts a minute granularity, so the
+    /// duration is rounded down to whole minutes.
+    pub fn new_timeout(timeout: Duration) -> Option<Self> {
         if !Self::is_available() {
             return None;
         }
+
+        let timeout_mins = (timeout.as_secs() / 60).min(u32::MAX as u64) as u32;
 
         let is_idle = Arc::new(AtomicBool::new(false));
         let (timeout_tx, timeout_rx) = mpsc::channel();
@@ -64,11 +78,39 @@ impl IdleMonitor {
     pub fn set_timeout(&self, timeout_mins: u32) {
         let _ = self.timeout_tx.send(timeout_mins);
     }
+
+    /// Update the idle timeout from a [`Duration`]. Rounded down to whole minutes.
+    pub fn set_timeout_duration(&self, timeout: Duration) {
+        let mins = (timeout.as_secs() / 60).min(u32::MAX as u64) as u32;
+        self.set_timeout(mins);
+    }
 }
 
 impl Drop for IdleMonitor {
     fn drop(&mut self) {
         self.shutdown.store(true, Ordering::Relaxed);
+    }
+}
+
+impl idle_api::IdleSource for IdleMonitor {
+    fn is_available() -> bool {
+        IdleMonitor::is_available()
+    }
+
+    fn new(timeout: Duration) -> Option<Self> {
+        IdleMonitor::new_timeout(timeout)
+    }
+
+    fn is_idle(&self) -> bool {
+        IdleMonitor::is_idle(self)
+    }
+
+    fn is_alive(&self) -> bool {
+        IdleMonitor::is_alive(self)
+    }
+
+    fn set_timeout(&self, timeout: Duration) {
+        IdleMonitor::set_timeout_duration(self, timeout)
     }
 }
 

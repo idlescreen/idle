@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 IdleScreen
 
-//! # Trance Plugins All Meta-Crate
+//! # IdleScreen Plugins All Meta-Crate
 //!
 //! This is a packaging-only placeholder library for the `idle-plugins-all`
 //! Debian package. It does not export any functions or contain active Rust logic.
@@ -21,11 +21,13 @@
 //! - **Cosmos**: Orbital gravity physics and orbital collapses.
 //! - **Glyphs**: Cryptographic/terminal falling character matrix.
 //! - **Gnats**: Kinetic swarm simulation.
+//! - **Hearth**: Warm ember / fire-like ambient.
 //! - **Radar**: Tactical air defense combat radar simulation.
+//! - **Ripple**: Expanding wave patterns.
 //! - **Storm**: Raining terminal storm with subtitles.
 //!
 //! ## Discovery
 //!
 //! The `idle-runner` automatically discovers screensaver binary libraries located in
-//! `/usr/lib/trance/plugins/` (installed by the individual screen packages) and presents
-//! them dynamically to the user session applet.
+//! `/usr/libexec/idle/screensavers/` (installed by the individual screen packages) and
+//! presents them dynamically to the user session applet.

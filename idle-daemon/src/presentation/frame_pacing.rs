@@ -5,7 +5,7 @@
 use std::sync::atomic::AtomicBool;
 use std::time::{Duration, Instant};
 
-use wayland_present::{OutputLayout, OverlayPresenter};
+use idle_api::{OverlaySurface, OutputLayout};
 
 use super::frame_loop::{ActiveSession, run_frame_loop};
 use super::ipc_session::IpcPluginSession;
@@ -89,7 +89,7 @@ impl FramePacing {
 
     pub(super) fn run_loop(
         mut self,
-        presenter: &OverlayPresenter,
+        presenter: &dyn OverlaySurface,
         stop: &AtomicBool,
         sessions: &mut [ActiveSession],
         layouts: &[OutputLayout],

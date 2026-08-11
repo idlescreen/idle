@@ -3,10 +3,12 @@
 //! openOODA Pillar 2: Orient (Situation Assessment & Fault Management)
 
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
+use idle_api::IdleSource;
+#[cfg(target_os = "linux")]
 use wayland_idle::IdleMonitor;
-use wayland_present::OverlayPresenter;
+use idle_api::OverlaySurface;
 
 use super::observe::RawObservation;
 use crate::config::DaemonConfig;
@@ -42,8 +44,8 @@ impl OodaOrientator {
         &mut self,
         raw: RawObservation,
         controller: &DaemonController,
-        idle_monitor: &mut IdleMonitor,
-        overlay_presenter: &mut Arc<OverlayPresenter>,
+        idle_monitor: &mut Box<dyn IdleSource>,
+        overlay_presenter: &mut Arc<dyn OverlaySurface>,
         presentation: &mut ActivePresentation,
         preview_name: &mut Option<String>,
         current_saver: &mut String,
@@ -66,7 +68,7 @@ impl OodaOrientator {
                     current_saver.clear();
                 }
                 DaemonCommand::SetTimeout(minutes) => {
-                    idle_monitor.set_timeout(minutes);
+                    idle_monitor.set_timeout(Duration::from_secs(minutes.saturating_mul(60) as u64));
                 }
                 other => {
                     let _ = controller.apply_command(other);
@@ -75,7 +77,7 @@ impl OodaOrientator {
         }
 
         // 2. Runtime health evaluation: check if Wayland compositor connection broke
-        if let Err(fault) = check_runtime_alive(idle_monitor, overlay_presenter) {
+        if let Err(fault) = check_runtime_alive(&**idle_monitor, &**overlay_presenter) {
             *consecutive_faults = consecutive_faults.saturating_add(1);
             let cooldown = present_cooldown_after_fault(*consecutive_faults);
             *present_cooldown_until = Some(Instant::now() + cooldown);
@@ -93,14 +95,16 @@ impl OodaOrientator {
             }
             apply_fault_clear_preview(preview_name, fault);
             if plan.recreate_presenter {
-                if let Some(p) = OverlayPresenter::new() {
+                if let Some(p) = idle_api::WaylandOverlay::new() {
                     *overlay_presenter = Arc::new(p);
                 }
             }
             if plan.recreate_idle_monitor {
-                let mins = raw.config.idle_timeout_mins;
-                if let Some(m) = IdleMonitor::new(mins) {
-                    *idle_monitor = m;
+                let dur = Duration::from_secs(
+                    raw.config.idle_timeout_mins.saturating_mul(60) as u64,
+                );
+                if let Some(m) = IdleMonitor::new_timeout(dur) {
+                    *idle_monitor = Box::new(m);
                 }
             }
 

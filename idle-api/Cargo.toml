@@ -10,9 +10,14 @@ bytemuck = { version = "1.21", features = ["derive"] }
 toml = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+wayland-present = { path = "../crates/wayland-present" }
 
 [dev-dependencies]
 proptest = "1"
+tempfile = "3"
 
 [[example]]
 name = "minimal_saver"

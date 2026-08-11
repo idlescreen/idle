@@ -4,7 +4,7 @@
 
 use std::sync::Arc;
 
-use wayland_present::OverlayPresenter;
+use idle_api::OverlaySurface;
 
 use crate::config::DaemonConfig;
 use crate::daemon::idle_decision::PresentationDecision;
@@ -23,7 +23,7 @@ impl OodaActor {
     pub fn execute(
         &mut self,
         decision: PresentationDecision,
-        overlay_presenter: &Arc<OverlayPresenter>,
+        overlay_presenter: &Arc<dyn OverlaySurface>,
         presentation: &mut ActivePresentation,
         preview_name: &mut Option<String>,
         current_saver: &mut String,
@@ -79,7 +79,8 @@ mod tests {
     #[test]
     fn test_ooda_actor_executes_stop_decision_directly() {
         let mut actor = OodaActor::new();
-        let overlay_presenter = match OverlayPresenter::new() {
+        let overlay_presenter: Arc<dyn idle_api::OverlaySurface> =
+            match idle_api::WaylandOverlay::new() {
             Some(p) => Arc::new(p),
             None => return,
         };
@@ -110,7 +111,8 @@ mod tests {
     #[test]
     fn test_ooda_actor_hold_does_not_mutate_state() {
         let mut actor = OodaActor::new();
-        let overlay_presenter = match OverlayPresenter::new() {
+        let overlay_presenter: Arc<dyn idle_api::OverlaySurface> =
+            match idle_api::WaylandOverlay::new() {
             Some(p) => Arc::new(p),
             None => return,
         };
@@ -138,7 +140,8 @@ mod tests {
     #[test]
     fn test_ooda_actor_stop_without_clear_preview() {
         let mut actor = OodaActor::new();
-        let overlay_presenter = match OverlayPresenter::new() {
+        let overlay_presenter: Arc<dyn idle_api::OverlaySurface> =
+            match idle_api::WaylandOverlay::new() {
             Some(p) => Arc::new(p),
             None => return,
         };
@@ -169,7 +172,8 @@ mod tests {
     #[test]
     fn test_ooda_actor_failed_preview_clears_preview_state() {
         let mut actor = OodaActor::new();
-        let overlay_presenter = match OverlayPresenter::new() {
+        let overlay_presenter: Arc<dyn idle_api::OverlaySurface> =
+            match idle_api::WaylandOverlay::new() {
             Some(p) => Arc::new(p),
             None => return,
         };

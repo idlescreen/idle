@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+use super::manifest_gate;
 use super::{PluginGuard, PluginSession};
 use crate::launcher::PluginError;
 use idle_api::ScreensaverInstance;
@@ -32,7 +33,7 @@ impl PluginSession {
         // Re-read the manifest: the file on disk changed, so the capability
         // claims we admitted the old library under may no longer hold. Falling
         // back to the cached manifest would let a swapped .so inherit trust.
-        let manifest = super::loading::load_manifest_for(&self.plugin_path)?;
+        let manifest = manifest_gate::load_manifest_for(&self.plugin_path)?;
 
         // Re-assert sandbox allow for this path before constructors run.
         match manifest.as_deref() {

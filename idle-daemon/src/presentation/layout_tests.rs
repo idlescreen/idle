@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-use wayland_present::OutputLayout;
+use idle_api::OutputLayout;
 
 use super::*;
 
@@ -9,7 +9,7 @@ fn layout(id: u32, x: i32, y: i32, w: u32, h: u32) -> OutputLayout {
         id,
         width: w,
         height: h,
-        refresh_rate_hz: 60,
+        refresh_mhz: 60,
         x,
         y,
         scale: 1,

@@ -3,8 +3,8 @@
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use idle_api::OverlaySurface;
 use idle_runner::launcher::{ALLOWED_SAVERS, is_allowed_saver};
-use wayland_present::OverlayPresenter;
 
 use crate::config::DaemonConfig;
 use crate::presentation::{PluginPresentation, PresentationOptions};
@@ -51,7 +51,7 @@ impl ActivePresentation {
 
 #[tracing::instrument(skip(overlay_presenter, presentation, current_saver, config), fields(saver_name = %saver_name, reason = %reason))]
 pub fn start_presentation(
-    overlay_presenter: &Arc<OverlayPresenter>,
+    overlay_presenter: &Arc<dyn OverlaySurface>,
     presentation: &mut ActivePresentation,
     current_saver: &mut String,
     saver_name: String,
@@ -95,12 +95,12 @@ pub fn start_presentation(
 
 #[tracing::instrument(skip(overlay_presenter, presentation))]
 pub fn stop_presentation(
-    overlay_presenter: Option<&Arc<OverlayPresenter>>,
+    overlay_presenter: Option<&Arc<dyn OverlaySurface>>,
     presentation: &mut ActivePresentation,
 ) {
     if let ActivePresentation::Plugin(plugin) = presentation {
         if let Some(presenter) = overlay_presenter {
-            plugin.stop(presenter);
+            plugin.stop(&**presenter);
         }
         *presentation = ActivePresentation::None;
     }
