@@ -158,6 +158,13 @@ impl PluginSession {
         unsafe {
             let lib = Library::new(path)?;
 
+            // ABI negotiation: try the modern symbol, then the legacy one.
+            // If neither is exported, accept the plugin anyway (per the
+            // `Optional ABI negotiation` doc-comment above). This is the
+            // *live* path for every plugin shipped today (Sprint 02
+            // contract: no version symbol required). A future tightening
+            // to require the symbol would be a breaking change for the
+            // 10 current idle-saver-* crates.
             let ver_sym = lib
                 .get::<unsafe extern "C" fn() -> u32>(b"idle_api_version")
                 .or_else(|_| lib.get::<unsafe extern "C" fn() -> u32>(b"trance_api_version"));
@@ -172,7 +179,8 @@ impl PluginSession {
                 }
                 Err(_) => {
                     tracing::debug!(
-                        "plugin has no trance_api_version symbol; assuming host-compatible"
+                        "plugin has no idle_api_version / trance_api_version symbol; \
+                         assuming host-compatible (Sprint-02 legacy contract)"
                     );
                 }
             }
