@@ -12,7 +12,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 use super::ipc_peer::{require_child_peer, runtime_socket_dir};
-use super::ipc_session::read_timeout;
+use super::timeout::read_timeout;
 
 static SESSION_COUNTER: AtomicUsize = AtomicUsize::new(0);
 

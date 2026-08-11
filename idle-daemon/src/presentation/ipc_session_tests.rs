@@ -9,7 +9,7 @@ use idle_runner::launcher::LaunchMode;
 
 #[test]
 fn is_timeout_classifies_timed_out_and_would_block() {
-    use super::ipc_session::is_timeout;
+    use super::timeout::is_timeout;
     let timed_out = std::io::Error::new(std::io::ErrorKind::TimedOut, "test");
     let would_block = std::io::Error::new(std::io::ErrorKind::WouldBlock, "test");
     let other = std::io::Error::new(std::io::ErrorKind::BrokenPipe, "test");
@@ -20,7 +20,7 @@ fn is_timeout_classifies_timed_out_and_would_block() {
 
 #[test]
 fn read_timeout_env_override_works() {
-    use super::ipc_session::read_timeout;
+    use super::timeout::read_timeout;
     unsafe { std::env::set_var("IDLE_IPC_READ_TIMEOUT_MS", "123") };
     let t = read_timeout();
     unsafe { std::env::remove_var("IDLE_IPC_READ_TIMEOUT_MS") };
@@ -29,7 +29,7 @@ fn read_timeout_env_override_works() {
 
 #[test]
 fn read_timeout_default_when_env_unset() {
-    use super::ipc_session::{read_timeout, DEFAULT_IPC_READ_TIMEOUT};
+    use super::timeout::{read_timeout, DEFAULT_IPC_READ_TIMEOUT};
     unsafe { std::env::remove_var("IDLE_IPC_READ_TIMEOUT_MS") };
     assert_eq!(read_timeout(), DEFAULT_IPC_READ_TIMEOUT);
 }

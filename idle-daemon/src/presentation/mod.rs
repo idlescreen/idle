@@ -14,8 +14,10 @@ mod ipc_lifecycle;
 mod ipc_peer;
 mod ipc_raster;
 mod ipc_session;
+mod ipc_session_methods;
 #[cfg(test)]
 mod ipc_session_tests;
+mod timeout;
 mod layout;
 mod overlays;
 mod plugin_loop;
