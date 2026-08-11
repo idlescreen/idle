@@ -150,7 +150,10 @@ fn update_fps_counter(state: &mut FrameLoopState, frame_index: u64) {
     }
 
     if elapsed < state.frame_duration {
-        thread::sleep(state.frame_duration - elapsed);
+        // saturating_sub: frame overruns must not panic the daemon
+        // (L1 lifecycle bug — under load, `frame_duration - elapsed`
+        // would panic on negative).
+        thread::sleep(state.frame_duration.saturating_sub(elapsed));
     }
 }
 

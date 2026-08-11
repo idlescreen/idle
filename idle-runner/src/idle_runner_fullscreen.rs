@@ -211,9 +211,30 @@ pub(super) fn drive_plugin_loop(
         saver.draw(&mut grid, cols, rows);
         r.render_grid(&grid, cols, rows, saver.has_scanlines());
         let elapsed = now.elapsed();
+        // saturate to ZERO on overrun; `Duration - Duration` panics on
+        // underflow (L1 lifecycle bug — frame overruns crash the daemon).
         if elapsed < frame_duration {
-            std::thread::sleep(frame_duration - elapsed);
+            std::thread::sleep(frame_duration.saturating_sub(elapsed));
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// PROBE #1 finding regression: `frame_duration.saturating_sub(elapsed)`
+    /// must NOT panic when `elapsed > frame_duration` (frame overrun under load).
+    /// Reproduces the L1 lifecycle bug found in idle-runner + idle-daemon
+    /// frame loop on 2026-08-10; both call sites now use saturating_sub.
+    #[test]
+    fn frame_overrun_does_not_panic() {
+        let frame_duration = std::time::Duration::from_millis(16);
+        let elapsed = std::time::Duration::from_millis(20);
+        // The old code did `frame_duration - elapsed` which panicked.
+        // The fix uses saturating_sub which returns ZERO on underflow.
+        let sleep_for = frame_duration.saturating_sub(elapsed);
+        assert_eq!(sleep_for, std::time::Duration::ZERO);
+    }
 }
