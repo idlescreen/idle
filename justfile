@@ -1,5 +1,10 @@
 default: verify
 
+# Bootstrap a clean clone: rustup toolchain + cargo-audit/cargo-deny +
+# sibling idle/ symlink + apt dep sanity. Idempotent.
+bootstrap:
+    ./scripts/bootstrap.sh
+
 # Build a release binary
 build:
     cargo build --release --workspace

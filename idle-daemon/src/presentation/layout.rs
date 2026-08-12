@@ -27,22 +27,7 @@ fn nonneg_usize(v: i32) -> usize {
     if v <= 0 { 0 } else { v as usize }
 }
 
-#[allow(dead_code)]
-pub fn normalize_layout_positions(layouts: &mut [OutputLayout]) {
-    if layouts.len() <= 1 {
-        return;
-    }
-    if layouts.iter().any(|layout| layout.x != 0 || layout.y != 0) {
-        return;
-    }
 
-    let mut x: i32 = 0;
-    for layout in layouts {
-        layout.x = x;
-        layout.y = 0;
-        x = x.saturating_add(extent_i32(layout.width));
-    }
-}
 
 /// Caps span simulation cost: full virtual-desktop coverage with a bounded cell count.
 pub fn span_simulation_grid(

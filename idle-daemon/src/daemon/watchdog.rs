@@ -83,6 +83,7 @@ pub fn spawn_monitor(
     watchdog: Watchdog,
     timeout_ms: u64,
     shutdown_flag: Arc<std::sync::atomic::AtomicBool>,
+    main_thread: thread::Thread,
 ) -> thread::JoinHandle<()> {
     thread::spawn(move || {
         let mut escalated = false;
@@ -95,6 +96,7 @@ pub fn spawn_monitor(
                 );
                 if !escalated {
                     shutdown_flag.store(true, std::sync::atomic::Ordering::Release);
+                    main_thread.unpark();
                     escalated = true;
                 }
             }

@@ -38,14 +38,6 @@ fn stub_show_hide_scale_layouts_are_safe_noops() {
     assert!(s.output_layouts().is_empty());
 }
 
-#[test]
-fn platform_surface_some_on_non_linux() {
-    if cfg!(target_os = "linux") {
-        return; // platform_surface returns None unconditionally on Linux
-    }
-    let s = platform_surface().expect("non-linux must yield a stub");
-    assert!(!s.is_alive());
-}
 
 #[test]
 fn output_id_is_hashable() {

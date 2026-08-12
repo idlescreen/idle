@@ -133,15 +133,4 @@ fn stretch_byte_rows(
     }
 }
 
-/// Fast integer nearest-neighbor stretch (allocates output).
-#[allow(dead_code)]
-pub fn upscale_stretch(src: &[u8], src_w: u32, src_h: u32, dst_w: u32, dst_h: u32) -> Vec<u8> {
-    let needed = (dst_w as usize)
-        .checked_mul(dst_h as usize)
-        .and_then(|p| p.checked_mul(4))
-        .unwrap_or(0);
-    let mut dst = vec![0u8; needed];
-    let mut cache = StretchCache::new();
-    upscale_stretch_into(&mut dst, src, src_w, src_h, dst_w, dst_h, &mut cache);
-    dst
-}
+

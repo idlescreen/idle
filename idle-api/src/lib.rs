@@ -71,37 +71,13 @@ pub use system_info::SystemInfo;
 pub use terminal_cell::TerminalCell;
 pub use idle_source::{IdleSource, StubIdleSource, platform_idle};
 pub use surface::{
-    BlankAppearance, OverlaySurface, OutputId, OutputLayout, StubOverlay, platform_surface,
+    BlankAppearance, OverlaySurface, OutputId, OutputLayout, StubOverlay,
 };
 pub use plugin_manifest::signature::{verify_signature, signature_path, signature_required};
 #[cfg(target_os = "linux")]
 pub use wayland_overlay::WaylandOverlay;
 
-pub mod locks;
-
 /// `.idleplugin.toml` capability manifest (schema v1).
 pub mod plugin_manifest;
 
-/// Compatibility module structures for minimal changes in screensaver ports.
-pub mod core {
-    pub use crate::{
-        GpuSpotlight, LcgRng, Screensaver, ScreensaverState, TerminalCell, hsl_to_rgb, lerp,
-        percentage, rgb_to_hsl,
-    };
-    pub mod screensaver {
-        pub use crate::{GpuSpotlight, Screensaver, ScreensaverState};
-    }
-    pub mod logo_block {
-        pub use crate::logo_block::render_logo_block;
-    }
-}
 
-pub mod toolkit {
-    pub mod sys_info {
-        pub use crate::{
-            CenteredLogo, MonitorCellBounds, SystemInfo, caption_text, clear_caption,
-            get_primary_monitor_bounds, get_system_info, is_secondary_monitor, is_span_layout,
-            place_centered_logo, publish_caption, query_current_palette, span_reach_scale,
-        };
-    }
-}

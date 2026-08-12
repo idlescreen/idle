@@ -1,5 +1,7 @@
 # Zero-dependency Alpine build container for IdleScreen
-FROM rust:1.80-alpine as builder
+FROM rust:1.96.0-alpine as builder
+
+ENV RUSTUP_TOOLCHAIN=1.96.0
 
 RUN apk add --no-build-cache \
     musl-dev \

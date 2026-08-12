@@ -41,6 +41,14 @@ fn skip_tests() -> bool {
     )
 }
 
+fn dry_run() -> bool {
+    matches!(
+        std::env::var("IDLE_PACKAGE_DRY_RUN").as_deref(),
+        Ok("1") | Ok("true") | Ok("yes") | Ok("TRUE") | Ok("YES")
+    )
+}
+
+
 /// Headless package gate — must pass before shipping packages.
 /// See `scripts/qa_package_gate.sh` and `docs/QA_REGRESSION.md`.
 fn run_qa_unit_gate() -> Result<(), String> {
@@ -83,8 +91,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("==========================================");
 
     // Clean stale packaging directories to avoid copying old versions
-    let _ = fs::remove_dir_all("target/debian");
-    let _ = fs::remove_dir_all("target/generate-rpm");
+    if dry_run() {
+        println!("[dry-run] would clean: target/debian, target/generate-rpm");
+    } else {
+        let _ = fs::remove_dir_all("target/debian");
+        let _ = fs::remove_dir_all("target/generate-rpm");
+    }
 
     // Ensure path to cargo bin
     let home = std::env::var("HOME")?;

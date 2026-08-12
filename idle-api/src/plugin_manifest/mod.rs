@@ -24,15 +24,6 @@ use std::path::{Path, PathBuf};
 /// Manifest schema version understood by this host.
 pub const SCHEMA_VERSION: u32 = 1;
 
-/// Sandbox profiles recognised by the host, loosest last.
-pub const PROFILES: &[&str] = &[
-    "minimal",
-    "renderer",
-    "asset-author",
-    "experimental",
-    "seatbelt",     // macOS — Sprint 05 H1
-    "appcontainer", // Windows — Sprint 05 H2
-];
 
 /// Why a manifest was rejected. Every variant is fail-closed at the loader.
 #[derive(Debug, thiserror::Error)]
@@ -107,7 +98,10 @@ pub fn validate(manifest: &Manifest) -> Result<(), ManifestError> {
     if manifest.entry.library.trim().is_empty() || manifest.entry.library.contains('/') {
         return invalid("entry.library must be a bare file name");
     }
-    if !PROFILES.contains(&manifest.sandbox.profile.as_str()) {
+    if !matches!(
+        manifest.sandbox.profile.as_str(),
+        "minimal" | "renderer" | "asset-author" | "experimental" | "seatbelt" | "appcontainer"
+    ) {
         return invalid("sandbox.profile is not a known profile");
     }
     validate_capability_paths(&manifest.capabilities.filesystem_read, "filesystem_read", &invalid)?;

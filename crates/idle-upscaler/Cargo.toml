@@ -1,8 +1,10 @@
 [package]
+authors = ["idlescreen developers"]
+repository = "https://github.com/idlescreen/idlescreen"
 name = "idle-upscaler"
 version = "0.5.0"
 edition = "2024"
-description = "CPU upscaling for trance screensaver frames"
+description = "CPU upscaling for idle screensaver frames"
 license = "Apache-2.0"
 
 [lints]

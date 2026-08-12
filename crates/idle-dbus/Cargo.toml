@@ -1,4 +1,6 @@
 [package]
+authors = ["idlescreen developers"]
+repository = "https://github.com/idlescreen/idlescreen"
 name = "idle-dbus"
 version = "0.7.0"
 edition = "2024"

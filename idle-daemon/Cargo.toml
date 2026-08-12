@@ -1,6 +1,8 @@
 [package]
+authors = ["idlescreen developers"]
+repository = "https://github.com/idlescreen/idlescreen"
 name = "idle-daemon"
-version = "3.1.0"
+version = "3.2.0"
 edition = "2024"
 description = "IdleScreen background idle daemon (Wayland screensaver host)"
 license = "Apache-2.0"
@@ -29,7 +31,7 @@ idle-ipc = { path = "../crates/idle-ipc" }
 wayland-idle = { workspace = true }
 wayland-present = { workspace = true }
 libc = { workspace = true }
-libloading = "0.8"
+libloading = "0.9"
 signal-hook = "0.4"
 zbus = { workspace = true }
 futures-lite = "2.6"
@@ -46,7 +48,7 @@ changelog = "debian/changelog"
 copyright = "2026 IdleScreen"
 maintainer = "IdleScreen <jerydleuck@gmail.com>"
 extended-description = "IdleScreen background idle monitoring and screensaver host for Wayland."
-depends = "libc6, fonts-dejavu-core, dbus, idle-cli"
+depends = "libc6, fonts-dejavu-core, dbus"
 recommends = "idle-cli, idle-saver-beams, idle-saver-bursts, idle-saver-chaos, idle-saver-cosmos, idle-saver-glyphs, idle-saver-gnats, idle-saver-hearth, idle-saver-radar, idle-saver-ripple, idle-saver-storm"
 suggests = "idle-cosmic"
 section = "utils"
@@ -82,7 +84,6 @@ assets = [
 
 [package.metadata.generate-rpm.requires]
 dejavu-sans-mono-fonts = "*"
-idle-cli = "*"
 
 [package.metadata.generate-rpm.recommends]
 idle-cli = "*"

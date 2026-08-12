@@ -111,3 +111,7 @@ debug = 1
 strip = "none"
 
 
+
+[workspace.package]
+authors = ["idlescreen developers"]
+repository = "https://github.com/idlescreen/idlescreen"

@@ -50,40 +50,6 @@ fn virtual_desktop_empty_layouts_is_unit() {
     assert_eq!(height, 1);
 }
 
-#[test]
-fn normalize_layout_positions_noop_for_single_output() {
-    let mut layouts = vec![layout(1, 0, 0, 1920, 1080)];
-    normalize_layout_positions(&mut layouts);
-    assert_eq!(layouts[0].x, 0);
-    assert_eq!(layouts[0].y, 0);
-}
-
-#[test]
-fn normalize_layout_positions_noop_when_already_offset() {
-    let mut layouts = vec![
-        layout(1, 100, 50, 1920, 1080),
-        layout(2, 2020, 50, 1920, 1080),
-    ];
-    normalize_layout_positions(&mut layouts);
-    assert_eq!(layouts[0].x, 100);
-    assert_eq!(layouts[1].x, 2020);
-}
-
-#[test]
-fn normalize_layout_positions_stacks_unset_outputs() {
-    let mut layouts = vec![
-        layout(1, 0, 0, 1920, 1080),
-        layout(2, 0, 0, 1280, 720),
-        layout(3, 0, 0, 800, 600),
-    ];
-    normalize_layout_positions(&mut layouts);
-    assert_eq!(layouts[0].x, 0);
-    assert_eq!(layouts[1].x, 1920);
-    assert_eq!(layouts[2].x, 3200);
-    for entry in &layouts {
-        assert_eq!(entry.y, 0);
-    }
-}
 
 #[test]
 fn monitor_cell_bounds_full_extent() {
@@ -188,31 +154,6 @@ fn monitor_cell_bounds_clamps_negative_relative_to_zero_cols() {
     assert!(!b.is_primary);
 }
 
-#[test]
-fn normalize_layout_positions_saturates_wide_chain() {
-    let mut layouts = vec![
-        layout(1, 0, 0, 2_000_000_000, 100),
-        layout(2, 0, 0, 2_000_000_000, 100),
-    ];
-    normalize_layout_positions(&mut layouts);
-    assert_eq!(layouts[0].x, 0);
-    // Second x is saturating_add of first width as i32 (clamped).
-    assert!(layouts[1].x > 0 || layouts[1].x == i32::MAX);
-}
-
-#[test]
-fn normalize_layout_positions_saturates_max_u32_widths() {
-    let mut layouts = vec![
-        layout(1, 0, 0, u32::MAX, 10),
-        layout(2, 0, 0, u32::MAX, 10),
-        layout(3, 0, 0, u32::MAX, 10),
-    ];
-    normalize_layout_positions(&mut layouts);
-    assert_eq!(layouts[0].x, 0);
-    // extent_i32(u32::MAX) == i32::MAX; next adds saturate at i32::MAX.
-    assert_eq!(layouts[1].x, i32::MAX);
-    assert_eq!(layouts[2].x, i32::MAX);
-}
 
 #[test]
 fn monitor_cell_bounds_end_not_before_start_on_tiny_grid() {

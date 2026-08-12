@@ -7,11 +7,8 @@ mod letterbox;
 mod sample;
 mod stretch;
 
-// Allocator variants are part of the module API (tests + future callers).
-#[allow(unused_imports)]
-pub use letterbox::{upscale_letterbox, upscale_letterbox_into};
-#[allow(unused_imports)]
-pub use stretch::{StretchCache, upscale_stretch, upscale_stretch_into};
+pub use letterbox::upscale_letterbox_into;
+pub use stretch::{StretchCache, upscale_stretch_into};
 
 #[cfg(test)]
 #[path = "../cpu_tests.rs"]

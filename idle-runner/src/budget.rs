@@ -49,7 +49,14 @@ pub struct CpuBudget {
     hard_limit_us: u64,
     hard_window_secs: u64,
     status: BudgetStatus,
+    // --- Sample cache (closes M-A19: per-tick open+read+parse of /proc). ---
+    // Interior mutability so `usage_micros(&self)` can update without
+    // disturbing the public API. Sample period: SAMPLE_CACHE_MS.
+    last_sample_micros: std::cell::Cell<u64>,
+    last_sample_at: std::cell::Cell<Option<Instant>>,
 }
+
+const SAMPLE_CACHE_MS: u64 = 250;
 
 impl CpuBudget {
     /// Attach a cgroup v2 child named `idle/<plugin_id>` and apply the
@@ -81,6 +88,8 @@ impl CpuBudget {
             hard_limit_us: quota_us * DEFAULT_HARD_LIMIT_MULTIPLIER as u64,
             hard_window_secs: DEFAULT_HARD_LIMIT_WINDOW_SECS,
             status,
+            last_sample_micros: std::cell::Cell::new(0),
+            last_sample_at: std::cell::Cell::new(None),
         })
     }
 
@@ -102,16 +111,25 @@ impl CpuBudget {
     /// `/proc/self/stat` field 14 (utime + stime). Both report cumulative time
     /// so callers compare against the budget's `started` baseline.
     pub fn usage_micros(&self) -> u64 {
+        let now = Instant::now();
+        if let Some(at) = self.last_sample_at.get() {
+            if now.duration_since(at) < std::time::Duration::from_millis(SAMPLE_CACHE_MS) {
+                return self.last_sample_micros.get();
+            }
+        }
         let proc_delta = || -> u64 {
             match read_proc_cpu_micros() {
                 Ok(now) => now.saturating_sub(self.start_proc_cpu_micros),
                 Err(_) => 0,
             }
         };
-        match &self.cgroup_dir {
+        let v = match &self.cgroup_dir {
             Some(dir) => read_cgroup_usage_micros(dir).unwrap_or_else(|_| proc_delta()),
             None => proc_delta(),
-        }
+        };
+        self.last_sample_micros.set(v);
+        self.last_sample_at.set(Some(now));
+        v
     }
 
     /// True when the plugin has been over the hard ceiling for the configured

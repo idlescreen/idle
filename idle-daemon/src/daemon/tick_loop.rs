@@ -21,6 +21,7 @@ pub fn tick_loop_until_shutdown(controller: Arc<DaemonController>) -> anyhow::Re
         watchdog.clone(),
         watchdog::configured_timeout_ms(),
         controller.shutdown.clone(),
+        std::thread::current(),
     );
 
     while !controller.shutdown.load(Ordering::Relaxed) {

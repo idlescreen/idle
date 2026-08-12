@@ -58,16 +58,3 @@ fn upscale_stretch_same_size_copies() {
     assert_eq!(dst, src);
 }
 
-#[test]
-fn upscale_stretch_allocator_produces_correct_size() {
-    let src = vec![0u8; 2 * 2 * 4];
-    let out = upscale_stretch(&src, 2, 2, 4, 4);
-    assert_eq!(out.len(), 4 * 4 * 4);
-}
-
-#[test]
-fn upscale_letterbox_allocator_produces_correct_size() {
-    let src = vec![0u8; 4];
-    let out = upscale_letterbox(&src, 1, 1, 4, 4, FilterMode::Linear);
-    assert_eq!(out.len(), 4 * 4 * 4);
-}

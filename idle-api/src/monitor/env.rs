@@ -27,7 +27,7 @@ pub(crate) fn cached_primary_bounds_from_env() -> Option<MonitorCellBounds> {
     }
     let mut cache = env_bounds_cache()
         .write()
-        .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
+        .unwrap_or_else(|p| p.into_inner());
     if cache.is_none() {
         *cache = read_primary_bounds_from_env();
     }
@@ -66,11 +66,11 @@ fn read_primary_bounds_from_env() -> Option<MonitorCellBounds> {
 pub(crate) fn store_primary_bounds(bounds: MonitorCellBounds) {
     *env_bounds_cache()
         .write()
-        .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p)) = Some(bounds);
+        .unwrap_or_else(|p| p.into_inner()) = Some(bounds);
 }
 
 pub(crate) fn clear_stored_primary_bounds() {
     *env_bounds_cache()
         .write()
-        .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p)) = None;
+        .unwrap_or_else(|p| p.into_inner()) = None;
 }

@@ -109,27 +109,6 @@ pub struct OutputLayout {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct OutputId(pub u32);
 
-/// Select the overlay surface for the current target OS at compile time.
-///
-/// On non-Linux targets, returns a `StubOverlay` that fails closed
-/// (`is_alive() == false`, `submit_frame` is a no-op). The daemon must
-/// observe `is_alive() == false` immediately and refuse to start rather
-/// than spin.
-#[cfg(target_os = "linux")]
-pub fn platform_surface() -> Option<Arc<dyn OverlaySurface>> {
-    // Linux: the `wayland-present` crate is the canonical impl. We avoid
-    // a hard dep here so `idle-api` does not pull `wayland-client`;
-    // callers on Linux pass their own `Arc<dyn OverlaySurface>` from the
-    // `wayland-present` crate. This function therefore returns `None`
-    // unconditionally on Linux; the runner's Linux path constructs the
-    // surface directly. On other targets the stub below applies.
-    None
-}
-
-#[cfg(not(target_os = "linux"))]
-pub fn platform_surface() -> Option<Arc<dyn OverlaySurface>> {
-    Some(Arc::new(StubOverlay))
-}
 
 /// Stub surface for non-Linux targets. Always reports dead so the daemon
 /// refuses to start until Sprint 05 lands real macOS / Windows impls.

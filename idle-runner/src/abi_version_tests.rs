@@ -67,8 +67,12 @@ fn f102_missing_version_symbol_refuses() {
 #[test]
 fn f102_real_saver_with_version_symbol_loads() {
     let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-    let beams_so = std::path::Path::new(
-        "/home/jeryd/Projects/idlescreen/idle-saver-beams/target/debug/libscreensaver_beams.so",
+    let default_beams_so = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../idle-saver-beams/target/debug/libscreensaver_beams.so");
+    let beams_so = std::path::PathBuf::from(
+        std::env::var("IDLE_TEST_BEAMS_SO").unwrap_or_else(|_| {
+            default_beams_so.to_string_lossy().to_string()
+        }),
     );
     if !beams_so.exists() {
         eprintln!(

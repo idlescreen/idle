@@ -43,30 +43,3 @@ pub fn check_keypress() -> bool {
     }
     false
 }
-
-// ---------------------------------------------------------------------------
-// Misc
-// ---------------------------------------------------------------------------
-
-#[allow(dead_code)]
-pub fn command_exists(cmd: &str) -> bool {
-    // Avoid shell metachar injection. Try "which" first (common on Linux),
-    // then fallback to attempting to invoke the command.
-    if let Ok(status) = std::process::Command::new("which")
-        .arg(cmd)
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
-        && status.success()
-    {
-        return true;
-    }
-    // Fallback: if the command can at least be started (even if it exits non-zero),
-    // consider it present. (Used for "xterm" in fullscreen launch paths.)
-    std::process::Command::new(cmd)
-        .arg("--version")
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
-        .is_ok()
-}

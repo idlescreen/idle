@@ -52,20 +52,3 @@ pub fn upscale_letterbox_into(
     }
 }
 
-#[allow(dead_code)]
-pub fn upscale_letterbox(
-    src: &[u8],
-    src_w: u32,
-    src_h: u32,
-    dst_w: u32,
-    dst_h: u32,
-    filter: FilterMode,
-) -> Vec<u8> {
-    let needed = (dst_w as usize)
-        .checked_mul(dst_h as usize)
-        .and_then(|p| p.checked_mul(4))
-        .unwrap_or(0);
-    let mut dst = vec![0u8; needed];
-    upscale_letterbox_into(&mut dst, src, src_w, src_h, dst_w, dst_h, filter);
-    dst
-}

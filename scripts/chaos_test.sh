@@ -23,7 +23,7 @@ echo "============================================================"
 echo " Auth: no IDLE_DBUS_TRUST_ALL (GetStatus product path only)"
 echo " Root: $ROOT_DIR"
 
-require_chaos_env || true
+require_chaos_env
 
 trap 'cleanup' EXIT SIGINT SIGTERM
 cleanup

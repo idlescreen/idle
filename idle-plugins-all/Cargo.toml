@@ -1,6 +1,8 @@
 [package]
+authors = ["idlescreen developers"]
+repository = "https://github.com/idlescreen/idlescreen"
 name = "idle-plugins-all"
-version = "3.1.0"
+version = "3.2.0"
 edition = "2024"
 description = "Meta package that hard-depends on all official IdleScreen saver plugins"
 license = "Apache-2.0"

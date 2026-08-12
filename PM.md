@@ -9,32 +9,32 @@ what is not.
 
 ## What ships today — done / not
 
-| Product / capability | Status | Latest | Date |
-|----------------------|--------|--------|------|
-| `idle-daemon` (Linux) | done | v3.1.0 | 2026-08-10 |
-| `idle-cli`, `idle-runner`, `idle-api` | done | bundled (v3.1.0) | 2026-08-10 |
-| savers (`idle-saver-*` × 10) | done | v2.1.0 | 2026-08-10 |
-| `idle-tui` (Linux) | done | v3.0.1 | — |
-| `idle-cosmic` (applet) | done | v3.0.2 | — |
-| `idle-studio`, `render` | done | studio v0.3.4 / engine v1.1.0 | 2026-08-10 |
-| Channel (RPM / DEB / Arch) | done | v4.0.5 | 2026-08-10 |
-| Engine (platform-agnostic core) | partial | — | Linux-only today |
-| macOS shim | **not** | — | — |
-| Windows shim | **not** | — | — |
-| WASM plugin host | **deferred** (DECISION-WASM-01 = Option C) | — | — |
-| Capability-declaring plugin manifest | **done** | manifest host + 10/10 savers + audit log | 2026-08-10 |
-| Headless render mode (PNG/MP4/stdout) | **done** | merged to render/master (0b7a11c) | 2026-08-10 |
-| Homebrew / scoop / winget / MSI channels | **deferred** (DECISION-CHANNEL-MORE = Option A) | — | — |
-| Audio capture capability gate | **done** | per-capability opt-in (`IDLE_PERMIT_AUDIO_CAPTURE` / `_OUTPUT`); profile-aware network gate | 2026-08-10 |
-| Per-saver GPU/CPU budget enforcement | **done** | CPU via cgroup v2 done; GPU via 3 vendor backends (nvidia-smi / intel_gpu_top / amdgpu_top) with health watchdog | 2026-08-10 |
-| Watchdog on render loop + per-plugin | **done** | per-plugin tick watchdog (wall-clock); render-loop heartbeat (AtomicU64) → AtomicBool escalation; IPC timeout → `kill_child()` on hung saver | 2026-08-10 |
-| GPG manifest signature verification | **done** (opt-in) | `IDLE_REQUIRE_MANIFEST_SIGNATURE=1` → refuse unsig'd; `~/.config/idle/trusted-keys.d/` keyring | 2026-08-10 |
-| Subprocess plugin isolation | **done** | IPC child + SIGKILL on hang; `kill_child()` idempotent | 2026-08-10 |
-| Install-time audit log (F-202 escape fix) | **done** | JSONL `~/.config/idle/install-audit.jsonl`; full RFC 8259 control-char escape | 2026-08-10 |
-| macOS / Windows sandbox (Seatbelt / AppContainer) | **not** | — | out of scope per user |
-| Multi-platform idle detection (IOKit, GetLastInputInfo) | **not** | — | out of scope per user |
-| ABI version enforcement (F-102) | **done** | loader requires `idle_api_version` symbol; 10/10 savers export it | 2026-08-10 |
-| Frame-loop panic fix (F-101) | **done** | `saturating_sub` on `frame_duration - elapsed` at 2 callsites | 2026-08-10 |
+| # | Product / capability | Status | Latest | Date |
+|---|----------------------|--------|--------|------|
+| #1 | `idle-daemon` (Linux) | done | v3.1.0 | 2026-08-10 |
+| #2 | `idle-cli`, `idle-runner`, `idle-api` | done | bundled (v3.1.0) | 2026-08-10 |
+| #3 | savers (`idle-saver-*` × 10) | done | v2.1.0 | 2026-08-10 |
+| #4 | `idle-tui` (Linux) | done | v3.0.1 | — |
+| #5 | `idle-cosmic` (applet) | done | v3.0.2 | — |
+| #6 | `idle-studio`, `render` | done | studio v0.3.4 / engine v1.1.0 | 2026-08-10 |
+| #7 | Channel (RPM / DEB / Arch) | done | v4.0.5 | 2026-08-10 |
+| #8 | Engine (platform-agnostic core) | partial | — | Linux-only today |
+| #9 | macOS shim | **not** | — | — |
+| #10 | Windows shim | **not** | — | — |
+| #11 | WASM plugin host | **deferred** (DECISION-WASM-01 = Option C) | — | — |
+| #12 | Capability-declaring plugin manifest | **done** | manifest host + 10/10 savers + audit log | 2026-08-10 |
+| #13 | Headless render mode (PNG/MP4/stdout) | **done** | merged to render/master (0b7a11c) | 2026-08-10 |
+| #14 | Homebrew / scoop / winget / MSI channels | **deferred** (DECISION-CHANNEL-MORE = Option A) | — | — |
+| #15 | Audio capture capability gate | **done** | per-capability opt-in (`IDLE_PERMIT_AUDIO_CAPTURE` / `_OUTPUT`); profile-aware network gate | 2026-08-10 |
+| #16 | Per-saver GPU/CPU budget enforcement | **done** | CPU via cgroup v2 done; GPU via 3 vendor backends (nvidia-smi / intel_gpu_top / amdgpu_top) with health watchdog | 2026-08-10 |
+| #17 | Watchdog on render loop + per-plugin | **done** | per-plugin tick watchdog (wall-clock); render-loop heartbeat (AtomicU64) → AtomicBool escalation; IPC timeout → `kill_child()` on hung saver | 2026-08-10 |
+| #18 | GPG manifest signature verification | **done** (opt-in) | `IDLE_REQUIRE_MANIFEST_SIGNATURE=1` → refuse unsig'd; `~/.config/idle/trusted-keys.d/` keyring | 2026-08-10 |
+| #19 | Subprocess plugin isolation | **done** | IPC child + SIGKILL on hang; `kill_child()` idempotent | 2026-08-10 |
+| #20 | Install-time audit log (F-202 escape fix) | **done** | JSONL `~/.config/idle/install-audit.jsonl`; full RFC 8259 control-char escape | 2026-08-10 |
+| #21 | macOS / Windows sandbox (Seatbelt / AppContainer) | **not** | — | out of scope per user |
+| #22 | Multi-platform idle detection (IOKit, GetLastInputInfo) | **not** | — | out of scope per user |
+| #23 | ABI version enforcement (F-102) | **done** | loader requires `idle_api_version` symbol; 10/10 savers export it | 2026-08-10 |
+| #24 | Frame-loop panic fix (F-101) | **done** | `saturating_sub` on `frame_duration - elapsed` at 2 callsites | 2026-08-10 |
 
 ## Channel — last cut vs Pages
 

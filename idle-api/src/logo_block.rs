@@ -62,7 +62,7 @@ pub fn render_logo_block(text: &str, sub_text: Option<&str>) -> Vec<String> {
     }
     let mut lock = CACHE
         .write()
-        .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
+        .unwrap_or_else(|p| p.into_inner());
     if let Some(entry) = lock.as_ref()
         && entry.0 == text
         && entry.1.as_deref() == sub_text
