@@ -1,85 +1,13 @@
-idle-cli (3.3.0-1) unstable; urgency=medium
+idle-cli (3.4.0-1) unstable; urgency=medium
 
-  * Foreign-language plugin support: stable C ABI (IdleSaverOps ops table,
-    idle_saver.h header); loader prefers idle_saver_ops over the legacy
-    Rust entry points — savers in C/Zig/openOODA can now plug in.
-  * Fixed flaky env-var race in the test suite (shared ENV_LOCK).
+  * Remove dead gpu_enabled flag end-to-end (GPU upscaler deleted in 2026;
+    D-Bus SetGpuEnabled stays a deprecated no-op, config key ignored)
+  * Fix watchdog stall: exits non-zero so Restart=on-failure actually restarts
+  * Cap plugin runner memory via cgroup memory.max (default 2 GiB)
+  * Check manifest entry before first plugin call (tighter load ordering)
+  * Soften self-update repoquery-miss messaging
+  * Add D-Bus validation + config parser fuzz tests; serialize remaining
+    env-mutating tests under the shared ENV_LOCK
 
- -- IdleScreen <jerydleuck@gmail.com>  Fri, 11 Sep 2026 18:00:00 +0000
-
-idle-cli (3.2.0-1) unstable; urgency=medium
-
-  * Security hardening: shm-create ordering (EEXIST-gated unlink),
-    postinst fallback uid guard, removed accidental absolute symlinks.
-  * Repo-wide rustfmt/clippy conformance under pinned toolchain 1.96.0.
-
- -- IdleScreen <jerydleuck@gmail.com>  Fri, 11 Sep 2026 10:00:00 +0000
-
-idle-cli (3.0.1-1) unstable; urgency=medium
-
-  * saver set: treat Random/none/shuffle case-insensitively as random mode.
-
- -- IdleScreen <jerydleuck@gmail.com>  Fri, 07 Aug 2026 08:50:55 +0200
-
-idle-cli (2.5.6-1) unstable; urgency=medium
-
-  * config set gpu: honest deprecation (GPU upscaler removed; always off).
-
- -- IdleScreen <jerydleuck@gmail.com>  Sun, 26 Jul 2026 16:05:00 -0700
-
-idle-cli (2.5.5-1) unstable; urgency=medium
-
-  * inhibitors: wording — forced preview ignores listed holds (idle only blocked).
-
- -- IdleScreen <noreply@idlescreen.github.io>  Sat, 26 Jul 2026 08:15:00 -0700
-
-idle-cli (2.5.4-1) unstable; urgency=medium
-
-  * inhibitors: print logind/mpris rows from daemon list_all + inhibited line.
-
- -- IdleScreen <jerydleuck@gmail.com>  Sat, 26 Jul 2026 12:00:00 +0000
-
-idle-cli (2.5.3-1) unstable; urgency=medium
-
-  * Doctor: inhibitor active or daemon down is FAIL (not ok/nominal).
-  * Doctor: idle_enabled=false fails D-Bus check with enable hint.
-
- -- IdleScreen <jerydleuck@gmail.com>  Sat, 26 Jul 2026 00:00:00 +0000
-
-idle-cli (2.5.2-1) unstable; urgency=medium
-
-  * Stop shipping idlescreen.desktop (app launcher lives in idle-tui only).
-  * Avoids two "IdleScreen" icons in the application menu.
-
- -- IdleScreen <jerydleuck@gmail.com>  Sat, 25 Jul 2026 00:00:00 +0000
-
-idle-cli (2.5.1-1) unstable; urgency=medium
-
-  * Do not install /usr/bin/idle (reserved for Fedora python3-idle).
-
- -- IdleScreen <jerydleuck@gmail.com>  Fri, 25 Jul 2026 18:00:00 +0000
-
-idle-cli (2.5.0-1) unstable; urgency=medium
-
-  * Hard cut: drop trance CLI bin; primary D-Bus only; doctor savers/TUI checks.
-
- -- IdleScreen <jerydleuck@gmail.com>  Fri, 25 Jul 2026 00:00:00 +0000
-
-idle-cli (2.3.1-1) unstable; urgency=medium
-
-  * Fix duplicate packaging assets after crate rename.
-
- -- IdleScreen <jerydleuck@gmail.com>  Thu, 23 Jul 2026 00:00:00 +0000
-
-idle-cli (2.3.0-1) unstable; urgency=medium
-
-  * Rename internal Cargo crates trance-* → idle-*.
-
- -- IdleScreen <jerydleuck@gmail.com>  Thu, 23 Jul 2026 00:00:00 +0000
-
-idle-cli (2.0.0-1) unstable; urgency=medium
-
-  * Rename package idle-cli -> idle-cli; binary idlescreen.
-
- -- IdleScreen <jerydleuck@gmail.com>  Thu, 23 Jul 2026 15:42:36 -1000
+ -- IdleScreen <jerydleuck@gmail.com>  Fri, 11 Sep 2026 12:00:00 +1000
 
