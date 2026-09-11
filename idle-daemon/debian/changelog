@@ -1,3 +1,11 @@
+idle-daemon (3.2.0-1) unstable; urgency=medium
+
+  * Security hardening: shm-create ordering (EEXIST-gated unlink),
+    postinst fallback uid guard, removed accidental absolute symlinks.
+  * Repo-wide rustfmt/clippy conformance under pinned toolchain 1.96.0.
+
+ -- IdleScreen <jerydleuck@gmail.com>  Fri, 11 Sep 2026 10:00:00 +0000
+
 idle-daemon (3.0.3-1) unstable; urgency=medium
 
   * Audit hardening release:

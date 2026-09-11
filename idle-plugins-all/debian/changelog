@@ -1,3 +1,10 @@
+idle-savers (2.4.0-1) unstable; urgency=medium
+
+  * All savers rebuilt against idle-api 3.2.0 flat exports.
+  * Dropped unused libc dep; clippy -D warnings clean.
+
+ -- IdleScreen <jerydleuck@gmail.com>  Fri, 11 Sep 2026 10:00:00 +0000
+
 idle-savers (2.3.1-1) unstable; urgency=medium
 
   * Fix duplicate packaging assets after crate rename.
