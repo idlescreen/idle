@@ -18,6 +18,10 @@ jobs:
       run: |
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
         echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+    - name: file length cap (256 lines)
+      run: |
+        over=$(find . -name '*.rs' -not -path './target/*' | xargs wc -l | awk '$1 > 256 && $2 != "total" {print}')
+        [ -z "$over" ] || { echo "Files over 256 lines:"; echo "$over"; exit 1; }
     - name: fmt check
       run: cargo fmt --all -- --check
 
