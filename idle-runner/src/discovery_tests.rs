@@ -63,6 +63,7 @@ fn safe_data_root_accepts_absolute_without_parent() {
 
 #[test]
 fn relative_xdg_data_home_not_injected_into_dirs() {
+    let _g = crate::ENV_LOCK.lock().unwrap();
     let prior_home = std::env::var("XDG_DATA_HOME").ok();
     let prior_xdg = std::env::var("XDG_DATA_DIRS").ok();
     unsafe {
@@ -89,6 +90,7 @@ fn relative_xdg_data_home_not_injected_into_dirs() {
 
 #[test]
 fn relative_xdg_data_dirs_entries_skipped() {
+    let _g = crate::ENV_LOCK.lock().unwrap();
     let prior = std::env::var("XDG_DATA_DIRS").ok();
     unsafe {
         std::env::set_var(
@@ -113,6 +115,7 @@ fn relative_xdg_data_dirs_entries_skipped() {
 
 #[test]
 fn relative_home_not_used_as_user_root() {
+    let _g = crate::ENV_LOCK.lock().unwrap();
     let prior_home = std::env::var("HOME").ok();
     let prior_xdg = std::env::var("XDG_DATA_HOME").ok();
     unsafe {
@@ -135,6 +138,7 @@ fn relative_home_not_used_as_user_root() {
 
 #[test]
 fn detect_screensavers_includes_allowlist() {
+    let _g = crate::ENV_LOCK.lock().unwrap();
     let savers = detect_screensavers();
     assert!(!savers.is_empty());
     for name in ALLOWED_SAVERS {

@@ -205,6 +205,7 @@ fn plugin_error_display_includes_context() {
 
 #[test]
 fn test_dev_plugin_dirs_env_behavior() {
+    let _g = crate::ENV_LOCK.lock().unwrap();
     use crate::launcher_resolve::dev_plugin_dirs;
 
     unsafe {

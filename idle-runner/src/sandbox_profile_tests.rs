@@ -106,6 +106,7 @@ fn filesystem_write_declarations_allow_write() {
 
 #[test]
 fn experimental_profile_requires_opt_in() {
+    let _g = crate::ENV_LOCK.lock().unwrap();
     // SAFETY: test-only env mutation on a key no other test touches.
     unsafe { std::env::remove_var("IDLE_ALLOW_EXPERIMENTAL_PROFILES") };
     assert_eq!(

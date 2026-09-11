@@ -31,6 +31,7 @@ fn new_active_applies_quota_defaults() {
 
 #[test]
 fn new_active_clamps_quota() {
+    let _g = crate::ENV_LOCK.lock().unwrap();
     unsafe { std::env::set_var("IDLE_GPU_QUOTA_PCT", "0") };
     let b = GpuBudget::new_active(GpuBackend::Nvidia);
     unsafe { std::env::remove_var("IDLE_GPU_QUOTA_PCT") };
@@ -63,6 +64,7 @@ fn exceeded_streak_triggers_after_threshold() {
 
 #[test]
 fn gpu_budget_enabled_default_false() {
+    let _g = crate::ENV_LOCK.lock().unwrap();
     unsafe { std::env::remove_var("IDLE_GPU_BUDGET") };
     assert!(!gpu_budget_enabled());
 }
@@ -95,6 +97,7 @@ fn record_result_resets_failure_streak_on_success() {
 
 #[test]
 fn gpu_budget_enabled_env_var() {
+    let _g = crate::ENV_LOCK.lock().unwrap();
     unsafe { std::env::set_var("IDLE_GPU_BUDGET", "1") };
     assert!(gpu_budget_enabled());
     unsafe { std::env::remove_var("IDLE_GPU_BUDGET") };
