@@ -215,9 +215,18 @@ impl InhibitorState {
             .collect()
     }
 
-    /// Full picture for `idlescreen inhibitors`: cookies + logind idle + MPRIS.
+    /// Full picture for `idlescreen inhibitors`: cookies + logind idle + MPRIS
+    /// + the daemon's own battery policy (else status.inhibited is unexplained).
     pub fn list_all(&self) -> Vec<(u32, String, String)> {
-        merge_inhibitor_rows(self.list(), &list_external())
+        let mut rows = merge_inhibitor_rows(self.list(), &list_external());
+        if crate::daemon::battery::is_on_battery() {
+            rows.push((
+                0,
+                "battery".into(),
+                "on battery power — savers suppressed".into(),
+            ));
+        }
+        rows
     }
 }
 

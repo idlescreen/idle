@@ -56,7 +56,11 @@ pub fn dbus_disconnected_check() -> CheckResult {
 /// - Not connected → FAIL (cannot claim idle path is healthy)
 /// - Connected + inhibited → FAIL (savers will not start)
 /// - Connected + uninhibited → ok
-pub fn inhibitor_status_check(daemon_connected: bool, inhibited: bool) -> CheckResult {
+pub fn inhibitor_status_check(
+    daemon_connected: bool,
+    inhibited: bool,
+    sources: &[String],
+) -> CheckResult {
     if !daemon_connected {
         return fail(
             "Inhibitor Status",
@@ -65,11 +69,12 @@ pub fn inhibitor_status_check(daemon_connected: bool, inhibited: bool) -> CheckR
         .with_fix("systemctl --user start idle-daemon");
     }
     if inhibited {
-        return fail(
-            "Inhibitor Status",
-            "INHIBITED — an app/system is blocking idle; savers will not start",
-        )
-        .with_fix("idlescreen inhibitors");
+        let detail = if sources.is_empty() {
+            "INHIBITED — an app/system is blocking idle; savers will not start".to_string()
+        } else {
+            format!("INHIBITED — {}; savers will not start", sources.join("; "))
+        };
+        return fail("Inhibitor Status", detail).with_fix("idlescreen inhibitors");
     }
     ok("Inhibitor Status", "uninhibited (idle can trigger savers)")
 }
@@ -121,7 +126,7 @@ mod tests {
     #[test]
     fn inhibitor_blocked_is_fail() {
         // Regression: previously marked [ok] with INHIBITED text → false NOMINAL.
-        let r = inhibitor_status_check(true, true);
+        let r = inhibitor_status_check(true, true, &[]);
         assert!(!r.passed(), "inhibited must not pass doctor");
         assert!(r.detail.contains("INHIBITED"));
         assert!(!all_systems_nominal(&[r]));
@@ -129,14 +134,14 @@ mod tests {
 
     #[test]
     fn inhibitor_clear_is_ok() {
-        let r = inhibitor_status_check(true, false);
+        let r = inhibitor_status_check(true, false, &[]);
         assert!(r.passed());
     }
 
     #[test]
     fn inhibitor_daemon_down_is_fail() {
         // Regression: "idle daemon not connected" was previously [ok].
-        let r = inhibitor_status_check(false, false);
+        let r = inhibitor_status_check(false, false, &[]);
         assert!(!r.passed());
         assert!(r.detail.contains("not connected"));
     }
@@ -155,7 +160,7 @@ mod tests {
         // inhibited (Grok logind / media) because inhibitor check was [ok].
         let results = [
             dbus_status_check(true, 5, "beams"),
-            inhibitor_status_check(true, true),
+            inhibitor_status_check(true, true, &[]),
             ok("Wayland", "ok"),
             ok("systemd", "active"),
         ];
@@ -171,7 +176,7 @@ mod tests {
     fn daemon_down_blocks_nominal_even_if_other_ok() {
         let results = [
             dbus_disconnected_check(),
-            inhibitor_status_check(false, false),
+            inhibitor_status_check(false, false, &[]),
             ok("Package", "installed"),
         ];
         assert!(!all_systems_nominal(&results));
@@ -181,7 +186,7 @@ mod tests {
     fn healthy_uninhibited_can_be_nominal() {
         let results = [
             dbus_status_check(true, 10, "ripple"),
-            inhibitor_status_check(true, false),
+            inhibitor_status_check(true, false, &[]),
             ok("Wayland", "session"),
         ];
         assert!(all_systems_nominal(&results));
@@ -202,11 +207,22 @@ mod tests {
 
     #[test]
     fn golden_inhibitor_blocked_message() {
-        let r = inhibitor_status_check(true, true);
+        let r = inhibitor_status_check(true, true, &[]);
         assert_eq!(r.name, "Inhibitor Status");
         assert!(!r.passed());
         assert!(r.detail.contains("INHIBITED"));
         assert_eq!(r.fix.as_deref(), Some("idlescreen inhibitors"));
+    }
+
+    #[test]
+    fn inhibited_names_listed_sources() {
+        // Regression: doctor blamed "an app/system" while the daemon's own
+        // battery policy was the cause and `inhibitors` listed nothing.
+        let sources = vec!["battery: on battery power — savers suppressed".to_string()];
+        let r = inhibitor_status_check(true, true, &sources);
+        assert!(!r.passed());
+        assert!(r.detail.contains("battery"));
+        assert!(r.detail.contains("on battery power"));
     }
 
     #[test]

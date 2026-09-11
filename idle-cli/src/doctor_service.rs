@@ -222,9 +222,19 @@ pub fn check_inhibitor() -> CheckResult {
     if let Ok(client) = TranceClient::connect()
         && let Ok(status) = client.get_status()
     {
-        return inhibitor_status_check(true, status.inhibited);
+        let sources: Vec<String> = if status.inhibited {
+            client
+                .list_inhibitors()
+                .unwrap_or_default()
+                .into_iter()
+                .map(|(_, who, why)| format!("{who}: {why}"))
+                .collect()
+        } else {
+            Vec::new()
+        };
+        return inhibitor_status_check(true, status.inhibited, &sources);
     }
-    inhibitor_status_check(false, false)
+    inhibitor_status_check(false, false, &[])
 }
 
 pub fn pid_file_path() -> PathBuf {

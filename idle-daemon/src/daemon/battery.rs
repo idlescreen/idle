@@ -19,6 +19,9 @@ pub fn is_on_battery() -> bool {
     }
     #[cfg(not(test))]
     {
+        if std::env::var("IDLE_TEST_MOCK_BATTERY").is_ok() {
+            return true;
+        }
         if std::env::var("IDLE_TEST_MOCK_AC").is_ok() {
             return false;
         }
