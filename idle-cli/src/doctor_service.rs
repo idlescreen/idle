@@ -2,7 +2,7 @@
 
 //! D-Bus, systemd, and process checks for doctor.
 
-use super::doctor_checks::{CheckResult, chk};
+use super::doctor_checks::{CheckResult, fail, ok, warn};
 use idle_dbus::TranceClient;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -17,20 +17,22 @@ pub fn check_dbus() -> CheckResult {
                 status.idle_timeout_mins,
                 &status.active_saver,
             ),
-            Err(e) => chk("D-Bus Service", false, format!("GetStatus error: {e}")),
+            Err(e) => fail("D-Bus Service", format!("GetStatus error: {e}")),
         }
     } else {
         dbus_disconnected_check()
     }
 }
 
-/// Savers on disk or via `idle-savers` / modular `idle-saver-*` packages.
+/// Savers on disk — and each `.so` must have a `.idleplugin.toml` manifest
+/// beside it or the runner will refuse to load it.
 pub fn check_savers() -> CheckResult {
     const DIRS: &[&str] = &[
         "/usr/libexec/idle/screensavers",
         "/usr/local/libexec/idle/screensavers",
     ];
     let mut found_so = 0usize;
+    let mut missing_manifest = Vec::new();
     let mut found_dir: Option<&str> = None;
     for dir in DIRS {
         let path = Path::new(dir);
@@ -39,123 +41,137 @@ pub fn check_savers() -> CheckResult {
         }
         found_dir = Some(dir);
         if let Ok(rd) = fs::read_dir(path) {
-            found_so += rd
-                .filter_map(|e| e.ok())
-                .filter(|e| {
-                    e.path()
-                        .extension()
-                        .and_then(|x| x.to_str())
-                        .is_some_and(|ext| ext == "so")
-                })
-                .count();
+            for e in rd.flatten() {
+                let p = e.path();
+                if p.extension().and_then(|x| x.to_str()) == Some("so") {
+                    found_so += 1;
+                    let manifest = p.with_extension("idleplugin.toml");
+                    if !manifest.is_file() {
+                        missing_manifest.push(
+                            p.file_name()
+                                .map(|n| n.to_string_lossy().into_owned())
+                                .unwrap_or_else(|| p.display().to_string()),
+                        );
+                    }
+                }
+            }
         }
     }
 
     if found_so > 0 {
-        return chk(
-            "Savers",
-            true,
-            format!(
-                "{found_so} plugin(s) under {}",
-                found_dir.unwrap_or("libexec")
-            ),
+        let detail = format!(
+            "{found_so} plugin(s) under {}",
+            found_dir.unwrap_or("libexec")
         );
+        if missing_manifest.is_empty() {
+            return ok("Savers", detail);
+        }
+        return warn(
+            "Savers",
+            format!(
+                "{detail}; missing manifests: {}",
+                missing_manifest.join(", ")
+            ),
+        )
+        .with_fix("each plugin needs a <name>.idleplugin.toml beside the .so");
     }
 
-    // Package presence is enough when plugins are not yet expanded on disk.
     if package_installed("idle-savers") || package_installed("idle-saver-beams") {
-        return chk("Savers", true, "idle-savers / idle-saver-* package present");
+        return ok("Savers", "idle-savers / idle-saver-* package present");
     }
 
-    // User-local installs
     if let Ok(home) = std::env::var("HOME") {
         let local = PathBuf::from(home).join(".local/share/idle/screensavers");
         if local.is_dir()
             && fs::read_dir(&local)
                 .map(|rd| {
-                    rd.filter_map(|e| e.ok()).any(|e| {
-                        e.path()
-                            .extension()
-                            .and_then(|x| x.to_str())
-                            .is_some_and(|ext| ext == "so")
-                    })
+                    rd.flatten()
+                        .any(|e| e.path().extension().and_then(|x| x.to_str()) == Some("so"))
                 })
                 .unwrap_or(false)
         {
-            return chk(
-                "Savers",
-                true,
-                "plugins under ~/.local/share/idle/screensavers",
-            );
+            return ok("Savers", "plugins under ~/.local/share/idle/screensavers");
         }
     }
 
-    chk(
-        "Savers",
-        false,
-        "no screensaver plugins found — install idle-savers or idle-saver-* packages",
-    )
+    fail("Savers", "no screensaver plugins found")
+        .with_fix("install idle-savers or an idle-saver-* package")
 }
 
-/// Optional TUI binary (product front-end, not required for daemon).
+/// Optional TUI binary — a WARN, not a silent pass.
 pub fn check_tui_optional() -> CheckResult {
     if which_exists("idle-tui") || which_exists("idlescreen-tui") {
-        chk("TUI", true, "idle-tui available on PATH")
+        ok("TUI", "idle-tui available on PATH")
     } else {
-        chk(
-            "TUI",
-            true,
-            "optional — install idle-tui for terminal control UI",
-        )
+        warn("TUI", "not installed — optional terminal control UI")
+            .with_fix("install idle-tui for the terminal UI")
     }
 }
 
 fn which_exists(name: &str) -> bool {
+    // .output() captures child stdout — .status() would leak the resolved
+    // path into `doctor --json` output.
     Command::new("sh")
         .args(["-c", &format!("command -v {name}")])
-        .status()
-        .map(|s| s.success())
+        .output()
+        .map(|o| o.status.success())
         .unwrap_or(false)
 }
 
 fn package_installed(pkg: &str) -> bool {
+    // Same leak as which_exists — rpm/dpkg-query print to stdout.
     if Command::new("rpm")
         .args(["-q", pkg])
-        .status()
-        .map(|s| s.success())
+        .output()
+        .map(|o| o.status.success())
         .unwrap_or(false)
     {
         return true;
     }
     Command::new("dpkg-query")
         .args(["-W", pkg])
-        .status()
-        .map(|s| s.success())
+        .output()
+        .map(|o| o.status.success())
         .unwrap_or(false)
 }
 
+/// `is-active` and `is-enabled` are separate facts — an active service that
+/// is not enabled silently dies at next login.
 pub fn check_systemd_service() -> CheckResult {
-    let output = Command::new("systemctl")
+    let active = Command::new("systemctl")
         .args(["--user", "is-active", "idle-daemon.service"])
         .output();
+    let enabled = Command::new("systemctl")
+        .args(["--user", "is-enabled", "idle-daemon.service"])
+        .output();
 
-    match output {
-        Ok(out) => {
-            let status = String::from_utf8_lossy(&out.stdout).trim().to_string();
-            if status == "active" {
-                chk("Systemd Service", true, "active")
-            } else {
-                chk(
-                    "Systemd Service",
-                    false,
-                    format!("status '{status}'; run systemctl --user start idle-daemon"),
-                )
-            }
-        }
-        Err(e) => chk("Systemd Service", false, format!("systemctl error: {e}")),
+    let active_state = active
+        .ok()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string());
+    let enabled_state = enabled
+        .ok()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string());
+
+    match (active_state.as_deref(), enabled_state.as_deref()) {
+        (Some("active"), Some("enabled")) => ok("Systemd Service", "active + enabled"),
+        (Some("active"), _) => warn(
+            "Systemd Service",
+            format!(
+                "active but enabled='{}' — will not start at login",
+                enabled_state.as_deref().unwrap_or("unknown")
+            ),
+        )
+        .with_fix("systemctl --user enable idle-daemon"),
+        (Some(state), _) => fail("Systemd Service", format!("is-active reports '{state}'"))
+            .with_fix("systemctl --user start idle-daemon  (or: idlescreen doctor --fix)"),
+        (None, _) => fail("Systemd Service", "systemctl --user failed")
+            .with_fix("check that a user systemd session exists (loginctl)"),
     }
 }
 
+/// PID file + liveness + pending-restart detection. After a package upgrade
+/// the running daemon is still the old binary — `/proc/<pid>/exe` ends with
+/// " (deleted)" and the daemon must be restarted to run the new code.
 pub fn check_running_pid() -> CheckResult {
     let pid_path = pid_file_path();
     let dbus_ok = TranceClient::connect().is_ok();
@@ -164,19 +180,41 @@ pub fn check_running_pid() -> CheckResult {
         if let Ok(content) = fs::read_to_string(&pid_path) {
             let pid_str = content.trim();
             if let Ok(pid) = pid_str.parse::<i32>() {
-                // SAFETY: kill(pid, 0) only checks process existence; no signal delivered.
+                // SAFETY: kill(pid, 0) only checks process existence.
                 if unsafe { libc::kill(pid, 0) } == 0 {
-                    return chk("Process Status", true, format!("PID {pid} running"));
+                    if let Some(stale) = exe_deleted_marker(pid) {
+                        return fail(
+                            "Process Status",
+                            format!("PID {pid} running a deleted binary ({stale}) — pre-upgrade daemon still live"),
+                        )
+                        .with_fix("systemctl --user restart idle-daemon");
+                    }
+                    return ok("Process Status", format!("PID {pid} running"));
                 }
-                return chk("Process Status", false, format!("stale PID {pid}"));
+                return fail(
+                    "Process Status",
+                    format!("stale PID file ({pid} not running)"),
+                )
+                .with_fix(format!(
+                    "rm {}; idlescreen doctor --fix",
+                    pid_path.display()
+                ));
             }
         }
-        chk("Process Status", true, "pid file unreadable")
-    } else if dbus_ok {
-        chk("Process Status", true, "missing pid but d-bus ok")
-    } else {
-        chk("Process Status", false, "missing pid file")
+        return warn("Process Status", "pid file unreadable");
     }
+    if dbus_ok {
+        return warn("Process Status", "no pid file but D-Bus responds");
+    }
+    fail("Process Status", "missing pid file").with_fix("systemctl --user start idle-daemon")
+}
+
+/// Read `/proc/<pid>/exe`; returns the target when it is marked deleted
+/// (the kernel appends " (deleted)" to the link for replaced binaries).
+fn exe_deleted_marker(pid: i32) -> Option<String> {
+    let target = fs::read_link(format!("/proc/{pid}/exe")).ok()?;
+    let s = target.to_string_lossy();
+    s.strip_suffix(" (deleted)").map(str::to_owned)
 }
 
 pub fn check_inhibitor() -> CheckResult {
@@ -189,7 +227,7 @@ pub fn check_inhibitor() -> CheckResult {
     inhibitor_status_check(false, false)
 }
 
-fn pid_file_path() -> PathBuf {
+pub fn pid_file_path() -> PathBuf {
     if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
         PathBuf::from(runtime_dir).join("idle-daemon.pid")
     } else {

@@ -25,6 +25,7 @@ mod doctor;
 mod doctor_checks;
 mod doctor_env;
 mod doctor_fs;
+mod doctor_pkg;
 mod doctor_rules;
 mod doctor_service;
 mod doctor_sys;

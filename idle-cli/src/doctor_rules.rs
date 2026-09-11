@@ -6,7 +6,7 @@
 //! Regression guards for: daemon-down, idle disabled, inhibited marked FAIL
 //! so "ALL SYSTEMS NOMINAL" cannot lie while savers cannot run.
 
-use super::doctor_checks::{CheckResult, chk};
+use super::doctor_checks::{CheckResult, Severity, fail, ok};
 
 /// D-Bus status interpretation after a successful GetStatus.
 pub fn dbus_status_check(
@@ -15,18 +15,17 @@ pub fn dbus_status_check(
     active_saver: &str,
 ) -> CheckResult {
     if !idle_enabled {
-        return chk(
+        return fail(
             "D-Bus Service",
-            false,
             format!(
-                "connected but idle is DISABLED — savers will not start (timeout={}m saver='{}'); enable with: idlescreen enable",
+                "connected but idle is DISABLED — savers will not start (timeout={}m saver='{}')",
                 idle_timeout_mins, active_saver
             ),
-        );
+        )
+        .with_fix("idlescreen enable");
     }
-    chk(
+    ok(
         "D-Bus Service",
-        true,
         format!(
             "connected (io.github.idlescreen.Idle) idle_enabled=true timeout={}m saver='{}'",
             idle_timeout_mins, active_saver
@@ -36,11 +35,20 @@ pub fn dbus_status_check(
 
 /// When the daemon is not reachable on the session bus.
 pub fn dbus_disconnected_check() -> CheckResult {
-    chk(
+    if std::env::var("DBUS_SESSION_BUS_ADDRESS").is_err()
+        && std::env::var("XDG_RUNTIME_DIR").is_err()
+    {
+        return fail(
+            "D-Bus Service",
+            "no session bus (DBUS_SESSION_BUS_ADDRESS and XDG_RUNTIME_DIR unset) — likely not a graphical session",
+        )
+        .with_fix("run inside the desktop session, or export DBUS_SESSION_BUS_ADDRESS");
+    }
+    fail(
         "D-Bus Service",
-        false,
-        "cannot connect — idle-daemon is not running; start it: systemctl --user start idle-daemon  (or: idlescreen doctor --fix)",
+        "cannot connect — idle-daemon is not running",
     )
+    .with_fix("systemctl --user start idle-daemon  (or: idlescreen doctor --fix)")
 }
 
 /// Inhibitor / readiness for idle savers.
@@ -50,29 +58,38 @@ pub fn dbus_disconnected_check() -> CheckResult {
 /// - Connected + uninhibited → ok
 pub fn inhibitor_status_check(daemon_connected: bool, inhibited: bool) -> CheckResult {
     if !daemon_connected {
-        return chk(
+        return fail(
             "Inhibitor Status",
-            false,
-            "cannot check — idle-daemon not connected (start the daemon first)",
-        );
+            "cannot check — idle-daemon not connected",
+        )
+        .with_fix("systemctl --user start idle-daemon");
     }
     if inhibited {
-        return chk(
+        return fail(
             "Inhibitor Status",
-            false,
-            "INHIBITED — an app/system is blocking idle; savers will not start (try: idlescreen inhibitors)",
-        );
+            "INHIBITED — an app/system is blocking idle; savers will not start",
+        )
+        .with_fix("idlescreen inhibitors");
     }
-    chk(
-        "Inhibitor Status",
-        true,
-        "uninhibited (idle can trigger savers)",
-    )
+    ok("Inhibitor Status", "uninhibited (idle can trigger savers)")
 }
 
-/// True only when every check passed — used for NOMINAL footer / exit code.
+/// True only when no check failed — WARNs do not block NOMINAL.
 pub fn all_systems_nominal(results: &[CheckResult]) -> bool {
-    results.iter().all(|r| r.passed)
+    results.iter().all(|r| r.severity != Severity::Fail)
+}
+
+/// (fails, warns) for the summary line.
+pub fn tally(results: &[CheckResult]) -> (usize, usize) {
+    let fails = results
+        .iter()
+        .filter(|r| r.severity == Severity::Fail)
+        .count();
+    let warns = results
+        .iter()
+        .filter(|r| r.severity == Severity::Warn)
+        .count();
+    (fails, warns)
 }
 
 #[cfg(test)]
@@ -82,7 +99,7 @@ mod tests {
     #[test]
     fn dbus_disabled_is_fail_not_nominal() {
         let r = dbus_status_check(false, 5, "ripple");
-        assert!(!r.passed);
+        assert!(!r.passed());
         assert!(r.detail.contains("DISABLED"));
         assert!(!all_systems_nominal(&[r]));
     }
@@ -90,14 +107,14 @@ mod tests {
     #[test]
     fn dbus_enabled_is_ok() {
         let r = dbus_status_check(true, 5, "ripple");
-        assert!(r.passed);
+        assert!(r.passed());
         assert!(r.detail.contains("idle_enabled=true"));
     }
 
     #[test]
     fn dbus_disconnected_is_fail() {
         let r = dbus_disconnected_check();
-        assert!(!r.passed);
+        assert!(!r.passed());
         assert!(r.detail.contains("not running"));
     }
 
@@ -105,7 +122,7 @@ mod tests {
     fn inhibitor_blocked_is_fail() {
         // Regression: previously marked [ok] with INHIBITED text → false NOMINAL.
         let r = inhibitor_status_check(true, true);
-        assert!(!r.passed, "inhibited must not pass doctor");
+        assert!(!r.passed(), "inhibited must not pass doctor");
         assert!(r.detail.contains("INHIBITED"));
         assert!(!all_systems_nominal(&[r]));
     }
@@ -113,21 +130,21 @@ mod tests {
     #[test]
     fn inhibitor_clear_is_ok() {
         let r = inhibitor_status_check(true, false);
-        assert!(r.passed);
+        assert!(r.passed());
     }
 
     #[test]
     fn inhibitor_daemon_down_is_fail() {
         // Regression: "idle daemon not connected" was previously [ok].
         let r = inhibitor_status_check(false, false);
-        assert!(!r.passed);
+        assert!(!r.passed());
         assert!(r.detail.contains("not connected"));
     }
 
     #[test]
     fn nominal_requires_all_pass() {
-        let ok = chk("A", true, "fine");
-        let bad = chk("B", false, "nope");
+        let ok = ok("A", "fine");
+        let bad = fail("B", "nope");
         assert!(all_systems_nominal(std::slice::from_ref(&ok)));
         assert!(!all_systems_nominal(&[ok, bad]));
     }
@@ -139,11 +156,11 @@ mod tests {
         let results = [
             dbus_status_check(true, 5, "beams"),
             inhibitor_status_check(true, true),
-            chk("Wayland", true, "ok"),
-            chk("systemd", true, "active"),
+            ok("Wayland", "ok"),
+            ok("systemd", "active"),
         ];
-        assert!(results[0].passed);
-        assert!(!results[1].passed);
+        assert!(results[0].passed());
+        assert!(!results[1].passed());
         assert!(
             !all_systems_nominal(&results),
             "must not claim NOMINAL while inhibited"
@@ -155,7 +172,7 @@ mod tests {
         let results = [
             dbus_disconnected_check(),
             inhibitor_status_check(false, false),
-            chk("Package", true, "installed"),
+            ok("Package", "installed"),
         ];
         assert!(!all_systems_nominal(&results));
     }
@@ -165,7 +182,7 @@ mod tests {
         let results = [
             dbus_status_check(true, 10, "ripple"),
             inhibitor_status_check(true, false),
-            chk("Wayland", true, "session"),
+            ok("Wayland", "session"),
         ];
         assert!(all_systems_nominal(&results));
     }
@@ -174,26 +191,30 @@ mod tests {
     fn golden_dbus_disconnected_message() {
         let r = dbus_disconnected_check();
         assert_eq!(r.name, "D-Bus Service");
-        assert!(!r.passed);
-        assert!(r.detail.contains("idle-daemon is not running"));
-        assert!(r.detail.contains("systemctl --user start idle-daemon"));
+        assert!(!r.passed());
+        // Session-bus state decides which detail/fix we get; both are valid.
+        let fix = r.fix.as_deref().unwrap_or("");
+        assert!(
+            r.detail.contains("idle-daemon is not running") || r.detail.contains("no session bus")
+        );
+        assert!(fix.contains("systemctl --user start idle-daemon") || fix.contains("DBUS"));
     }
 
     #[test]
     fn golden_inhibitor_blocked_message() {
         let r = inhibitor_status_check(true, true);
         assert_eq!(r.name, "Inhibitor Status");
-        assert!(!r.passed);
+        assert!(!r.passed());
         assert!(r.detail.contains("INHIBITED"));
-        assert!(r.detail.contains("idlescreen inhibitors"));
+        assert_eq!(r.fix.as_deref(), Some("idlescreen inhibitors"));
     }
 
     #[test]
     fn golden_dbus_disabled_message() {
         let r = dbus_status_check(false, 5, "beams");
-        assert!(!r.passed);
+        assert!(!r.passed());
         assert!(r.detail.contains("DISABLED"));
-        assert!(r.detail.contains("idlescreen enable"));
+        assert_eq!(r.fix.as_deref(), Some("idlescreen enable"));
     }
 
     #[test]
