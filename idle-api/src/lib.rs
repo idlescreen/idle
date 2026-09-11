@@ -46,6 +46,7 @@ mod monitor;
 mod palette;
 mod rng;
 mod screensaver;
+pub mod stress;
 mod surface;
 #[cfg(target_os = "linux")]
 mod wayland_overlay;
