@@ -120,7 +120,7 @@ fn run(args: Vec<String>) -> Result<()> {
         "clean" => return clean::handle_clean(),
         "completion" => return completion::handle_completion(rest),
         "bug-report" => return bug_report::handle_bug_report(),
-        "self-update" | "update" => return self_update::handle_self_update(),
+        "self-update" | "update" | "upgrade" => return self_update::handle_self_update(),
         "tui" => {
             let mut cmd = std::process::Command::new("idle-tui");
             cmd.args(rest);

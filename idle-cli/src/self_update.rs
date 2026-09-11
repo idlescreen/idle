@@ -5,7 +5,9 @@
 use anyhow::Result;
 use std::process::Command;
 
-use super::self_update_backend::{Backend, PKG_CANDIDATES, detect_backend, stdout_trim};
+use super::self_update_backend::{
+    Backend, PKG_CANDIDATES, detect_backend, installed_packages, run_privileged, stdout_trim,
+};
 
 fn rpm_installed_version(pkg: &str) -> Option<String> {
     stdout_trim("rpm", &["-q", pkg, "--qf", "%{VERSION}-%{RELEASE}"])
@@ -178,18 +180,60 @@ fn versions_equalish(a: &str, b: &str) -> bool {
     norm(a) == norm(b)
 }
 
+/// `update`/`upgrade`/`self-update` all do the same thing: upgrade every
+/// installed IdleScreen package (`idle-*` / `idlescreen*`) via the system
+/// package manager. Status is printed first so the user sees what changed.
 #[tracing::instrument]
 pub fn handle_self_update() -> Result<()> {
-    match detect_backend() {
-        Some(Backend::Dnf) => handle_dnf_update(),
-        Some(Backend::Apt) => handle_apt_update(),
-        None => {
-            println!(" [!] No supported package manager detected (need DNF/RPM or APT).");
-            println!("     -> Fedora: sudo dnf update");
-            println!("     -> Debian/Ubuntu: sudo apt update && sudo apt upgrade");
-            Ok(())
+    let Some(backend) = detect_backend() else {
+        println!(" [!] No supported package manager detected (need DNF/RPM or APT).");
+        println!("     -> Fedora: sudo dnf update");
+        println!("     -> Debian/Ubuntu: sudo apt update && sudo apt upgrade");
+        return Ok(());
+    };
+
+    match backend {
+        Backend::Dnf => handle_dnf_update()?,
+        Backend::Apt => handle_apt_update()?,
+    }
+
+    let pkgs = installed_packages(backend);
+    if pkgs.is_empty() {
+        return Ok(()); // status handler already printed the installer hint
+    }
+    println!(" Upgrading {} package(s): {}", pkgs.len(), pkgs.join(" "));
+
+    // Refresh metadata, then upgrade only the IdleScreen set — never the rest
+    // of the system. Streams the package manager's own progress/output.
+    let steps: Vec<Vec<&str>> = match backend {
+        Backend::Dnf => {
+            let mut v = vec!["dnf", "upgrade", "-y"];
+            v.extend(pkgs.iter().map(String::as_str));
+            vec![v]
+        }
+        Backend::Apt => vec![vec!["apt-get", "update", "-y"], {
+            let mut v = vec!["apt-get", "install", "--only-upgrade", "-y"];
+            v.extend(pkgs.iter().map(String::as_str));
+            v
+        }],
+    };
+    for step in &steps {
+        println!(" $ {}", step.join(" "));
+        match run_privileged(step) {
+            Ok(s) if s.success() => {}
+            Ok(s) => {
+                println!(" [!] {} exited with {}", step[0], s);
+                return Ok(());
+            }
+            Err(e) => {
+                println!(" [!] Upgrade needs root: {e}");
+                println!("     -> sudo {}", step.join(" "));
+                return Ok(());
+            }
         }
     }
+    println!(" [✔] IdleScreen packages upgraded.");
+    Ok(())
 }
 
 #[cfg(test)]

@@ -27,7 +27,9 @@ pub fn print_usage() {
            completion bash|zsh     Shell tab-completion scripts\n\
            clean                   Clean stale runs and log caches\n\
            bug-report              Sanitized diagnostics for bug reports\n\
-           self-update (update)    Check for package updates (apt/dnf)\n\
+           self-update (update, upgrade)\n\
+                                 Check for updates and upgrade all\n\
+                                 installed IdleScreen packages (apt/dnf)\n\
            interactive (i)         Interactive console panel\n\
            version (v)             Print CLI version\n\
            about                   Version plus project info\n\

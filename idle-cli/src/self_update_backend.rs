@@ -104,3 +104,57 @@ pub fn which(cmd: &str) -> bool {
         .map(|p| std::env::split_paths(&p).any(|dir| dir.join(cmd).is_file()))
         .unwrap_or(false)
 }
+
+/// Installed IdleScreen packages on this host (every `idle-*`/`idlescreen*`
+/// package known to the package DB, not just the update-check candidates).
+pub fn installed_packages(backend: Backend) -> Vec<String> {
+    let out = match backend {
+        Backend::Apt => Command::new("dpkg-query")
+            .args([
+                "-W",
+                "-f=${binary:Package}\t${db:Status-Status}\n",
+                "idle-*",
+                "idlescreen*",
+            ])
+            .output(),
+        Backend::Dnf => Command::new("rpm")
+            .args(["-qa", "--qf", "%{NAME}\n", "idle-*", "idlescreen*"])
+            .output(),
+    };
+    let Ok(out) = out else { return Vec::new() };
+    if !out.status.success() {
+        return Vec::new();
+    }
+    parse_installed_lines(&String::from_utf8_lossy(&out.stdout))
+}
+
+/// Package-name-per-line parser. dpkg-query emits `name\tstatus` rows and
+/// lists removed-but-configured packages too — only `installed` rows count.
+/// `rpm -qa` emits bare names, so a line without a tab is taken as-is.
+pub fn parse_installed_lines(text: &str) -> Vec<String> {
+    text.lines()
+        .filter_map(|l| {
+            let name = l.split('\t').next()?.trim();
+            if l.contains('\t') && !l.ends_with("installed") {
+                return None;
+            }
+            (!name.is_empty()).then(|| name.to_string())
+        })
+        .collect()
+}
+
+/// Run `argv` as root: directly when euid==0, via sudo otherwise.
+/// Returns Err only when the command could not be spawned at all.
+pub fn run_privileged(argv: &[&str]) -> Result<std::process::ExitStatus, String> {
+    let (prog, args) = if unsafe { libc::geteuid() } == 0 {
+        (argv[0].to_string(), argv[1..].to_vec())
+    } else if which("sudo") {
+        ("sudo".to_string(), argv.to_vec())
+    } else {
+        return Err("needs root and sudo is not installed".to_string());
+    };
+    Command::new(prog)
+        .args(args)
+        .status()
+        .map_err(|e| format!("failed to run {}: {e}", argv[0]))
+}
