@@ -5,8 +5,8 @@ use idle_dbus::TranceClient;
 
 use crate::cli::ConfigOp;
 
-pub fn handle_config(client: &TranceClient, op: ConfigOp) -> Result<()> {
-    match op {
+pub fn handle_config(client: &TranceClient, op: Option<ConfigOp>) -> Result<()> {
+    match op.unwrap_or(ConfigOp::List) {
         ConfigOp::List => cmd_config_list(client),
         ConfigOp::Get { key } => cmd_config_get(client, &key),
         ConfigOp::Set { key, value } => cmd_config_set(client, &key, &value),

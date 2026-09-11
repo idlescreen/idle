@@ -66,13 +66,13 @@ fn subcommand_shapes_parse() {
     assert!(matches!(
         parse(&["config", "get", "timeout"]),
         Ok(Cmd::Config {
-            op: ConfigOp::Get { .. }
+            op: Some(ConfigOp::Get { .. })
         })
     ));
     assert!(matches!(
         parse(&["config", "set", "timeout", "5"]),
         Ok(Cmd::Config {
-            op: ConfigOp::Set { .. }
+            op: Some(ConfigOp::Set { .. })
         })
     ));
     assert!(matches!(

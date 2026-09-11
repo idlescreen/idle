@@ -111,7 +111,7 @@ fn print_daemon_version_line() {
 }
 
 pub fn print_version(verbose: bool) {
-    println!("idle {CLI_VERSION}");
+    println!("idlescreen {CLI_VERSION}");
     if !verbose {
         return;
     }

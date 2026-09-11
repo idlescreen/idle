@@ -232,12 +232,13 @@ pub fn handle_self_update() -> Result<()> {
             Ok(s) if s.success() => {}
             Ok(s) => {
                 println!(" [!] {} exited with {}", step[0], s);
-                return Ok(());
+                println!("     -> retry manually: sudo {}", step.join(" "));
+                anyhow::bail!("package upgrade failed: {} exited {}", step[0], s);
             }
             Err(e) => {
                 println!(" [!] Upgrade needs root: {e}");
                 println!("     -> sudo {}", step.join(" "));
-                return Ok(());
+                anyhow::bail!("package upgrade needs root: {e}");
             }
         }
     }

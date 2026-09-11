@@ -41,6 +41,10 @@ mod cli_parse_tests;
 mod tests;
 
 fn main() -> ExitCode {
+    // Restore default SIGPIPE: Rust ignores it, so `idlescreen X | head`
+    // panics on EPIPE instead of exiting quietly like every other CLI.
+    // SAFETY: single-threaded startup, before any output is produced.
+    unsafe { libc::signal(libc::SIGPIPE, libc::SIG_DFL) };
     init_tracing();
     match run() {
         Ok(()) => ExitCode::SUCCESS,
@@ -108,6 +112,7 @@ pub(crate) fn run_from(args: Vec<String>) -> Result<()> {
         if let Some(rest) = a.strip_prefix('-')
             && !rest.is_empty()
             && !rest.starts_with('-')
+            && !rest.chars().next().is_some_and(|c| c.is_ascii_digit())
             && !rest.chars().all(|c| SHORTS.contains(&c))
         {
             eprintln!("error: invalid option '{a}' — long options use two dashes (try --{rest})");
@@ -172,8 +177,14 @@ pub(crate) fn run_from(args: Vec<String>) -> Result<()> {
         Cmd::Status { json } => cmd_status(&client, json),
         Cmd::Config { op } => config::handle_config(&client, op),
         Cmd::Interactive => interactive::run_interactive(&client),
-        Cmd::Enable => client.enable().context("enabling idle screensaver"),
-        Cmd::Disable => client.disable().context("disabling idle screensaver"),
+        Cmd::Enable => client
+            .enable()
+            .context("enabling idle screensaver")
+            .inspect(|_| println!("Idle screensaver enabled.")),
+        Cmd::Disable => client
+            .disable()
+            .context("disabling idle screensaver")
+            .inspect(|_| println!("Idle screensaver disabled.")),
         Cmd::Timeout { minutes } => cmd_timeout(&client, minutes),
         Cmd::Saver { op } => match op {
             None => commands::cmd_saver_show(&client),
@@ -185,7 +196,8 @@ pub(crate) fn run_from(args: Vec<String>) -> Result<()> {
         Cmd::Preview { name, timeout } => cmd_preview(&client, &name, timeout),
         Cmd::Stop => client
             .stop_preview()
-            .context("stopping preview or idle presentation"),
+            .context("stopping preview or idle presentation")
+            .inspect(|_| println!("Presentation stopped.")),
         Cmd::FpsOverlay { state } => {
             let s = state.map(|s| match s {
                 cli::OverlayState::On => "on",

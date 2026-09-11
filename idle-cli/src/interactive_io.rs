@@ -12,9 +12,14 @@ pub(crate) fn read_prompted_line(prompt: &str) -> Result<String> {
     print!("{prompt}");
     io::stdout().flush().context("flushing stdout")?;
     let mut buf = String::new();
-    io::stdin()
+    let n = io::stdin()
         .read_line(&mut buf)
         .context("reading selection from stdin")?;
+    // EOF (0 bytes, e.g. piped stdin closed or /dev/null) ends the REPL
+    // cleanly — otherwise we spin printing "invalid selection" forever.
+    if n == 0 {
+        return Err(EndOfInput.into());
+    }
     Ok(buf)
 }
 
@@ -27,3 +32,14 @@ pub(crate) fn parse_one_based_index(raw: &str, len: usize) -> Option<usize> {
         None
     }
 }
+
+/// stdin closed — ends the interactive loop like Ctrl-D in a shell REPL.
+#[derive(Debug)]
+pub(crate) struct EndOfInput;
+
+impl std::fmt::Display for EndOfInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("end of input")
+    }
+}
+impl std::error::Error for EndOfInput {}

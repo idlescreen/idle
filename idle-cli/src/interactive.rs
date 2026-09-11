@@ -22,31 +22,60 @@ pub fn run_interactive(client: &TranceClient) -> Result<()> {
             .get_status()
             .context("querying daemon status via d-bus")?;
         print_status(&status);
-        match prompt_main_menu()? {
-            MenuAction::Quit => break,
-            MenuAction::ToggleIdle => toggle_idle(client, &status)?,
-            MenuAction::ToggleFps => toggle_fps(client, &status)?,
-            MenuAction::SetSaver => {
-                if let Some(saver) = prompt_saver_select(client)? {
+        let action = match prompt_main_menu() {
+            Ok(a) => a,
+            Err(e)
+                if e.downcast_ref::<crate::interactive_io::EndOfInput>()
+                    .is_some() =>
+            {
+                break;
+            }
+            Err(e) => return Err(e),
+        };
+        // Submenu prompts can also hit EOF — run the arm in a closure so a
+        // single downcast check catches EndOfInput from any depth.
+        let mut quit = false;
+        let arm: Result<()> = (|| {
+            match action {
+                MenuAction::Quit => quit = true,
+                MenuAction::ToggleIdle => toggle_idle(client, &status)?,
+                MenuAction::ToggleFps => toggle_fps(client, &status)?,
+                MenuAction::SetSaver => {
+                    if let Some(saver) = prompt_saver_select(client)? {
+                        client
+                            .set_saver(&saver)
+                            .context("setting active saver via d-bus")?;
+                    }
+                }
+                MenuAction::SetTimeout => {
+                    if let Some(mins) = prompt_timeout()? {
+                        client
+                            .set_timeout(mins)
+                            .with_context(|| format!("setting idle timeout to {mins} minutes"))?;
+                    }
+                }
+                MenuAction::Preview => preview_saver(client)?,
+                MenuAction::Stop => {
                     client
-                        .set_saver(&saver)
-                        .context("setting active saver via d-bus")?;
+                        .stop_preview()
+                        .context("stopping preview via d-bus")?;
+                    println!("Presentation stopped.");
                 }
             }
-            MenuAction::SetTimeout => {
-                if let Some(mins) = prompt_timeout()? {
-                    client
-                        .set_timeout(mins)
-                        .with_context(|| format!("setting idle timeout to {mins} minutes"))?;
-                }
+            Ok(())
+        })();
+        match arm {
+            Err(e)
+                if e.downcast_ref::<crate::interactive_io::EndOfInput>()
+                    .is_some() =>
+            {
+                break;
             }
-            MenuAction::Preview => preview_saver(client)?,
-            MenuAction::Stop => {
-                client
-                    .stop_preview()
-                    .context("stopping preview via d-bus")?;
-                println!("Presentation stopped.");
-            }
+            Err(e) => return Err(e),
+            _ => {}
+        }
+        if quit {
+            break;
         }
     }
     Ok(())

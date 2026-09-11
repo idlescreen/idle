@@ -42,7 +42,14 @@ pub fn cmd_saver_set(client: &TranceClient, name: &str) -> Result<()> {
     };
     client
         .set_saver(dbus_name)
-        .context("setting active saver via d-bus")
+        .context("setting active saver via d-bus")?;
+    let shown = if dbus_name.is_empty() {
+        "random"
+    } else {
+        dbus_name
+    };
+    println!("active saver: {shown}");
+    Ok(())
 }
 
 pub fn cmd_list(client: &TranceClient, json: bool) -> Result<()> {
@@ -100,6 +107,9 @@ pub fn cmd_inhibitors(client: &TranceClient, json: bool) -> Result<()> {
 
 pub fn cmd_preview(client: &TranceClient, name: &str, timeout: Option<u64>) -> Result<()> {
     client.preview(name).context("starting preview via d-bus")?;
+    if timeout.is_none() {
+        println!("Previewing '{name}' — run `idlescreen stop` or provide input to end.");
+    }
     if let Some(secs) = timeout {
         println!("Preview started. Auto-stopping in {secs} seconds...");
         std::thread::sleep(std::time::Duration::from_secs(secs));

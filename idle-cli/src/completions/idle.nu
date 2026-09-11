@@ -1,25 +1,60 @@
-# nushell completion for idle
+# Nushell completions for `idlescreen` — kept in sync with cli.rs.
 
-export def "nu-complete idle subcommands" [] {
+def "nu-complete idlescreen subcommands" [] {
     [
-        { value: "status", description: "Query daemon status" }
-        { value: "saver", description: "Select or list active screensaver" }
-        { value: "preview", description: "Preview a screensaver fullscreen" }
-        { value: "stop", description: "Stop current screensaver" }
-        { value: "timeout", description: "Set idle timeout in minutes" }
-        { value: "enable", description: "Enable idle screensaver" }
-        { value: "disable", description: "Disable idle screensaver" }
-        { value: "fps", description: "Toggle FPS overlay" }
-        { value: "scale", description: "Adjust simulation scale" }
-        { value: "doctor", description: "Run system diagnostics" }
-        { value: "interactive", description: "Launch TUI control panel" }
-        { value: "clean", description: "Clean stale IPC socket files" }
-        { value: "completion", description: "Generate shell completion" }
+        { value: "status", description: "Show daemon state (-j/--json)" }
+        { value: "config", description: "View or change daemon configuration" }
+        { value: "enable", description: "Turn idle screensaver on" }
+        { value: "disable", description: "Turn idle screensaver off" }
+        { value: "timeout", description: "Set or show idle timeout (1-240 min)" }
+        { value: "saver", description: "Show or change the active saver" }
+        { value: "list", description: "List installed savers (-j/--json)" }
+        { value: "inhibitors", description: "List active idle inhibitors" }
+        { value: "preview", description: "Preview a saver fullscreen" }
+        { value: "stop", description: "Stop preview or idle presentation" }
+        { value: "fps-overlay", description: "FPS overlay on|off|status" }
+        { value: "render-scale", description: "Render scale 0.25-1.0|default" }
+        { value: "interactive", description: "Interactive console panel" }
+        { value: "doctor", description: "Run diagnostics (-f/--fix, -j/--json)" }
+        { value: "clean", description: "Remove stale run state and caches" }
+        { value: "completion", description: "Print a shell completion script" }
+        { value: "bug-report", description: "Sanitized diagnostics bundle" }
+        { value: "self-update", description: "Upgrade installed packages" }
+        { value: "tui", description: "Launch the full-screen TUI" }
+        { value: "version", description: "Print CLI version" }
+        { value: "about", description: "Version plus project info" }
+        { value: "help", description: "Show help" }
     ]
 }
 
-export extern "idle" [
-    command?: string@"nu-complete idle subcommands"
+def "nu-complete idlescreen shells" [] {
+    [bash zsh fish nushell powershell elvish]
+}
+
+def "nu-complete idlescreen savers" [] {
+    ^idlescreen list --json | from json
+}
+
+export extern "idlescreen" [
+    command?: string@"nu-complete idlescreen subcommands"
+    args?: string
+    --json(-j)        # Machine-readable output
+    --fix(-f)         # doctor: attempt repairs
+    --timeout(-t): int # preview: auto-stop seconds
     --help(-h)
     --version(-V)
+]
+
+export extern "idlescreen completion" [
+    shell?: string@"nu-complete idlescreen shells"
+]
+
+export extern "idlescreen preview" [
+    name?: string@"nu-complete idlescreen savers"
+    --timeout(-t): int
+    --help(-h)
+]
+
+export extern "idlescreen saver set" [
+    name?: string@"nu-complete idlescreen savers"
 ]

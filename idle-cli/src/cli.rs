@@ -51,7 +51,7 @@ pub enum Cmd {
     #[command(visible_alias = "cfg")]
     Config {
         #[command(subcommand)]
-        op: ConfigOp,
+        op: Option<ConfigOp>,
     },
     /// Turn the idle screensaver on
     #[command(visible_alias = "on")]
@@ -181,7 +181,7 @@ pub enum CompletionShell {
     Fish,
     #[value(alias = "nu")]
     Nushell,
-    #[value(alias = "pwsh")]
+    #[value(name = "powershell", alias = "pwsh", alias = "power-shell")]
     PowerShell,
     Elvish,
 }
