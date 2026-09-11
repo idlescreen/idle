@@ -45,6 +45,7 @@ fn all_aliases_resolve_to_canonical_variants() {
         ("hold true", "inhibit true"),
         ("rs", "restart"),
         ("log", "logs"),
+        ("activate", "start"),
     ] {
         let a = parse(&alias.split(' ').collect::<Vec<_>>());
         let c = parse(&canonical.split(' ').collect::<Vec<_>>());

@@ -91,6 +91,8 @@ fn file_ops_do_not_need_daemon() {
         assert!(!cmd.needs_daemon(), "{args:?} should be daemon-free");
     }
     assert!(parse(&["inhibit", "true"]).unwrap().needs_daemon());
+    assert!(parse(&["start"]).unwrap().needs_daemon());
+    assert!(parse(&["activate"]).unwrap().needs_daemon());
 }
 
 #[test]

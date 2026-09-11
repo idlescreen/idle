@@ -80,7 +80,10 @@ impl DaemonController {
                 self.mutate_config(|c| c.render_scale = stored)
                     .context("persisting config after SetRenderScale command")
             }
-            DaemonCommand::Preview(_) | DaemonCommand::StopPresentation => Ok(()),
+            // Presentation lifecycle commands own no config keys.
+            DaemonCommand::Preview(_)
+            | DaemonCommand::Activate
+            | DaemonCommand::StopPresentation => Ok(()),
         }
     }
 }

@@ -107,6 +107,21 @@ impl TranceService {
         Ok(())
     }
 
+    /// `idlescreen start`: force the configured saver on demand. The daemon
+    /// resolves the saver (configured or random rotation) — the CLI sends no
+    /// name. Session lock still suppresses it; inhibitors do not.
+    async fn activate(
+        &self,
+        #[zbus(header)] header: zbus::message::Header<'_>,
+    ) -> zbus::fdo::Result<()> {
+        authorize_control(&self.controller, &header).await?;
+        self.controller
+            .send_command(DaemonCommand::Activate)
+            .map_err(|_| zbus::fdo::Error::LimitsExceeded("Command queue full".into()))?;
+        self.controller.mark_dirty();
+        Ok(())
+    }
+
     pub(crate) async fn stop_preview(
         &self,
         #[zbus(header)] header: zbus::message::Header<'_>,

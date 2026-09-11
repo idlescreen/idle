@@ -62,8 +62,8 @@ impl OodaActor {
                         reason,
                         config,
                     );
-                    if !started && reason == "preview" {
-                        tracing::warn!("preview plugin launch failed; clearing preview state");
+                    if !started && reason != "idle" {
+                        tracing::warn!("forced presentation launch failed; clearing queued state");
                         *preview_name = None;
                     }
                 }

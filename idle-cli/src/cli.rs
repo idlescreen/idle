@@ -117,6 +117,9 @@ pub enum Cmd {
         )]
         command: Vec<String>,
     },
+    /// Activate the screensaver now (uses your configured saver)
+    #[command(visible_alias = "activate")]
+    Start,
     /// Preview a saver fullscreen
     #[command(visible_alias = "p")]
     Preview {

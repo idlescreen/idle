@@ -38,7 +38,15 @@ impl OodaDecisionEngine {
 
         let idle_name = pick_saver_name(&situation.config, current_time_micros());
 
-        decide_presentation(input, &idle_name)
+        let mut decision = decide_presentation(input, &idle_name);
+        // A user-forced activation uses Daemon launch mode (installed paths
+        // only) — unlike preview, which may resolve dev-tree builds.
+        if situation.manual_activate
+            && let PresentationDecision::Start { reason, .. } = &mut decision
+        {
+            *reason = "manual";
+        }
+        decision
     }
 }
 
@@ -63,6 +71,7 @@ mod tests {
             session_locked: false,
             effective_inhibited: false,
             cooldown_active: false,
+            manual_activate: false,
         };
         let presentation = ActivePresentation::None;
         let overlay_presenter: Arc<dyn idle_api::OverlaySurface> =
@@ -98,6 +107,7 @@ mod tests {
             session_locked: true,
             effective_inhibited: false,
             cooldown_active: false,
+            manual_activate: false,
         };
         let presentation = ActivePresentation::None;
         let overlay_presenter: Arc<dyn idle_api::OverlaySurface> =
@@ -131,6 +141,7 @@ mod tests {
             session_locked: false,
             effective_inhibited: true,
             cooldown_active: false,
+            manual_activate: false,
         };
         let presentation = ActivePresentation::None;
         let overlay_presenter: Arc<dyn idle_api::OverlaySurface> =
@@ -157,6 +168,45 @@ mod tests {
     }
 
     #[test]
+    fn test_ooda_decision_engine_manual_activate_uses_daemon_mode() {
+        let engine = OodaDecisionEngine::new();
+        let situation = SituationAssessment {
+            config: DaemonConfig {
+                active_saver: Some("beams".to_string()),
+                ..DaemonConfig::default()
+            },
+            system_idle: false,
+            session_locked: false,
+            effective_inhibited: false,
+            cooldown_active: false,
+            manual_activate: true,
+        };
+        let presentation = ActivePresentation::None;
+        let overlay_presenter: Arc<dyn idle_api::OverlaySurface> =
+            match idle_api::WaylandOverlay::new() {
+                Some(p) => Arc::new(p),
+                None => return,
+            };
+
+        // orient() queues the resolved saver into preview_name; decide must
+        // tag the Start "manual" so act launches in Daemon mode.
+        let decision = engine.decide(
+            &situation,
+            &presentation,
+            &*overlay_presenter,
+            Some("beams"),
+            "",
+        );
+        assert_eq!(
+            decision,
+            PresentationDecision::Start {
+                name: "beams".to_string(),
+                reason: "manual"
+            }
+        );
+    }
+
+    #[test]
     fn test_ooda_decision_engine_inhibit_stops_idle_presentation() {
         let engine = OodaDecisionEngine::new();
         let situation = SituationAssessment {
@@ -165,6 +215,7 @@ mod tests {
             session_locked: false,
             effective_inhibited: true,
             cooldown_active: false,
+            manual_activate: false,
         };
         let presentation = ActivePresentation::None;
         let overlay_presenter: Arc<dyn idle_api::OverlaySurface> =

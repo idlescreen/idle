@@ -26,6 +26,8 @@ pub enum DaemonCommand {
     SetShowFpsOverlay(bool),
     SetRenderScale(Option<f32>),
     Preview(String),
+    /// Force-activate the configured saver now (`idlescreen start`).
+    Activate,
     StopPresentation,
 }
 

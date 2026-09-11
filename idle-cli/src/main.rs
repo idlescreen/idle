@@ -222,6 +222,14 @@ pub(crate) fn run_from(args: Vec<String>) -> Result<()> {
         }
         Cmd::List { json } => cmd_list(&client, json),
         Cmd::Inhibitors { json } => cmd_inhibitors(&client, json),
+        Cmd::Start => client
+            .activate()
+            .context("activating screensaver via d-bus")
+            .inspect(|_| {
+                if !quiet() {
+                    println!("Screensaver activated — `idlescreen stop` ends it.")
+                }
+            }),
         Cmd::Preview { name, timeout } => cmd_preview(&client, &name, timeout),
         Cmd::Stop => client
             .stop_preview()

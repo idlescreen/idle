@@ -13,7 +13,9 @@ use wayland_idle::IdleMonitor;
 use super::observe::RawObservation;
 use crate::config::DaemonConfig;
 use crate::controller::{DaemonCommand, DaemonController};
-use crate::daemon::presentation::{ActivePresentation, stop_presentation};
+use crate::daemon::presentation::{
+    ActivePresentation, current_time_micros, pick_saver_name, stop_presentation,
+};
 use crate::daemon::preview_queue::{apply_fault_clear_preview, queue_preview, queue_stop};
 use crate::daemon::runtime::{
     check_runtime_alive, present_cooldown_after_fault, recovery_plan, should_hold_idle_presentation,
@@ -26,6 +28,9 @@ pub struct SituationAssessment {
     pub session_locked: bool,
     pub effective_inhibited: bool,
     pub cooldown_active: bool,
+    /// `Activate` was drained this tick — the forced start should launch in
+    /// `Daemon` mode (installed paths only), not preview/dev paths.
+    pub manual_activate: bool,
     pub config: DaemonConfig,
 }
 
@@ -53,6 +58,7 @@ impl OodaOrientator {
         present_cooldown_until: &mut Option<Instant>,
     ) -> Result<SituationAssessment, ()> {
         // 1. Process incoming commands that affect orient/cooldown state
+        let mut manual_activate = false;
         for command in raw.commands {
             match command {
                 DaemonCommand::Preview(name) => {
@@ -60,6 +66,17 @@ impl OodaOrientator {
                     *present_cooldown_until = None;
                     *consecutive_faults = 0;
                     queue_preview(preview_name, name);
+                }
+                DaemonCommand::Activate => {
+                    // `idlescreen start`: force the configured saver through
+                    // the same user-initiated path as preview, but tagged so
+                    // decide launches it in Daemon mode (installed only).
+                    let name = pick_saver_name(&raw.config, current_time_micros());
+                    tracing::info!(saver = %name, "queued activate command");
+                    *present_cooldown_until = None;
+                    *consecutive_faults = 0;
+                    queue_preview(preview_name, name);
+                    manual_activate = true;
                 }
                 DaemonCommand::StopPresentation => {
                     tracing::info!("queued stop-presentation command");
@@ -134,6 +151,7 @@ impl OodaOrientator {
             session_locked: raw.session_locked,
             effective_inhibited,
             cooldown_active,
+            manual_activate,
             config: raw.config,
         })
     }

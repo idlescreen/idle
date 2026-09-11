@@ -74,6 +74,7 @@ trait Idle {
     fn set_saver(&self, name: &str) -> zbus::Result<()>;
     fn list_savers(&self) -> zbus::Result<Vec<String>>;
     fn preview(&self, name: &str) -> zbus::Result<()>;
+    fn activate(&self) -> zbus::Result<()>;
     fn stop_preview(&self) -> zbus::Result<()>;
     fn inhibit(&self, application: &str, reason: &str) -> zbus::Result<u32>;
     fn un_inhibit(&self, cookie: u32) -> zbus::Result<()>;
@@ -136,6 +137,12 @@ impl TranceClient {
 
     pub fn preview(&self, name: &str) -> zbus::Result<()> {
         IdleProxyBlocking::new(&self.connection)?.preview(name)
+    }
+
+    /// Force-activate the configured saver (`idlescreen start`). Older
+    /// daemons without the method surface a D-Bus error to the caller.
+    pub fn activate(&self) -> zbus::Result<()> {
+        IdleProxyBlocking::new(&self.connection)?.activate()
     }
 
     pub fn stop_preview(&self) -> zbus::Result<()> {
