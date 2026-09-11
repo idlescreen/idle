@@ -7,10 +7,8 @@
 
 use crate::launcher::PluginError;
 use crate::plugin_session::loading::check_entry;
-use std::sync::Mutex;
 
-/// Serialises the tests that mutate process-global env vars.
-static ENV_LOCK: Mutex<()> = Mutex::new(());
+use crate::ENV_LOCK;
 
 /// F-102: loader refuses a plugin missing the version symbol.
 #[test]

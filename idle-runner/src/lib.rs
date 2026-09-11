@@ -43,6 +43,12 @@ pub mod watchdog;
 
 // Tests can run with `cargo test -- --nocapture` to see tracing output.
 
+/// Serializes tests that mutate process env vars (e.g.
+/// `IDLE_ALLOW_UNSIGNED_PLUGINS`). Per-module locks do NOT serialize —
+/// every env-touching test must take this one shared lock.
+#[cfg(test)]
+pub(crate) static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 #[cfg(test)]
 #[path = "abi_version_tests.rs"]
 mod abi_version_tests;

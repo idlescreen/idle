@@ -13,10 +13,8 @@ use crate::plugin_session::manifest_gate::{check_capabilities, load_manifest_for
 use idle_api::plugin_manifest::{self, Manifest};
 use std::fs;
 use std::path::PathBuf;
-use std::sync::Mutex;
 
-/// Serialises the tests that mutate process-global env vars.
-static ENV_LOCK: Mutex<()> = Mutex::new(());
+use crate::ENV_LOCK;
 
 const BASE: &str = r#"schema_version = 1
 plugin_id      = "io.github.idlescreen.beams"

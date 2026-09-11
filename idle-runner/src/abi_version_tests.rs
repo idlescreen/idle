@@ -8,10 +8,8 @@
 //! and refuses to load plugins that don't export it.
 
 use crate::idle_runner::run_plugin_fullscreen;
-use std::sync::Mutex;
 
-/// Serialises the tests that mutate process-global env vars.
-static ENV_LOCK: Mutex<()> = Mutex::new(());
+use crate::ENV_LOCK;
 
 /// F-102 anti-synthetic regression: a not-an-elf payload that *would* be
 /// a valid shared object if it weren't empty must still fail closed with
