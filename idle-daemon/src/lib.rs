@@ -9,6 +9,7 @@
 pub mod config;
 pub mod config_parse;
 
+pub mod cli_main;
 #[cfg(test)]
 mod config_fuzz_tests;
 pub mod config_watcher;
