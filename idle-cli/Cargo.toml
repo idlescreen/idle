@@ -2,7 +2,7 @@
 authors = ["idlescreen developers"]
 repository = "https://github.com/idlescreen/idlescreen"
 name = "idle-cli"
-version = "3.4.0"
+version = "3.5.0"
 edition = "2024"
 description = "Command-line interface for the IdleScreen daemon"
 license = "Apache-2.0"
@@ -40,7 +40,7 @@ changelog = "debian/changelog"
 copyright = "2026 IdleScreen"
 maintainer = "IdleScreen <jerydleuck@gmail.com>"
 extended-description = "CLI for controlling the Idle daemon over D-Bus (command: idlescreen)."
-depends = "libc6, idle-daemon"
+depends = "libc6, idle-daemon (>= 3.5.0)"
 section = "utils"
 priority = "optional"
 assets = [
@@ -70,4 +70,4 @@ assets = [
 ]
 
 [package.metadata.generate-rpm.requires]
-idle-daemon = "*"
+idle-daemon = ">= 3.5.0"
