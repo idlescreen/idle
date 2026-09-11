@@ -36,6 +36,7 @@ fn enforce_sandbox_for_plugin_succeeds_on_modern_kernel() {
 
 #[test]
 fn skip_path_when_disable_env_var_set() {
+    let _g = crate::ENV_LOCK.lock().unwrap();
     // SAFETY: test-only env mutation.
     unsafe {
         std::env::set_var("IDLE_DISABLE_SANDBOX", "1");
@@ -53,6 +54,7 @@ fn skip_path_when_disable_env_var_set() {
 
 #[test]
 fn without_escape_pathless_entry_fails_closed() {
+    let _g = crate::ENV_LOCK.lock().unwrap();
     unsafe {
         std::env::remove_var("IDLE_DISABLE_SANDBOX");
         std::env::remove_var("IDLE_RENDER_PIPELINE");

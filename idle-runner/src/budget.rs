@@ -204,6 +204,18 @@ fn try_attach_cgroup(plugin_id: &str, quota_us: u64, period_us: u64) -> io::Resu
     std::fs::create_dir_all(&dir)?;
     // cpu.max format: "<quota> <period>" — "max <period>" disables the cap.
     std::fs::write(dir.join("cpu.max"), format!("{quota_us} {period_us}"))?;
+    // Memory cap: best-effort — the memory controller is not always delegated
+    // to user cgroups. A runaway saver otherwise OOMs the runner; here the
+    // kernel kills only this cgroup's members.
+    let mem_bytes = std::env::var("IDLE_RUNNER_MEM_MB")
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
+        .unwrap_or(2048)
+        * 1024
+        * 1024;
+    if let Err(e) = std::fs::write(dir.join("memory.max"), mem_bytes.to_string()) {
+        tracing::debug!("memory.max write skipped (controller not delegated?): {e}");
+    }
     // Attach the current thread (id matches cgroup.procs; thread-id is valid
     // when cgroup v2 is enabled with `cgroup.threads`).
     let tid = format!("{}", unsafe { libc::syscall(libc::SYS_gettid) });

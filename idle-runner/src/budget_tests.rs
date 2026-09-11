@@ -45,6 +45,7 @@ fn hard_limit_window_constant() {
 
 #[test]
 fn quota_overrides_env_var() {
+    let _g = crate::ENV_LOCK.lock().unwrap();
     unsafe { std::env::set_var("IDLE_CPU_QUOTA_PCT", "75") };
     let b = CpuBudget::attach("budget-test-env").expect("attach");
     unsafe { std::env::remove_var("IDLE_CPU_QUOTA_PCT") };
@@ -56,6 +57,7 @@ fn quota_overrides_env_var() {
 
 #[test]
 fn quota_clamps_out_of_range() {
+    let _g = crate::ENV_LOCK.lock().unwrap();
     // IDLE_CPU_QUOTA_PCT must clamp to [1, 1000].
     unsafe { std::env::set_var("IDLE_CPU_QUOTA_PCT", "0") };
     let b = CpuBudget::attach("budget-test-clamp-low").expect("attach");
