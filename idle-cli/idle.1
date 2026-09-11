@@ -20,11 +20,11 @@ which is reserved for Fedora's
 .SH COMMANDS
 .TP
 .B tui
-Launch the live TUI dashboard (
+(\fBui\fR) Launch the live TUI dashboard (
 .BR idle-tui ).
 .TP
 .B status
-[\fB--json\fR]
+[\fB-j\fR|\fB--json\fR] (\fBst\fR)
 Show daemon state.
 .TP
 .B on\fR, \fBenable
@@ -36,8 +36,8 @@ Disable idle screensaver.
 .BI timeout " [<minutes>]"
 Set idle timeout (1–240 minutes); bare shows current.
 .TP
-.B list\fR, \fBsaver list
-[\fB--json\fR] List installed savers.
+.B list\fR (\fBls\fR), \fBsaver list
+[\fB-j\fR|\fB--json\fR] List installed savers.
 .TP
 .B saver
 [\fBset\fR \fI<name|random>\fR|\fBlist\fR]
@@ -47,10 +47,10 @@ Show or change the active saver; bare shows current.
 Preview a saver now; \fB-t\fR auto-stops.
 .TP
 .B stop
-Stop preview or idle presentation.
+(\fBx\fR) Stop preview or idle presentation.
 .TP
 .B inhibitors
-[\fB--json\fR] List active inhibitors.
+[\fB-j\fR|\fB--json\fR] (\fBinhib\fR) List active inhibitors.
 .TP
 .BI fps-overlay " on|off|status"
 FPS overlay control.
@@ -71,19 +71,19 @@ Read or write daemon config keys (live daemon state).
 Print a generated shell completion script.
 .TP
 .B clean
-Remove stale run state and log caches.
+(\fBcl\fR) Remove stale run state and log caches.
 .TP
 .B bug-report
-Print a sanitized diagnostics bundle.
+(\fBbug\fR) Print a sanitized diagnostics bundle.
 .TP
 .B self-update
-Check package updates (dnf/apt).
+(\fBupdate\fR, \fBupgrade\fR) Check package updates (dnf/apt).
 .TP
 .B interactive
 Simple console menu.
 .TP
-.B version\fR, \fBabout
-Version and project info.
+.B version\fR (\fBv\fR), \fBabout\fR (\fBinfo\fR)
+Version and project info; \fBversion -l\fR prints extended info.
 .SH FILES
 .TP
 .I ~/.config/idle/config.yaml

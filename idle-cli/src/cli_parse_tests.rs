@@ -25,11 +25,21 @@ fn all_aliases_resolve_to_canonical_variants() {
         ("t", "timeout"),
         ("ls", "list"),
         ("p storm", "preview storm"),
+        ("sv", "saver"),
+        ("sv set storm", "saver set storm"),
+        ("sv list", "saver list"),
+        ("inhib", "inhibitors"),
+        ("x", "stop"),
         ("fps", "fps-overlay"),
         ("scale", "render-scale"),
         ("i", "interactive"),
         ("doc", "doctor"),
+        ("cl", "clean"),
+        ("comp bash", "completion bash"),
+        ("bug", "bug-report"),
+        ("ui", "tui"),
         ("v", "version"),
+        ("info", "about"),
         ("update", "self-update"),
         ("upgrade", "self-update"),
     ] {
@@ -134,6 +144,31 @@ fn oversized_args_dont_panic() {
     let _ = parse(&["saver", "set", &huge]);
     let _ = parse(&[&huge]);
     let _ = parse(&["preview", &huge]);
+}
+
+#[test]
+fn short_long_flag_parity() {
+    for (short, long) in [
+        ("status -j", "status --json"),
+        ("list -j", "list --json"),
+        ("inhibitors -j", "inhibitors --json"),
+        ("saver list -j", "saver list --json"),
+        ("doctor -j", "doctor --json"),
+        ("doctor -f", "doctor --fix"),
+        ("preview s -t 5", "preview s --timeout 5"),
+        ("version -l", "version --long"),
+    ] {
+        let a = parse(&short.split(' ').collect::<Vec<_>>());
+        let b = parse(&long.split(' ').collect::<Vec<_>>());
+        assert!(
+            a.is_ok() && b.is_ok(),
+            "{short:?} / {long:?} must both parse"
+        );
+        assert_eq!(
+            std::mem::discriminant(&a.unwrap()),
+            std::mem::discriminant(&b.unwrap())
+        );
+    }
 }
 
 #[test]

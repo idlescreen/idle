@@ -103,7 +103,7 @@ pub(crate) fn run_from(args: Vec<String>) -> Result<()> {
 
     // Reject single-dash long options (`-help`, `-version`) — clap would
     // silently split them into short flags; users must write `--help`.
-    const SHORTS: &[char] = &['h', 'V', 'f', 'j', 't'];
+    const SHORTS: &[char] = &['h', 'V', 'f', 'j', 't', 'l'];
     for a in &args {
         if let Some(rest) = a.strip_prefix('-')
             && !rest.is_empty()

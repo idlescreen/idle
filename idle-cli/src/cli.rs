@@ -44,7 +44,7 @@ pub enum Cmd {
     #[command(visible_alias = "st")]
     Status {
         /// Machine-readable JSON output
-        #[arg(long)]
+        #[arg(short, long)]
         json: bool,
     },
     /// View or change daemon configuration
@@ -63,6 +63,7 @@ pub enum Cmd {
     #[command(visible_alias = "t")]
     Timeout { minutes: Option<u32> },
     /// Show or change the active saver
+    #[command(visible_alias = "sv")]
     Saver {
         #[command(subcommand)]
         op: Option<SaverOp>,
@@ -71,13 +72,14 @@ pub enum Cmd {
     #[command(visible_alias = "ls")]
     List {
         /// Machine-readable JSON output
-        #[arg(long)]
+        #[arg(short, long)]
         json: bool,
     },
     /// List active idle inhibitors
+    #[command(visible_alias = "inhib")]
     Inhibitors {
         /// Machine-readable JSON output
-        #[arg(long)]
+        #[arg(short, long)]
         json: bool,
     },
     /// Preview a saver fullscreen
@@ -90,6 +92,7 @@ pub enum Cmd {
         timeout: Option<u64>,
     },
     /// Stop the running preview or idle presentation
+    #[command(visible_alias = "x")]
     Stop,
     /// FPS overlay: on, off, or status
     #[command(visible_alias = "fps")]
@@ -111,15 +114,19 @@ pub enum Cmd {
         json: bool,
     },
     /// Remove stale run state and log caches
+    #[command(visible_alias = "cl")]
     Clean,
     /// Print a shell completion script to stdout
+    #[command(visible_alias = "comp")]
     Completion { shell: CompletionShell },
     /// Print a sanitized diagnostics bundle for bug reports
+    #[command(visible_alias = "bug")]
     BugReport,
     /// Check for updates and upgrade installed IdleScreen packages
     #[command(visible_aliases = ["update", "upgrade"])]
     SelfUpdate,
     /// Launch the full-screen TUI
+    #[command(visible_alias = "ui")]
     Tui {
         /// Arguments forwarded to idle-tui
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
@@ -129,10 +136,11 @@ pub enum Cmd {
     #[command(visible_alias = "v")]
     Version {
         /// Extended info (same as `about`)
-        #[arg(long)]
+        #[arg(short, long)]
         long: bool,
     },
     /// Print version plus project info
+    #[command(visible_aliases = ["info"])]
     About,
 }
 
@@ -153,7 +161,7 @@ pub enum SaverOp {
     /// List installed savers
     List {
         /// Machine-readable JSON output
-        #[arg(long)]
+        #[arg(short, long)]
         json: bool,
     },
 }
