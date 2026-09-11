@@ -21,6 +21,18 @@ jobs:
     - name: fmt check
       run: cargo fmt --all -- --check
 
+  deny:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+    - name: Install cargo-deny
+      run: |
+        curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+        cargo binstall -y cargo-deny
+        echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+    - name: cargo-deny advisories + licenses
+      run: cargo deny check advisories licenses
+
   msrv:
     runs-on: ubuntu-latest
     steps:
