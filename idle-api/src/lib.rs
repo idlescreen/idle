@@ -34,6 +34,7 @@
 /// (legacy `trance_api_version` still accepted by the loader when present).
 pub const API_VERSION: u32 = 1;
 
+mod c_abi;
 mod callbacks;
 mod caption;
 mod color;
@@ -53,6 +54,7 @@ pub use env_dual::{env_is_set, env_truthy, env_var_first, set_env};
 mod system_info;
 mod terminal_cell;
 
+pub use c_abi::{CAbiSaver, IdleCell, IdleSaverOps, OPS_SYMBOL};
 pub use callbacks::{
     PALETTE_CALLBACK, SYSTEM_INFO_CALLBACK, get_system_info, query_current_palette,
 };

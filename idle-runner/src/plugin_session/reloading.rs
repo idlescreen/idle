@@ -3,7 +3,7 @@
 use super::manifest_gate;
 use super::{PluginGuard, PluginSession};
 use crate::launcher::PluginError;
-use idle_api::ScreensaverInstance;
+
 use libloading::Library;
 use notify::Watcher;
 use std::sync::atomic::Ordering;
@@ -51,21 +51,11 @@ impl PluginSession {
                 super::loading::check_entry(m, &self.plugin_path)?;
             }
 
-            let create_fn: libloading::Symbol<unsafe extern "C" fn() -> *mut ScreensaverInstance> =
-                lib.get(b"create_screensaver")
-                    .map_err(|_| PluginError::SymbolMissing("create_screensaver"))?;
-            let destroy_fn: libloading::Symbol<unsafe extern "C" fn(*mut ScreensaverInstance)> =
-                lib.get(b"destroy_screensaver")
-                    .map_err(|_| PluginError::SymbolMissing("destroy_screensaver"))?;
-
-            let raw_ptr = create_fn();
-            if raw_ptr.is_null() {
-                return Err(PluginError::SymbolMissing("create_screensaver (null)"));
-            }
+            let (raw_ptr, destroy) = super::loading::resolve_entry(&lib)?;
 
             PluginGuard {
                 ptr: raw_ptr,
-                destroy: *destroy_fn,
+                destroy,
                 _lib: lib,
             }
         };

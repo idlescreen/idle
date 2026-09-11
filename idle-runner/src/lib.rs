@@ -54,3 +54,7 @@ mod plugin_manifest_tests;
 #[cfg(test)]
 #[path = "capability_gate_tests.rs"]
 mod capability_gate_tests;
+
+#[cfg(test)]
+#[path = "c_abi_conformance_tests.rs"]
+mod c_abi_conformance_tests;
