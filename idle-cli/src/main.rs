@@ -21,6 +21,7 @@ mod cli;
 mod commands;
 mod completion;
 mod config;
+mod config_file;
 mod doctor;
 mod doctor_checks;
 mod doctor_env;
@@ -34,6 +35,7 @@ mod interactive_io;
 mod pkg_query;
 mod self_update;
 mod self_update_backend;
+mod service;
 
 #[cfg(test)]
 mod cli_parse_tests;
@@ -69,6 +71,13 @@ impl std::fmt::Display for UsageError {
     }
 }
 impl std::error::Error for UsageError {}
+
+/// `-q/--quiet`: suppress confirmations, not primary output or errors.
+static QUIET: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+pub(crate) fn quiet() -> bool {
+    QUIET.load(std::sync::atomic::Ordering::Relaxed)
+}
 
 fn init_tracing() {
     use tracing_subscriber::EnvFilter;
@@ -107,8 +116,13 @@ pub(crate) fn run_from(args: Vec<String>) -> Result<()> {
 
     // Reject single-dash long options (`-help`, `-version`) — clap would
     // silently split them into short flags; users must write `--help`.
-    const SHORTS: &[char] = &['h', 'V', 'f', 'j', 't', 'l'];
-    for a in &args {
+    // Args after a passthrough command (tui/inhibit) belong to the child.
+    const SHORTS: &[char] = &['h', 'V', 'f', 'j', 't', 'l', 'q', 'n', 'r', 'c'];
+    let stop = args
+        .iter()
+        .position(|a| matches!(a.as_str(), "tui" | "ui" | "inhibit" | "hold"))
+        .unwrap_or(args.len());
+    for a in &args[..stop] {
         if let Some(rest) = a.strip_prefix('-')
             && !rest.is_empty()
             && !rest.starts_with('-')
@@ -136,24 +150,28 @@ pub(crate) fn run_from(args: Vec<String>) -> Result<()> {
             }
         },
     };
+    QUIET.store(cli.quiet, std::sync::atomic::Ordering::Relaxed);
     let cmd = cli.cmd;
 
     // Standalone commands dispatch without a daemon connection.
     if !cmd.needs_daemon() {
         return match cmd {
-            Cmd::Version { long } => {
-                print_version(long);
+            Cmd::Version { long, json } => {
+                print_version(long, json);
                 Ok(())
             }
             Cmd::About => {
-                print_version(true);
+                print_version(true, false);
                 Ok(())
             }
             Cmd::Doctor { fix, json } => doctor::run_doctor(fix, json),
-            Cmd::Clean => clean::handle_clean(),
+            Cmd::Clean { dry_run } => clean::handle_clean(dry_run),
             Cmd::Completion { shell } => completion::handle_completion(shell),
             Cmd::BugReport => bug_report::handle_bug_report(),
-            Cmd::SelfUpdate => self_update::handle_self_update(),
+            Cmd::SelfUpdate { check } => self_update::handle_self_update(check),
+            Cmd::Restart => service::handle_restart(),
+            Cmd::Logs { follow, lines } => service::handle_logs(follow, lines),
+            Cmd::Config { op, json } => config_file::handle_config_local(op, json),
             Cmd::Tui { args } => {
                 let mut c = std::process::Command::new("idle-tui");
                 c.args(&args);
@@ -175,29 +193,44 @@ pub(crate) fn run_from(args: Vec<String>) -> Result<()> {
 
     match cmd {
         Cmd::Status { json } => cmd_status(&client, json),
-        Cmd::Config { op } => config::handle_config(&client, op),
+        Cmd::Config { op, json } => config::handle_config(&client, op, json),
         Cmd::Interactive => interactive::run_interactive(&client),
         Cmd::Enable => client
             .enable()
             .context("enabling idle screensaver")
-            .inspect(|_| println!("Idle screensaver enabled.")),
+            .inspect(|_| {
+                if !quiet() {
+                    println!("Idle screensaver enabled.")
+                }
+            }),
         Cmd::Disable => client
             .disable()
             .context("disabling idle screensaver")
-            .inspect(|_| println!("Idle screensaver disabled.")),
-        Cmd::Timeout { minutes } => cmd_timeout(&client, minutes),
-        Cmd::Saver { op } => match op {
-            None => commands::cmd_saver_show(&client),
-            Some(cli::SaverOp::Set { name }) => commands::cmd_saver_set(&client, &name),
-            Some(cli::SaverOp::List { json }) => cmd_list(&client, json),
+            .inspect(|_| {
+                if !quiet() {
+                    println!("Idle screensaver disabled.")
+                }
+            }),
+        Cmd::Timeout { minutes, json } => cmd_timeout(&client, minutes, json),
+        Cmd::Saver { op, json } => match op {
+            None => commands::cmd_saver_show(&client, json),
+            Some(cli::SaverOp::Set { name }) => commands::cmd_saver_set(&client, &name, json),
+            Some(cli::SaverOp::List) => cmd_list(&client, json),
         },
+        Cmd::Inhibit { reason, command } => {
+            commands::cmd_inhibit(&client, reason.as_deref(), &command)
+        }
         Cmd::List { json } => cmd_list(&client, json),
         Cmd::Inhibitors { json } => cmd_inhibitors(&client, json),
         Cmd::Preview { name, timeout } => cmd_preview(&client, &name, timeout),
         Cmd::Stop => client
             .stop_preview()
             .context("stopping preview or idle presentation")
-            .inspect(|_| println!("Presentation stopped.")),
+            .inspect(|_| {
+                if !quiet() {
+                    println!("Presentation stopped.")
+                }
+            }),
         Cmd::FpsOverlay { state } => {
             let s = state.map(|s| match s {
                 cli::OverlayState::On => "on",

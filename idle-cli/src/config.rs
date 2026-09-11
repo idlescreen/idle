@@ -5,18 +5,53 @@ use idle_dbus::TranceClient;
 
 use crate::cli::ConfigOp;
 
-pub fn handle_config(client: &TranceClient, op: Option<ConfigOp>) -> Result<()> {
+pub fn handle_config(client: &TranceClient, op: Option<ConfigOp>, json: bool) -> Result<()> {
     match op.unwrap_or(ConfigOp::List) {
-        ConfigOp::List => cmd_config_list(client),
-        ConfigOp::Get { key } => cmd_config_get(client, &key),
-        ConfigOp::Set { key, value } => cmd_config_set(client, &key, &value),
+        ConfigOp::List => cmd_config_list(client, json),
+        ConfigOp::Get { key } => cmd_config_get(client, &key, json),
+        ConfigOp::Set { key, value } => cmd_config_set(client, &key, &value, json),
+        _ => bail!("internal error: file-level config op reached daemon path"),
     }
 }
 
-fn cmd_config_list(client: &TranceClient) -> Result<()> {
+fn json_esc(s: &str) -> String {
+    s.replace('\\', "\\\\").replace('"', "\\\"")
+}
+
+/// JSON value with the right type: booleans and numbers stay bare.
+fn json_val(key: &str, v: &str) -> String {
+    match key {
+        "idle_enabled" | "enabled" | "show_fps_overlay" | "fps" | "idle_timeout_mins"
+        | "timeout" => v.to_string(),
+        _ => format!("\"{}\"", json_esc(v)),
+    }
+}
+
+fn cmd_config_list(client: &TranceClient, json: bool) -> Result<()> {
     let status = client
         .get_status()
         .context("querying daemon status via d-bus")?;
+    if json {
+        let saver = if status.active_saver.is_empty() {
+            "random"
+        } else {
+            &status.active_saver
+        };
+        let scale = if status.render_scale.is_empty() {
+            "default"
+        } else {
+            &status.render_scale
+        };
+        println!(
+            "{{\"idle_enabled\":{},\"idle_timeout_mins\":{},\"active_saver\":\"{}\",\"show_fps_overlay\":{},\"render_scale\":\"{}\"}}",
+            status.idle_enabled,
+            status.idle_timeout_mins,
+            json_esc(saver),
+            status.show_fps_overlay,
+            json_esc(scale)
+        );
+        return Ok(());
+    }
     println!("idle_enabled:      {}", status.idle_enabled);
     println!("idle_timeout_mins: {}", status.idle_timeout_mins);
     println!(
@@ -39,37 +74,42 @@ fn cmd_config_list(client: &TranceClient) -> Result<()> {
     Ok(())
 }
 
-fn cmd_config_get(client: &TranceClient, key: &str) -> Result<()> {
+fn config_value(status: &idle_dbus::DaemonStatus, key: &str) -> Result<String> {
+    match key {
+        "idle_enabled" | "enabled" => Ok(status.idle_enabled.to_string()),
+        "idle_timeout_mins" | "timeout" => Ok(status.idle_timeout_mins.to_string()),
+        "active_saver" | "saver" => Ok(if status.active_saver.is_empty() {
+            "random".to_string()
+        } else {
+            status.active_saver.clone()
+        }),
+        "gpu_enabled" | "gpu" => Ok("false".to_string()),
+        "show_fps_overlay" | "fps" => Ok(status.show_fps_overlay.to_string()),
+        "render_scale" | "scale" => Ok(if status.render_scale.is_empty() {
+            "default".to_string()
+        } else {
+            status.render_scale.clone()
+        }),
+        _ => Err(anyhow!("unknown configuration key: {key}")),
+    }
+}
+
+fn cmd_config_get(client: &TranceClient, key: &str, json: bool) -> Result<()> {
     let status = client
         .get_status()
         .context("querying daemon status via d-bus")?;
-    match key {
-        "idle_enabled" | "enabled" => println!("{}", status.idle_enabled),
-        "idle_timeout_mins" | "timeout" => println!("{}", status.idle_timeout_mins),
-        "active_saver" | "saver" => println!(
-            "{}",
-            if status.active_saver.is_empty() {
-                "random"
-            } else {
-                &status.active_saver
-            }
-        ),
-        "gpu_enabled" | "gpu" => println!("false (removed — GPU upscaler deleted)"),
-        "show_fps_overlay" | "fps" => println!("{}", status.show_fps_overlay),
-        "render_scale" | "scale" => println!(
-            "{}",
-            if status.render_scale.is_empty() {
-                "default"
-            } else {
-                &status.render_scale
-            }
-        ),
-        _ => return Err(anyhow!("unknown configuration key: {key}")),
+    let v = config_value(&status, key)?;
+    if key == "gpu_enabled" || key == "gpu" {
+        println!("false (removed — GPU upscaler deleted)");
+    } else if json {
+        println!("{{\"{}\":{}}}", json_esc(key), json_val(key, &v));
+    } else {
+        println!("{v}");
     }
     Ok(())
 }
 
-fn cmd_config_set(client: &TranceClient, key: &str, val: &str) -> Result<()> {
+fn cmd_config_set(client: &TranceClient, key: &str, val: &str, json: bool) -> Result<()> {
     match key {
         "idle_enabled" | "enabled" => set_idle_enabled(client, val)?,
         "idle_timeout_mins" | "timeout" => set_idle_timeout(client, val)?,
@@ -83,7 +123,11 @@ fn cmd_config_set(client: &TranceClient, key: &str, val: &str) -> Result<()> {
         "render_scale" | "scale" => set_render_scale(client, val)?,
         _ => return Err(anyhow!("unknown configuration key: {key}")),
     }
-    println!("Set config key '{key}' to '{val}' successfully.");
+    if json {
+        println!("{{\"{}\":{}}}", json_esc(key), json_val(key, val));
+    } else if !crate::quiet() {
+        println!("Set config key '{key}' to '{val}' successfully.");
+    }
     Ok(())
 }
 

@@ -147,8 +147,9 @@ pub fn check_shm_permissions() -> CheckResult {
     }
 }
 
-/// Idle first, legacy `trance` second (matches idle-daemon).
-fn get_config_path() -> Option<PathBuf> {
+/// Idle first, legacy `trance` second (matches idle-daemon). Shared with
+/// `config path`/`edit`/`reset` so both tools resolve the same file.
+pub(crate) fn get_config_path() -> Option<PathBuf> {
     let mut bases = Vec::new();
     if let Some(xdg) = std::env::var("XDG_CONFIG_HOME")
         .ok()

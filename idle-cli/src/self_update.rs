@@ -192,8 +192,9 @@ fn versions_equalish(a: &str, b: &str) -> bool {
 /// `update`/`upgrade`/`self-update` all do the same thing: upgrade every
 /// installed IdleScreen package (`idle-*` / `idlescreen*`) via the system
 /// package manager. Status is printed first so the user sees what changed.
+/// `check_only` stops after the status report — nothing is installed.
 #[tracing::instrument]
-pub fn handle_self_update() -> Result<()> {
+pub fn handle_self_update(check_only: bool) -> Result<()> {
     let Some(backend) = detect_backend() else {
         println!(" [!] No supported package manager detected (need DNF/RPM or APT).");
         println!("     -> Fedora: sudo dnf update");
@@ -204,6 +205,9 @@ pub fn handle_self_update() -> Result<()> {
     match backend {
         Backend::Dnf => handle_dnf_update()?,
         Backend::Apt => handle_apt_update()?,
+    }
+    if check_only {
+        return Ok(());
     }
 
     let pkgs = installed_packages(backend);

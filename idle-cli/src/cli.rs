@@ -17,6 +17,9 @@ use clap::{Parser, Subcommand, ValueEnum};
     arg_required_else_help = true
 )]
 pub struct Cli {
+    /// Suppress confirmations and other non-essential output
+    #[arg(short, long, global = true)]
+    pub quiet: bool,
     #[command(subcommand)]
     pub cmd: Cmd,
 }
@@ -29,11 +32,17 @@ impl Cmd {
             Cmd::Version { .. }
                 | Cmd::About
                 | Cmd::Doctor { .. }
-                | Cmd::Clean
+                | Cmd::Clean { .. }
                 | Cmd::Completion { .. }
                 | Cmd::BugReport
-                | Cmd::SelfUpdate
+                | Cmd::SelfUpdate { .. }
                 | Cmd::Tui { .. }
+                | Cmd::Restart
+                | Cmd::Logs { .. }
+                | Cmd::Config {
+                    op: Some(ConfigOp::Path | ConfigOp::Edit | ConfigOp::Reset { .. }),
+                    ..
+                }
         )
     }
 }
@@ -52,6 +61,9 @@ pub enum Cmd {
     Config {
         #[command(subcommand)]
         op: Option<ConfigOp>,
+        /// Machine-readable JSON output
+        #[arg(short, long, global = true)]
+        json: bool,
     },
     /// Turn the idle screensaver on
     #[command(visible_alias = "on")]
@@ -61,12 +73,20 @@ pub enum Cmd {
     Disable,
     /// Set or show the idle timeout in minutes (1–240)
     #[command(visible_alias = "t")]
-    Timeout { minutes: Option<u32> },
+    Timeout {
+        minutes: Option<u32>,
+        /// Machine-readable JSON output
+        #[arg(short, long)]
+        json: bool,
+    },
     /// Show or change the active saver
     #[command(visible_alias = "sv")]
     Saver {
         #[command(subcommand)]
         op: Option<SaverOp>,
+        /// Machine-readable JSON output
+        #[arg(short, long, global = true)]
+        json: bool,
     },
     /// List installed savers
     #[command(visible_alias = "ls")]
@@ -81,6 +101,21 @@ pub enum Cmd {
         /// Machine-readable JSON output
         #[arg(short, long)]
         json: bool,
+    },
+    /// Run a command while holding an idle inhibitor
+    #[command(visible_alias = "hold")]
+    Inhibit {
+        /// Reason recorded for the inhibitor
+        #[arg(short, long)]
+        reason: Option<String>,
+        /// Command to run while idle is inhibited
+        #[arg(
+            trailing_var_arg = true,
+            allow_hyphen_values = true,
+            required = true,
+            num_args = 1..
+        )]
+        command: Vec<String>,
     },
     /// Preview a saver fullscreen
     #[command(visible_alias = "p")]
@@ -103,6 +138,19 @@ pub enum Cmd {
     /// Interactive console panel
     #[command(visible_alias = "i")]
     Interactive,
+    /// Restart the idle-daemon user service
+    #[command(visible_alias = "rs")]
+    Restart,
+    /// Show daemon logs (journalctl --user -u idle-daemon)
+    #[command(visible_alias = "log")]
+    Logs {
+        /// Follow new entries (Ctrl-C to stop)
+        #[arg(short, long)]
+        follow: bool,
+        /// Number of recent entries to show
+        #[arg(short = 'n', long, default_value_t = 100)]
+        lines: u32,
+    },
     /// Run diagnostics (—fix reloads the user service, —json prints a report)
     #[command(visible_alias = "doc")]
     Doctor {
@@ -115,7 +163,11 @@ pub enum Cmd {
     },
     /// Remove stale run state and log caches
     #[command(visible_alias = "cl")]
-    Clean,
+    Clean {
+        /// Show what would be removed without deleting anything
+        #[arg(short = 'n', long)]
+        dry_run: bool,
+    },
     /// Print a shell completion script to stdout
     #[command(visible_alias = "comp")]
     Completion { shell: CompletionShell },
@@ -124,7 +176,11 @@ pub enum Cmd {
     BugReport,
     /// Check for updates and upgrade installed IdleScreen packages
     #[command(visible_aliases = ["update", "upgrade"])]
-    SelfUpdate,
+    SelfUpdate {
+        /// Report update status without upgrading anything
+        #[arg(short, long)]
+        check: bool,
+    },
     /// Launch the full-screen TUI
     #[command(visible_alias = "ui")]
     Tui {
@@ -138,6 +194,9 @@ pub enum Cmd {
         /// Extended info (same as `about`)
         #[arg(short, long)]
         long: bool,
+        /// Machine-readable JSON output
+        #[arg(short, long)]
+        json: bool,
     },
     /// Print version plus project info
     #[command(visible_aliases = ["info"])]
@@ -152,6 +211,16 @@ pub enum ConfigOp {
     Get { key: String },
     /// Set a configuration value
     Set { key: String, value: String },
+    /// Print the configuration file path
+    Path,
+    /// Open the configuration file in $EDITOR
+    Edit,
+    /// Restore defaults by removing the configuration file
+    Reset {
+        /// Skip the confirmation prompt
+        #[arg(short, long)]
+        yes: bool,
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -159,11 +228,7 @@ pub enum SaverOp {
     /// Set the active saver (name, or 'random'/'none' for rotation)
     Set { name: String },
     /// List installed savers
-    List {
-        /// Machine-readable JSON output
-        #[arg(short, long)]
-        json: bool,
-    },
+    List,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]

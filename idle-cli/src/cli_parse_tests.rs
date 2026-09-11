@@ -42,6 +42,9 @@ fn all_aliases_resolve_to_canonical_variants() {
         ("info", "about"),
         ("update", "self-update"),
         ("upgrade", "self-update"),
+        ("hold true", "inhibit true"),
+        ("rs", "restart"),
+        ("log", "logs"),
     ] {
         let a = parse(&alias.split(' ').collect::<Vec<_>>());
         let c = parse(&canonical.split(' ').collect::<Vec<_>>());
@@ -66,19 +69,22 @@ fn subcommand_shapes_parse() {
     assert!(matches!(
         parse(&["config", "get", "timeout"]),
         Ok(Cmd::Config {
-            op: Some(ConfigOp::Get { .. })
+            op: Some(ConfigOp::Get { .. }),
+            ..
         })
     ));
     assert!(matches!(
         parse(&["config", "set", "timeout", "5"]),
         Ok(Cmd::Config {
-            op: Some(ConfigOp::Set { .. })
+            op: Some(ConfigOp::Set { .. }),
+            ..
         })
     ));
     assert!(matches!(
         parse(&["saver", "set", "storm"]),
         Ok(Cmd::Saver {
-            op: Some(SaverOp::Set { .. })
+            op: Some(SaverOp::Set { .. }),
+            ..
         })
     ));
     assert!(matches!(
@@ -97,11 +103,47 @@ fn subcommand_shapes_parse() {
     ));
     assert!(matches!(
         parse(&["timeout"]),
-        Ok(Cmd::Timeout { minutes: None })
+        Ok(Cmd::Timeout {
+            minutes: None,
+            json: false
+        })
     ));
     assert!(matches!(
         parse(&["timeout", "30"]),
-        Ok(Cmd::Timeout { minutes: Some(30) })
+        Ok(Cmd::Timeout {
+            minutes: Some(30),
+            ..
+        })
+    ));
+    assert!(matches!(parse(&["restart"]), Ok(Cmd::Restart)));
+    assert!(matches!(
+        parse(&["logs", "-f", "-n", "50"]),
+        Ok(Cmd::Logs {
+            follow: true,
+            lines: 50
+        })
+    ));
+    assert!(matches!(
+        parse(&["config", "path"]),
+        Ok(Cmd::Config {
+            op: Some(ConfigOp::Path),
+            ..
+        })
+    ));
+    assert!(matches!(
+        parse(&["config", "reset", "--yes"]),
+        Ok(Cmd::Config {
+            op: Some(ConfigOp::Reset { yes: true }),
+            ..
+        })
+    ));
+    assert!(matches!(
+        parse(&["self-update", "--check"]),
+        Ok(Cmd::SelfUpdate { check: true })
+    ));
+    assert!(matches!(
+        parse(&["clean", "-n"]),
+        Ok(Cmd::Clean { dry_run: true })
     ));
 }
 
@@ -157,6 +199,11 @@ fn short_long_flag_parity() {
         ("doctor -f", "doctor --fix"),
         ("preview s -t 5", "preview s --timeout 5"),
         ("version -l", "version --long"),
+        ("clean -n", "clean --dry-run"),
+        ("self-update -c", "self-update --check"),
+        ("logs -n 5", "logs --lines 5"),
+        ("inhibit -r x true", "inhibit --reason x true"),
+        ("config reset -y", "config reset --yes"),
     ] {
         let a = parse(&short.split(' ').collect::<Vec<_>>());
         let b = parse(&long.split(' ').collect::<Vec<_>>());
@@ -198,3 +245,7 @@ fn help_and_version_paths() {
     assert_eq!(parse(&["help", "saver"]).unwrap_err().kind(), DisplayHelp);
     assert_eq!(parse(&["--version"]).unwrap_err().kind(), DisplayVersion);
 }
+
+#[cfg(test)]
+#[path = "cli_parse_tests2.rs"]
+mod extra;

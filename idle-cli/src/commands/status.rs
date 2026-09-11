@@ -110,7 +110,11 @@ fn print_daemon_version_line() {
     println!("Daemon:  reachable");
 }
 
-pub fn print_version(verbose: bool) {
+pub fn print_version(verbose: bool, json: bool) {
+    if json {
+        println!("{{\"name\":\"idlescreen\",\"version\":\"{CLI_VERSION}\"}}");
+        return;
+    }
     println!("idlescreen {CLI_VERSION}");
     if !verbose {
         return;

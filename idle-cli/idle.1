@@ -52,38 +52,69 @@ Preview a saver now; \fB-t\fR auto-stops.
 .B inhibitors
 [\fB-j\fR|\fB--json\fR] (\fBinhib\fR) List active inhibitors.
 .TP
+.BI inhibit " [\fB-r\fR \fI<reason>\fR] \fI<cmd>\fR [\fIargs\fR...]"
+(\fBhold\fR) Hold an idle inhibitor while \fIcmd\fR runs, then release it.
+.TP
 .BI fps-overlay " on|off|status"
 FPS overlay control.
 .TP
 .BI render-scale " <0.25-1.0>|default|status"
 Simulation render scale.
 .TP
+.B restart
+(\fBrs\fR) Restart the idle-daemon user service.
+.TP
+.B logs
+[\fB-f\fR|\fB--follow\fR] [\fB-n\fR \fI<lines>\fR] (\fBlog\fR)
+Show daemon logs (journalctl); \fB-f\fR follows.
+.TP
 .B doctor
 [\fB--fix\fR] [\fB--json\fR]
 System diagnostics. \fB--fix\fR reloads/enables the user unit.
 .TP
 .B config
-\fBget\fR|\fBset\fR|\fBlist\fR
-Read or write daemon config keys (live daemon state).
+\fBlist\fR|\fBget\fR \fI<key>\fR|\fBset\fR \fI<key> <val>\fR|\fBpath\fR|\fBedit\fR|\fBreset\fR
+Read/write daemon config keys (live state); \fBpath\fR/\fBedit\fR/\fBreset\fR
+operate on the file. \fBreset\fR restores defaults (asks unless \fB--yes\fR).
+All read ops accept \fB-j\fR|\fB--json\fR.
 .TP
 .B completion
 \fI<bash|zsh|fish|nushell|powershell|elvish>\fR
 Print a generated shell completion script.
 .TP
 .B clean
-(\fBcl\fR) Remove stale run state and log caches.
+[\fB-n\fR|\fB--dry-run\fR] (\fBcl\fR)
+Remove stale run state and log caches; \fB-n\fR previews only.
 .TP
 .B bug-report
 (\fBbug\fR) Print a sanitized diagnostics bundle.
 .TP
 .B self-update
-(\fBupdate\fR, \fBupgrade\fR) Check package updates (dnf/apt).
+[\fB-c\fR|\fB--check\fR] (\fBupdate\fR, \fBupgrade\fR)
+Check and apply package updates (dnf/apt); \fB-c\fR reports only.
 .TP
 .B interactive
 Simple console menu.
 .TP
 .B version\fR (\fBv\fR), \fBabout\fR (\fBinfo\fR)
-Version and project info; \fBversion -l\fR prints extended info.
+Version and project info; \fB-l\fR extended, \fB-j\fR JSON.
+.SH OPTIONS
+.TP
+.B -h\fR, \fB--help
+Show help for the CLI or a subcommand.
+.TP
+.B -V\fR, \fB--version
+Print the CLI version.
+.TP
+.B -q\fR, \fB--quiet
+Suppress confirmations and other non-essential output.
+.SH "EXIT STATUS"
+.B 0
+success;
+.B 1
+operational failure (daemon down, package manager error);
+.B 2
+usage error (unknown command, invalid flag, bad argument).
 .SH FILES
 .TP
 .I ~/.config/idle/config.yaml

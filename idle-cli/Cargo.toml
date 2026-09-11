@@ -29,6 +29,11 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 tracing-journald = { workspace = true, optional = true }
 
+# build.rs generates completions from the same cli.rs the binary uses.
+[build-dependencies]
+clap = { workspace = true }
+clap_complete = { workspace = true }
+
 [package.metadata.deb]
 name = "idle-cli"
 changelog = "debian/changelog"
@@ -43,6 +48,9 @@ assets = [
     # No .desktop here — app launcher entry lives in idle-tui (avoids two "IdleScreen" icons).
     ["assets/idlescreen-beams.png", "usr/share/icons/hicolor/48x48/apps/idlescreen-beams.png", "644"],
     ["idle.1", "usr/share/man/man1/idlescreen.1", "644"],
+    ["target/release/completions/idlescreen", "usr/share/bash-completion/completions/idlescreen", "644"],
+    ["target/release/completions/_idlescreen", "usr/share/zsh/site-functions/_idlescreen", "644"],
+    ["target/release/completions/idlescreen.fish", "usr/share/fish/vendor_completions.d/idlescreen.fish", "644"],
 ]
 
 [package.metadata.generate-rpm]
@@ -56,6 +64,9 @@ assets = [
     { source = "target/release/idlescreen", dest = "/usr/bin/idlescreen", mode = "755", user = "root", group = "root" },
     { source = "assets/idlescreen-beams.png", dest = "/usr/share/icons/hicolor/48x48/apps/idlescreen-beams.png", mode = "644", user = "root", group = "root" },
     { source = "idle.1", dest = "/usr/share/man/man1/idlescreen.1", mode = "644", user = "root", group = "root" },
+    { source = "target/release/completions/idlescreen", dest = "/usr/share/bash-completion/completions/idlescreen", mode = "644", user = "root", group = "root" },
+    { source = "target/release/completions/_idlescreen", dest = "/usr/share/zsh/site-functions/_idlescreen", mode = "644", user = "root", group = "root" },
+    { source = "target/release/completions/idlescreen.fish", dest = "/usr/share/fish/vendor_completions.d/idlescreen.fish", mode = "644", user = "root", group = "root" },
 ]
 
 [package.metadata.generate-rpm.requires]
