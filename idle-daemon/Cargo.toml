@@ -29,9 +29,7 @@ idle-dbus = { workspace = true }
 idle-upscaler = { workspace = true }
 idle-ipc = { path = "../crates/idle-ipc" }
 wayland-idle = { workspace = true }
-wayland-present = { workspace = true }
 libc = { workspace = true }
-libloading = "0.9"
 signal-hook = "0.4"
 zbus = { workspace = true }
 futures-lite = "2.6"

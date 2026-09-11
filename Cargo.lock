@@ -665,7 +665,6 @@ dependencies = [
  "idle-runner",
  "idle-upscaler",
  "libc",
- "libloading 0.9.0",
  "notify",
  "signal-hook 0.4.4",
  "tokio",
@@ -673,7 +672,6 @@ dependencies = [
  "tracing-journald",
  "tracing-subscriber",
  "wayland-idle",
- "wayland-present",
  "zbus",
 ]
 
