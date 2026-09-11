@@ -8,6 +8,9 @@
 
 pub mod config;
 pub mod config_parse;
+
+#[cfg(test)]
+mod config_fuzz_tests;
 pub mod config_watcher;
 pub mod controller;
 pub mod daemon;

@@ -2,6 +2,8 @@
 
 mod auth;
 #[cfg(test)]
+mod dbus_validation_tests;
+#[cfg(test)]
 mod queue_overflow_tests;
 mod screensaver;
 mod service;

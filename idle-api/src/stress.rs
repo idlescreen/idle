@@ -41,10 +41,7 @@ fn hostile_dims(i: u32, rng: &mut crate::LcgRng) -> (usize, usize) {
         2 => (200, 1),
         3 => (80, 24),
         4 => (2, 2),
-        _ => (
-            rng.next_usize(480).max(1),
-            rng.next_usize(200).max(1),
-        ),
+        _ => (rng.next_usize(480).max(1), rng.next_usize(200).max(1)),
     }
 }
 
