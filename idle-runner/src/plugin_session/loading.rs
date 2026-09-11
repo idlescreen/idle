@@ -206,6 +206,14 @@ impl PluginSession {
         unsafe {
             let lib = Library::new(path)?;
 
+            // Manifest entry check before any plugin code runs: ELF
+            // constructors already fired inside the sandbox at `Library::new`,
+            // but we still validate the declared entry point before calling
+            // into the plugin for the first time.
+            if let Some(m) = manifest.as_deref() {
+                check_entry(m, path)?;
+            }
+
             // ABI negotiation: REQUIRED. Every idle-saver-* crate ships
             // an `idle_api_version` symbol (added in this rotation); plugins
             // that don't are refused as `MissingVersion` so a malicious or
@@ -223,10 +231,6 @@ impl PluginSession {
                 return Err(PluginError::ApiVersionMismatch { found, expected });
             }
             tracing::info!(found, expected, "plugin API version ok");
-
-            if let Some(m) = manifest.as_deref() {
-                check_entry(m, path)?;
-            }
 
             let (raw_ptr, destroy) = resolve_entry(&lib)?;
 
