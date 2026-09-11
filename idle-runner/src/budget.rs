@@ -112,10 +112,10 @@ impl CpuBudget {
     /// so callers compare against the budget's `started` baseline.
     pub fn usage_micros(&self) -> u64 {
         let now = Instant::now();
-        if let Some(at) = self.last_sample_at.get() {
-            if now.duration_since(at) < std::time::Duration::from_millis(SAMPLE_CACHE_MS) {
-                return self.last_sample_micros.get();
-            }
+        if let Some(at) = self.last_sample_at.get()
+            && now.duration_since(at) < std::time::Duration::from_millis(SAMPLE_CACHE_MS)
+        {
+            return self.last_sample_micros.get();
         }
         let proc_delta = || -> u64 {
             match read_proc_cpu_micros() {
