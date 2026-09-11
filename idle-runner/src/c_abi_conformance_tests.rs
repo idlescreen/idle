@@ -141,9 +141,13 @@ const IdleSaverOps *idle_saver_ops(void) { return &OPS; }
     };
     unsafe {
         let lib = Library::new(&so).unwrap();
-        match resolve_entry(&lib) {
-            Err(crate::launcher::PluginError::ApiVersionMismatch { found: 999, .. }) => {}
-            other => panic!("expected ApiVersionMismatch, got {other:?}"),
-        }
+        let result = resolve_entry(&lib);
+        assert!(
+            matches!(
+                result,
+                Err(crate::launcher::PluginError::ApiVersionMismatch { found: 999, .. })
+            ),
+            "expected ApiVersionMismatch(999), got {result:?}"
+        );
     }
 }

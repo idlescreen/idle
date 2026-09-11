@@ -225,11 +225,13 @@ mod tests {
     unsafe extern "C" fn fake_draw(_c: *mut c_void, cells: *mut IdleCell, w: u32, h: u32) {
         let n = (w * h) as usize;
         for i in 0..n {
-            *cells.add(i) = IdleCell {
-                ch: 'x' as u32,
-                fg: [9, 9, 9],
-                ..IdleCell::default()
-            };
+            unsafe {
+                *cells.add(i) = IdleCell {
+                    ch: 'x' as u32,
+                    fg: [9, 9, 9],
+                    ..IdleCell::default()
+                };
+            }
         }
     }
 
