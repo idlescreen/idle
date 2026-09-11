@@ -1,3 +1,12 @@
+idle-cli (3.3.0-1) unstable; urgency=medium
+
+  * Foreign-language plugin support: stable C ABI (IdleSaverOps ops table,
+    idle_saver.h header); loader prefers idle_saver_ops over the legacy
+    Rust entry points — savers in C/Zig/openOODA can now plug in.
+  * Fixed flaky env-var race in the test suite (shared ENV_LOCK).
+
+ -- IdleScreen <jerydleuck@gmail.com>  Fri, 11 Sep 2026 18:00:00 +0000
+
 idle-cli (3.2.0-1) unstable; urgency=medium
 
   * Security hardening: shm-create ordering (EEXIST-gated unlink),

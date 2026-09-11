@@ -2,7 +2,7 @@
 authors = ["idlescreen developers"]
 repository = "https://github.com/idlescreen/idlescreen"
 name = "idle-cli"
-version = "3.2.0"
+version = "3.3.0"
 edition = "2024"
 description = "Command-line interface for the IdleScreen daemon"
 license = "Apache-2.0"
