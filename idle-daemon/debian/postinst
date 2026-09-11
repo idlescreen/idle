@@ -24,12 +24,15 @@ if [ -n "$LIB" ]; then
     . "$LIB"
 else
     # Inline fallback (package must still work if lib path missing).
+    # Mirrors user-service-lib.sh: desktop UIDs only (>= 1000) so system
+    # accounts that appear in loginctl are never touched.
     for_each_user_session() {
         _cb="$1"
         command -v loginctl >/dev/null 2>&1 || return 0
         command -v systemctl >/dev/null 2>&1 || return 0
         loginctl list-users --no-legend 2>/dev/null | while read -r uid user _rest; do
             case "$uid" in ''|*[!0-9]*) continue ;; esac
+            [ "$uid" -ge 1000 ] || continue
             [ -n "$user" ] || continue
             [ -d "/run/user/$uid" ] || continue
             [ -S "/run/user/$uid/bus" ] || continue

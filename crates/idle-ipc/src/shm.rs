@@ -36,19 +36,33 @@ impl SharedMemory {
         let c_name = CString::new(name).map_err(|e| e.to_string())?;
 
         // Named POSIX SHM only: the IPC child re-opens by name (`SharedMemory::open`).
-        // O_EXCL + 0600: refuse squatters and keep the object owner-private.
-        // SAFETY: `c_name` is a valid CString; unlink best-effort for stale objects.
-        unsafe {
-            libc::shm_unlink(c_name.as_ptr());
-        }
-        // SAFETY: O_CREAT|O_EXCL|O_RDWR with mode 0600 on a validated name.
-        let fd = unsafe {
+        // O_EXCL + 0600: keep the object owner-private. Do NOT unlink before
+        // the first open — an unconditional unlink could drop a live peer's
+        // object from under its mapping. Only on EEXIST (stale object left by
+        // a dead daemon; names are pid-scoped) do we unlink and retry once.
+        // SAFETY: `c_name` is a valid CString; name validated above.
+        let mut fd = unsafe {
             libc::shm_open(
                 c_name.as_ptr(),
                 libc::O_CREAT | libc::O_RDWR | libc::O_EXCL,
                 0o600,
             )
         };
+        if fd < 0 && std::io::Error::last_os_error().raw_os_error() == Some(libc::EEXIST) {
+            // SAFETY: unlink only the colliding stale name, then a single
+            // bounded retry. A second EEXIST means a racing peer legitimately
+            // owns the name — fail closed below.
+            unsafe {
+                libc::shm_unlink(c_name.as_ptr());
+            }
+            fd = unsafe {
+                libc::shm_open(
+                    c_name.as_ptr(),
+                    libc::O_CREAT | libc::O_RDWR | libc::O_EXCL,
+                    0o600,
+                )
+            };
+        }
         if fd < 0 {
             return Err(format!(
                 "shm_open (create) failed: {}",
