@@ -224,7 +224,6 @@ mod tests {
             primary,
             false,
             PresentationOptions {
-                gpu_enabled: false,
                 show_fps_overlay: false,
                 render_scale: None,
                 launch_mode: idle_runner::launcher::LaunchMode::Daemon,

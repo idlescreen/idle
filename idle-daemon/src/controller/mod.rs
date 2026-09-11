@@ -51,7 +51,6 @@ impl DaemonController {
             idle_enabled: initial_config.idle_enabled,
             idle_timeout_mins: initial_config.idle_timeout_mins,
             active_saver: initial_config.active_saver.clone().unwrap_or_default(),
-            gpu_enabled: false,
             show_fps_overlay: initial_config.show_fps_overlay,
             render_scale: initial_config
                 .render_scale

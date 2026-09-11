@@ -37,8 +37,7 @@ fn read_timeout_default_when_env_unset() {
 #[test]
 fn kill_child_is_idempotent_without_child() {
     let mut s =
-        IpcPluginSession::load_with_options("beams", &LaunchMode::Daemon, Some(false), None)
-            .expect("load");
+        IpcPluginSession::load_with_options("beams", &LaunchMode::Daemon, None).expect("load");
     // No child yet; kill must not panic.
     s.kill_child();
     s.kill_child();
@@ -47,8 +46,7 @@ fn kill_child_is_idempotent_without_child() {
 #[test]
 fn kill_child_clears_handle() {
     let mut s =
-        IpcPluginSession::load_with_options("beams", &LaunchMode::Daemon, Some(false), None)
-            .expect("load");
+        IpcPluginSession::load_with_options("beams", &LaunchMode::Daemon, None).expect("load");
     // Simulate a live child by inserting a dummy process handle would
     // require spawning; we instead assert that the kill path on a
     // `None` child clears state correctly (the slot stays None).
@@ -62,16 +60,14 @@ fn kill_child_clears_handle() {
 #[test]
 fn child_is_dead_true_without_child() {
     let mut s =
-        IpcPluginSession::load_with_options("beams", &LaunchMode::Daemon, Some(false), None)
-            .expect("load");
+        IpcPluginSession::load_with_options("beams", &LaunchMode::Daemon, None).expect("load");
     assert!(s.child_is_dead(), "no child → reports dead");
 }
 
 #[test]
 fn expected_stop_is_set_after_kill() {
     let mut s =
-        IpcPluginSession::load_with_options("beams", &LaunchMode::Daemon, Some(false), None)
-            .expect("load");
+        IpcPluginSession::load_with_options("beams", &LaunchMode::Daemon, None).expect("load");
     s.kill_child();
     assert!(
         s.expected_stop.load(std::sync::atomic::Ordering::Acquire),
@@ -95,8 +91,7 @@ fn kill_child_reaps_real_process() {
     assert!(pid > 0, "spawn returned a real pid");
 
     let mut s =
-        IpcPluginSession::load_with_options("beams", &LaunchMode::Daemon, Some(false), None)
-            .expect("load");
+        IpcPluginSession::load_with_options("beams", &LaunchMode::Daemon, None).expect("load");
     s.child = Some(child);
 
     let before = unsafe { libc::kill(pid, 0) };

@@ -93,27 +93,18 @@ fn run_ipc_runner_subcmd(args: &[String]) -> anyhow::Result<()> {
     idle_runner::sandbox::clear_sandbox_escape_env();
     anyhow::ensure!(
         args.len() >= 9,
-        "missing arguments.\nusage: idle-daemon run-ipc-runner <saver> <socket_path> <shm_name> <cols> <rows> <gpu_enabled> <render_scale>"
+        "missing arguments.\nusage: idle-daemon run-ipc-runner <saver> <socket_path> <shm_name> <cols> <rows> <render_scale>"
     );
     let saver = &args[2];
     let socket_path = &args[3];
     let shm_name = &args[4];
     let cols: usize = args[5].parse().unwrap_or(80);
     let rows: usize = args[6].parse().unwrap_or(24);
-    let gpu_enabled: bool = args[7].parse().unwrap_or(false);
-    let render_scale: Option<f32> = if args[8] == "none" {
+    let render_scale: Option<f32> = if args[7] == "none" {
         None
     } else {
-        args[8].parse().ok()
+        args[7].parse().ok()
     };
-    ipc_runner::run_ipc_runner(
-        saver,
-        socket_path,
-        shm_name,
-        cols,
-        rows,
-        gpu_enabled,
-        render_scale,
-    )
-    .map_err(|e| anyhow::anyhow!("{e}"))
+    ipc_runner::run_ipc_runner(saver, socket_path, shm_name, cols, rows, render_scale)
+        .map_err(|e| anyhow::anyhow!("{e}"))
 }

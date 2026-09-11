@@ -17,7 +17,6 @@ use super::timeout::is_timeout;
 
 pub struct IpcPluginSession {
     pub(crate) saver_name: String,
-    pub(crate) gpu_enabled: bool,
     pub(crate) render_scale: f32,
     pub(crate) renderer: CellRenderer,
     pub(crate) upscaler: FrameUpscaler,
@@ -38,17 +37,14 @@ impl IpcPluginSession {
     pub fn load_with_options(
         saver_name: &str,
         _launch_mode: &LaunchMode,
-        gpu_enabled: Option<bool>,
         render_scale: Option<f32>,
     ) -> Result<Self, String> {
         let renderer = CellRenderer::new().map_err(|e| e.to_string())?;
-        let use_gpu = gpu_enabled.unwrap_or_else(idle_upscaler::gpu_enabled);
-        let render_scale = resolve_render_scale(use_gpu, render_scale);
-        let upscaler = FrameUpscaler::new(use_gpu, FilterMode::from_env());
+        let render_scale = resolve_render_scale(render_scale);
+        let upscaler = FrameUpscaler::new(FilterMode::from_env());
 
         Ok(Self {
             saver_name: saver_name.to_string(),
-            gpu_enabled: use_gpu,
             render_scale,
             renderer,
             upscaler,
@@ -103,13 +99,7 @@ impl IpcPluginSession {
             let _ = std::fs::remove_file(path);
         }
 
-        let init_res = initialize_ipc_session(
-            &self.saver_name,
-            cols,
-            rows,
-            self.gpu_enabled,
-            self.render_scale,
-        )?;
+        let init_res = initialize_ipc_session(&self.saver_name, cols, rows, self.render_scale)?;
 
         self.child = Some(init_res.child);
         self.socket = Some(init_res.socket);

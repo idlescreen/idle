@@ -15,7 +15,6 @@ pub fn run_ipc_runner(
     shm_name: &str,
     cols: usize,
     rows: usize,
-    gpu_enabled: bool,
     render_scale: Option<f32>,
 ) -> Result<(), String> {
     // Adversarial argv hardening: reject path-like savers, odd SHM names, and
@@ -39,11 +38,10 @@ pub fn run_ipc_runner(
     }
 
     tracing::info!(
-        "IPC Runner starting for saver '{}', cols: {}, rows: {}, gpu: {}, scale: {:?}",
+        "IPC Runner starting for saver '{}', cols: {}, rows: {}, scale: {:?}",
         saver_name,
         cols,
         rows,
-        gpu_enabled,
         render_scale
     );
 
@@ -54,13 +52,9 @@ pub fn run_ipc_runner(
     let shm = SharedMemory::open(shm_name, shm_size)
         .map_err(|e| format!("failed to open shm {}: {}", shm_name, e))?;
 
-    let mut session = PluginSession::load_with_options(
-        &saver_name,
-        &LaunchMode::Daemon,
-        Some(gpu_enabled),
-        render_scale,
-    )
-    .map_err(|e| format!("failed to load plugin {}: {}", saver_name, e))?;
+    let mut session =
+        PluginSession::load_with_options(&saver_name, &LaunchMode::Daemon, render_scale)
+            .map_err(|e| format!("failed to load plugin {}: {}", saver_name, e))?;
 
     if let Err(e) = session.start_watcher() {
         tracing::warn!("Failed to start screensaver file watcher: {:?}", e);
@@ -163,7 +157,6 @@ mod tests {
             "/idle-shm-1-0",
             80,
             24,
-            false,
             None,
         )
         .unwrap_err();
@@ -172,31 +165,15 @@ mod tests {
 
     #[test]
     fn rejects_bad_shm_name() {
-        let err = run_ipc_runner(
-            "beams",
-            "/tmp/idle-uds-1-0.sock",
-            "/evil-shm",
-            80,
-            24,
-            false,
-            None,
-        )
-        .unwrap_err();
+        let err = run_ipc_runner("beams", "/tmp/idle-uds-1-0.sock", "/evil-shm", 80, 24, None)
+            .unwrap_err();
         assert!(err.contains("shm"));
     }
 
     #[test]
     fn rejects_relative_socket() {
-        let err = run_ipc_runner(
-            "beams",
-            "relative.sock",
-            "/idle-shm-1-0",
-            80,
-            24,
-            false,
-            None,
-        )
-        .unwrap_err();
+        let err =
+            run_ipc_runner("beams", "relative.sock", "/idle-shm-1-0", 80, 24, None).unwrap_err();
         assert!(err.contains("socket"));
     }
 
@@ -208,7 +185,6 @@ mod tests {
             "/idle-shm-1-0",
             0,
             24,
-            false,
             None,
         )
         .unwrap_err();

@@ -34,7 +34,6 @@ pub fn initialize_ipc_session(
     saver_name: &str,
     cols: usize,
     rows: usize,
-    gpu_enabled: bool,
     render_scale: f32,
 ) -> Result<SessionInitResult, String> {
     validate_grid_dims(cols, rows).map_err(|e| e.to_string())?;
@@ -72,7 +71,6 @@ pub fn initialize_ipc_session(
 
     let current_exe =
         std::env::current_exe().map_err(|e| format!("failed to get current exe path: {}", e))?;
-    let gpu_str = gpu_enabled.to_string();
     let scale_str = format!("{:.6}", render_scale);
 
     let mut child = Command::new(current_exe)
@@ -82,7 +80,6 @@ pub fn initialize_ipc_session(
         .arg(&shm_name)
         .arg(cols.to_string())
         .arg(rows.to_string())
-        .arg(&gpu_str)
         .arg(&scale_str)
         .spawn()
         .map_err(|e| format!("failed to spawn runner process: {}", e))?;

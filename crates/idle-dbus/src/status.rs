@@ -18,7 +18,6 @@ pub struct DaemonStatus {
     pub session_locked: bool,
     pub inhibited: bool,
     pub current_saver: String,
-    pub gpu_enabled: bool,
     pub show_fps_overlay: bool,
     pub render_scale: String,
 }
@@ -41,7 +40,6 @@ impl DaemonStatus {
         map.insert("session_locked".into(), owned(self.session_locked));
         map.insert("inhibited".into(), owned(self.inhibited));
         map.insert("current_saver".into(), owned(self.current_saver.clone()));
-        map.insert("gpu_enabled".into(), owned(self.gpu_enabled));
         map.insert("show_fps_overlay".into(), owned(self.show_fps_overlay));
         map.insert("render_scale".into(), owned(self.render_scale.clone()));
         map
@@ -86,7 +84,7 @@ mod tests {
             ..DaemonStatus::default()
         };
         let map = status.to_map();
-        assert_eq!(map.len(), 13);
+        assert_eq!(map.len(), 12);
         assert!(map.contains_key("active_saver"));
         assert!(map.contains_key("current_saver"));
         assert!(map.contains_key("render_scale"));
@@ -96,6 +94,6 @@ mod tests {
     fn status_to_map_default_values_match() {
         let status = DaemonStatus::default();
         let map = status.to_map();
-        assert_eq!(map.len(), 13);
+        assert_eq!(map.len(), 12);
     }
 }

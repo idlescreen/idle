@@ -54,26 +54,15 @@ impl FilterMode {
 /// for historical callers that branched on GPU availability. The crate
 /// contains no GPU code; all upscaling is CPU-based (see [`cpu`]).
 ///
-/// Callers that want a single source of truth for "use GPU?" should
-/// treat `gpu_enabled() == false` as the only supported answer until a
-/// real GPU backend is added.
-pub fn gpu_enabled() -> bool {
-    false
-}
-
 /// Simulation grid scale factor in `(0, 1]`. Lower values render chunkier effects
 /// that are upscaled to the monitor resolution.
 pub fn render_scale() -> f32 {
-    render_scale_for_gpu(gpu_enabled())
-}
-
-pub fn render_scale_for_gpu(use_gpu: bool) -> f32 {
-    resolve_render_scale(use_gpu, None)
+    resolve_render_scale(None)
 }
 
 /// Effective simulation grid scale: env `IDLE_RENDER_SCALE`, then config.
-#[tracing::instrument(skip_all, fields(use_gpu, configured))]
-pub fn resolve_render_scale(use_gpu: bool, configured: Option<f32>) -> f32 {
+#[tracing::instrument(skip_all, fields(configured))]
+pub fn resolve_render_scale(configured: Option<f32>) -> f32 {
     if let Some(scale) =
         idle_api::env_var_first(&["IDLE_RENDER_SCALE"]).and_then(|v| v.parse::<f32>().ok())
     {
@@ -82,7 +71,7 @@ pub fn resolve_render_scale(use_gpu: bool, configured: Option<f32>) -> f32 {
     if let Some(scale) = configured {
         return scale.clamp(0.25, 1.0);
     }
-    if use_gpu { 1.0 } else { 0.5 }
+    0.5
 }
 
 /// Presentation frame-rate cap. `0` means match the detected monitor refresh rate.
@@ -130,7 +119,7 @@ pub struct FrameUpscaler {
 }
 
 impl FrameUpscaler {
-    pub fn new(_prefer_gpu: bool, filter: FilterMode) -> Self {
+    pub fn new(filter: FilterMode) -> Self {
         Self {
             filter,
             stretch_buf: Vec::new(),

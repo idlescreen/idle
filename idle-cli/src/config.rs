@@ -36,7 +36,6 @@ fn cmd_config_list(client: &TranceClient) -> Result<()> {
             &status.active_saver
         }
     );
-    println!("gpu_enabled:       {}", status.gpu_enabled);
     println!("show_fps_overlay:  {}", status.show_fps_overlay);
     println!(
         "render_scale:      {}",
@@ -64,7 +63,7 @@ fn cmd_config_get(client: &TranceClient, key: &str) -> Result<()> {
                 &status.active_saver
             }
         ),
-        "gpu_enabled" | "gpu" => println!("{}", status.gpu_enabled),
+        "gpu_enabled" | "gpu" => println!("false (removed — GPU upscaler deleted)"),
         "show_fps_overlay" | "fps" => println!("{}", status.show_fps_overlay),
         "render_scale" | "scale" => println!(
             "{}",

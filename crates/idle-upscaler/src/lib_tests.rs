@@ -2,25 +2,20 @@ use super::*;
 
 #[test]
 fn resolve_render_scale_clamps_high() {
-    let s = resolve_render_scale(false, Some(2.0));
+    let s = resolve_render_scale(Some(2.0));
     assert!(s <= 1.0);
 }
 
 #[test]
 fn resolve_render_scale_clamps_low() {
-    let s = resolve_render_scale(false, Some(0.1));
+    let s = resolve_render_scale(Some(0.1));
     assert!(s >= 0.25);
 }
 
 #[test]
-fn resolve_render_scale_default_no_gpu() {
-    let s = resolve_render_scale(false, None);
+fn resolve_render_scale_default_cpu() {
+    let s = resolve_render_scale(None);
     assert!(s > 0.0 && s <= 1.0);
-}
-
-#[test]
-fn gpu_enabled_returns_false() {
-    assert!(!gpu_enabled());
 }
 
 #[test]
@@ -162,7 +157,7 @@ fn restore_max_fps(prior: Option<String>) {
 
 #[test]
 fn frame_upscaler_never_uses_gpu() {
-    let upscaler = FrameUpscaler::new(true, FilterMode::Linear);
+    let upscaler = FrameUpscaler::new(FilterMode::Linear);
     assert!(!upscaler.using_gpu());
     assert_eq!(upscaler.adapter_name(), None);
 }

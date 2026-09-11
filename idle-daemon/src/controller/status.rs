@@ -102,14 +102,6 @@ impl DaemonController {
             changed = true;
         }
 
-        #[allow(deprecated)]
-        {
-            if status.gpu_enabled != config.gpu_enabled {
-                status.gpu_enabled = config.gpu_enabled;
-                changed = true;
-            }
-        }
-
         let active_saver = config.active_saver.as_deref().unwrap_or("");
         if status.active_saver != active_saver {
             status.active_saver.clear();

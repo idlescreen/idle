@@ -26,7 +26,6 @@ pub fn format_status_text(status: &idle_dbus::DaemonStatus) -> String {
          idle_enabled:         {}\n\
          idle_timeout_mins:    {}\n\
          active_saver:         {}\n\
-         gpu_enabled:          {}\n\
          show_fps_overlay:     {}\n\
          render_scale:         {}\n\
          presentation_active:  {}\n\
@@ -39,7 +38,6 @@ pub fn format_status_text(status: &idle_dbus::DaemonStatus) -> String {
         status.idle_enabled,
         status.idle_timeout_mins,
         display_saver(&status.active_saver),
-        status.gpu_enabled,
         status.show_fps_overlay,
         scale,
         status.presentation_active,
@@ -54,12 +52,11 @@ pub fn format_status_text(status: &idle_dbus::DaemonStatus) -> String {
 /// Pure JSON status line (unit-tested; no D-Bus).
 pub fn format_status_json(status: &idle_dbus::DaemonStatus) -> String {
     format!(
-        "{{\"running\":{},\"idle_enabled\":{},\"idle_timeout_mins\":{},\"active_saver\":\"{}\",\"gpu_enabled\":{},\"show_fps_overlay\":{},\"render_scale\":\"{}\",\"presentation_active\":{},\"preview_active\":{},\"current_saver\":\"{}\",\"system_idle\":{},\"session_locked\":{},\"inhibited\":{}}}",
+        "{{\"running\":{},\"idle_enabled\":{},\"idle_timeout_mins\":{},\"active_saver\":\"{}\",\"show_fps_overlay\":{},\"render_scale\":\"{}\",\"presentation_active\":{},\"preview_active\":{},\"current_saver\":\"{}\",\"system_idle\":{},\"session_locked\":{},\"inhibited\":{}}}",
         status.running,
         status.idle_enabled,
         status.idle_timeout_mins,
         status.active_saver,
-        status.gpu_enabled,
         status.show_fps_overlay,
         status.render_scale,
         status.presentation_active,
@@ -186,7 +183,6 @@ mod tests {
             session_locked: false,
             inhibited: false,
             current_saver: "beams".into(),
-            gpu_enabled: false,
             show_fps_overlay: false,
             render_scale: String::new(),
         }

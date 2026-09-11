@@ -150,7 +150,6 @@ fn parse_status_full_roundtrip() {
     assert!(!status.session_locked);
     assert!(!status.inhibited);
     assert_eq!(status.current_saver, "beams");
-    assert!(status.gpu_enabled);
     assert!(status.show_fps_overlay);
     assert_eq!(status.render_scale, "0.75");
 }

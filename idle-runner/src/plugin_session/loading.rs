@@ -96,14 +96,13 @@ pub(crate) unsafe fn resolve_entry(
 impl PluginSession {
     #[tracing::instrument(skip_all, fields(saver_name = %saver_name))]
     pub fn load(saver_name: &str) -> Result<Self, PluginError> {
-        Self::load_with_options(saver_name, &LaunchMode::Daemon, None, None)
+        Self::load_with_options(saver_name, &LaunchMode::Daemon, None)
     }
 
     #[tracing::instrument(skip_all, fields(saver_name = %saver_name))]
     pub fn load_with_options(
         saver_name: &str,
         launch_mode: &LaunchMode,
-        gpu_enabled: Option<bool>,
         render_scale: Option<f32>,
     ) -> Result<Self, PluginError> {
         let path = resolve_saver_binary(saver_name, launch_mode)?;
@@ -112,30 +111,20 @@ impl PluginSession {
             saver_name,
             path.display()
         );
-        Self::load_path_with_options(&path, gpu_enabled, render_scale)
+        Self::load_path_with_options(&path, render_scale)
     }
 
     #[tracing::instrument(skip_all, fields(path = %path.display()))]
     pub fn load_path_with_options(
         path: &Path,
-        gpu_enabled: Option<bool>,
         render_scale: Option<f32>,
     ) -> Result<Self, PluginError> {
         let renderer = CellRenderer::new().map_err(|error| {
             PluginError::Io(std::io::Error::new(std::io::ErrorKind::Other, error))
         })?;
-        let use_gpu = gpu_enabled.unwrap_or_else(idle_upscaler::gpu_enabled);
-        let render_scale = resolve_render_scale(use_gpu, render_scale);
-        let upscaler = FrameUpscaler::new(use_gpu, FilterMode::from_env());
-        if upscaler.using_gpu() {
-            tracing::info!(
-                "GPU upscale enabled (render scale {:.0}%, adapter: {})",
-                render_scale * 100.0,
-                upscaler.adapter_name().unwrap_or("unknown")
-            );
-        } else {
-            tracing::info!("CPU upscale (render scale {:.0}%)", render_scale * 100.0);
-        }
+        let render_scale = resolve_render_scale(render_scale);
+        let upscaler = FrameUpscaler::new(FilterMode::from_env());
+        tracing::info!("CPU upscale (render scale {:.0}%)", render_scale * 100.0);
 
         if std::env::var_os("IDLESCREEN_RENDER_SEED").is_some()
             || std::env::var_os("RENDER_SEED").is_some()

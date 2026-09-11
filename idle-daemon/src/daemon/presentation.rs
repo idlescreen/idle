@@ -71,11 +71,6 @@ pub fn start_presentation(
         idle_runner::launcher::LaunchMode::Daemon
     };
     let options = PresentationOptions {
-        gpu_enabled: {
-            #[allow(deprecated)]
-            let v = config.gpu_enabled;
-            v
-        },
         show_fps_overlay: config.show_fps_overlay,
         render_scale: config.render_scale,
         launch_mode,

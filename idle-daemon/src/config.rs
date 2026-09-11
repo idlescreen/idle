@@ -11,13 +11,7 @@ pub struct DaemonConfig {
     pub active_saver: Option<String>,
     pub idle_enabled: bool,
     pub idle_timeout_mins: u32,
-    /// **DEPRECATED** — no-op. Retained for back-compat with existing
-    /// `config.yaml` files; the previous `trance-gpu` crate was renamed to
-    /// `idle-upscaler` and is now CPU-only. See `config.yaml(5)`.
-    #[deprecated(
-        note = "GPU upscaler removed in 2026; field retained for back-compat, will be removed in 0.4"
-    )]
-    pub gpu_enabled: bool,
+
     pub show_fps_overlay: bool,
     /// Simulation grid scale override in `(0.25, 1.0]`; `None` uses CPU
     /// defaults (the GPU path was removed in 2026).
@@ -37,7 +31,6 @@ impl Default for DaemonConfig {
             active_saver: Some("beams".to_string()),
             idle_enabled: true,
             idle_timeout_mins: 5,
-            gpu_enabled: false,
             show_fps_overlay: false,
             render_scale: None,
             saver_params: std::collections::BTreeMap::new(),
@@ -151,7 +144,6 @@ impl DaemonConfig {
              theme_idx: 0\n\
              active_saver: \"{}\"\n\
              idle_enabled: {}\n\
-             gpu_enabled: false\n\
              show_fps_overlay: {}\n\
              render_scale: {}\n\
              theme: \"{}\"\n\

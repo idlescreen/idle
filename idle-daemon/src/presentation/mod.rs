@@ -36,7 +36,6 @@ pub use plugin_loop::run_plugin_loop;
 
 #[derive(Clone)]
 pub struct PresentationOptions {
-    pub gpu_enabled: bool,
     pub show_fps_overlay: bool,
     pub render_scale: Option<f32>,
     pub launch_mode: LaunchMode,
@@ -99,7 +98,6 @@ mod tests {
         // Use the platform stub — tests should not depend on a Wayland session.
         let presenter: Arc<dyn OverlaySurface> = Arc::new(idle_api::StubOverlay);
         let options = PresentationOptions {
-            gpu_enabled: false,
             show_fps_overlay: false,
             render_scale: None,
             launch_mode: LaunchMode::Preview,
@@ -161,7 +159,6 @@ mod tests {
     fn plugin_presentation_dyn_surface_dispatch_works() {
         let presenter: Arc<dyn OverlaySurface> = Arc::new(CountingSurface::new().unwrap());
         let options = PresentationOptions {
-            gpu_enabled: false,
             show_fps_overlay: false,
             render_scale: None,
             launch_mode: LaunchMode::Preview,

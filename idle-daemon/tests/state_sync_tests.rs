@@ -24,7 +24,6 @@ fn test_live_status_contract_completeness() {
         "session_locked",
         "inhibited",
         "current_saver",
-        "gpu_enabled",
         "show_fps_overlay",
         "render_scale",
     ];

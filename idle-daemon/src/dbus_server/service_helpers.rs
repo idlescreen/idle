@@ -61,10 +61,6 @@ pub fn sync_config_status(controller: &Arc<DaemonController>) {
         status.idle_enabled = config.idle_enabled;
         status.idle_timeout_mins = config.idle_timeout_mins;
         status.active_saver = config.active_saver.clone().unwrap_or_default();
-        #[allow(deprecated)]
-        {
-            status.gpu_enabled = false;
-        }
         status.show_fps_overlay = config.show_fps_overlay;
         status.render_scale = config
             .render_scale

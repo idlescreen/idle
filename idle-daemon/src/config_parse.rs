@@ -17,7 +17,6 @@ pub(crate) fn apply_config_key(config: &mut DaemonConfig, key: &str, val: &str) 
                 config.idle_enabled = b;
             }
         }
-        "gpu_enabled" => apply_gpu_enabled(config, val),
         "show_fps_overlay" => {
             if let Ok(b) = val.parse::<bool>() {
                 config.show_fps_overlay = b;
@@ -54,20 +53,6 @@ fn apply_active_saver(config: &mut DaemonConfig, val: &str) {
         config.active_saver = None;
     } else if is_allowed_saver(val) {
         config.active_saver = sanitize_saver_name(val).map(|s| s.to_string());
-    }
-}
-
-fn apply_gpu_enabled(config: &mut DaemonConfig, val: &str) {
-    // DEPRECATED (2026): the previous `trance-gpu` crate was renamed to
-    // `idle-upscaler` and is now pure CPU code. `gpu_enabled` is a no-op; we
-    // accept the value silently for back-compat with existing config.yaml
-    // files but ignore it. Logging would be spammy on every daemon start, so
-    // no warning is emitted here — the field is documented as deprecated in
-    // `config.yaml(5)`.
-    let _ = val.parse::<bool>();
-    #[allow(deprecated)]
-    {
-        config.gpu_enabled = false;
     }
 }
 

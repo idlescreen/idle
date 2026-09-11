@@ -108,7 +108,6 @@ fn build_sessions(
             let mut session = IpcPluginSession::load_with_options(
                 saver_name,
                 &options.launch_mode,
-                Some(options.gpu_enabled),
                 options.render_scale,
             )?;
             let (cols, rows) = session.grid_for_pixels(layout.width, layout.height);
@@ -124,7 +123,6 @@ fn build_sessions(
         let mut session = IpcPluginSession::load_with_options(
             saver_name,
             &options.launch_mode,
-            Some(options.gpu_enabled),
             options.render_scale,
         )?;
         let (_min_x, _min_y, total_w, total_h) = virtual_desktop(layouts);

@@ -179,7 +179,6 @@ fn parse_status(map: HashMap<String, OwnedValue>) -> zbus::Result<DaemonStatus> 
         session_locked: read_bool(&map, "session_locked"),
         inhibited: read_bool(&map, "inhibited"),
         current_saver: read_string(&map, "current_saver"),
-        gpu_enabled: read_bool(&map, "gpu_enabled"),
         show_fps_overlay: read_bool(&map, "show_fps_overlay"),
         render_scale: read_string(&map, "render_scale"),
     })

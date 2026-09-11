@@ -17,13 +17,12 @@ pub const STATUS_FIELD_KEYS: &[&str] = &[
     "session_locked",
     "inhibited",
     "current_saver",
-    "gpu_enabled",
     "show_fps_overlay",
     "render_scale",
 ];
 
 /// Number of status fields exposed over D-Bus.
-pub const STATUS_FIELD_COUNT: usize = 13;
+pub const STATUS_FIELD_COUNT: usize = 12;
 
 /// True when `map` contains every contract key.
 pub fn status_map_has_contract_keys(keys: impl Iterator<Item = impl AsRef<str>>) -> bool {
@@ -46,7 +45,6 @@ pub fn sample_preview_status() -> DaemonStatus {
         session_locked: false,
         inhibited: true,
         current_saver: "beams".into(),
-        gpu_enabled: false,
         show_fps_overlay: false,
         render_scale: "0.5".into(),
     }
