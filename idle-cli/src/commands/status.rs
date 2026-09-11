@@ -77,9 +77,9 @@ fn print_status_text(status: &idle_dbus::DaemonStatus) {
     print!("{}", format_status_text(status));
 }
 
-pub fn cmd_status(client: &TranceClient, args: &[String]) -> Result<()> {
+pub fn cmd_status(client: &TranceClient, json: bool) -> Result<()> {
     let status = client.get_status().context("querying daemon status")?;
-    if args.first().map(String::as_str) == Some("--json") {
+    if json {
         print_status_json(&status);
     } else {
         print_status_text(&status);

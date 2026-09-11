@@ -2,80 +2,80 @@
 
 #![cfg(test)]
 
-use crate::run;
+use crate::run_from;
 
 #[test]
 fn test_completion_bash() {
-    let res = run(vec!["completion".to_string(), "bash".to_string()]);
+    let res = run_from(vec!["completion".to_string(), "bash".to_string()]);
     assert!(res.is_ok());
 }
 
 #[test]
 fn test_completion_zsh() {
-    let res = run(vec!["completion".to_string(), "zsh".to_string()]);
+    let res = run_from(vec!["completion".to_string(), "zsh".to_string()]);
     assert!(res.is_ok());
 }
 
 #[test]
 fn test_completion_fish() {
-    let res = run(vec!["completion".to_string(), "fish".to_string()]);
+    let res = run_from(vec!["completion".to_string(), "fish".to_string()]);
     assert!(res.is_ok());
 }
 
 #[test]
 fn test_completion_nu() {
-    let res = run(vec!["completion".to_string(), "nu".to_string()]);
+    let res = run_from(vec!["completion".to_string(), "nu".to_string()]);
     assert!(res.is_ok());
 }
 
 #[test]
 fn test_completion_invalid() {
-    let res = run(vec!["completion".to_string(), "invalid".to_string()]);
+    let res = run_from(vec!["completion".to_string(), "invalid".to_string()]);
     assert!(res.is_err());
 }
 
 #[test]
 fn test_bug_report() {
-    let res = run(vec!["bug-report".to_string()]);
+    let res = run_from(vec!["bug-report".to_string()]);
     assert!(res.is_ok());
 }
 
 #[test]
 fn test_self_update() {
-    let res = run(vec!["self-update".to_string()]);
+    let res = run_from(vec!["self-update".to_string()]);
     assert!(res.is_ok());
 }
 
 #[test]
 fn test_clean_stale() {
-    let res = run(vec!["clean".to_string()]);
+    let res = run_from(vec!["clean".to_string()]);
     assert!(res.is_ok());
 }
 
 #[test]
 fn test_invalid_command() {
-    let res = run(vec!["invalid-command-name".to_string()]);
+    let res = run_from(vec!["invalid-command-name".to_string()]);
     assert!(res.is_err());
 }
 
 #[test]
 fn test_version_commands() {
-    assert!(run(vec!["version".to_string()]).is_ok());
-    assert!(run(vec!["v".to_string()]).is_ok());
-    assert!(run(vec!["--version".to_string()]).is_ok());
-    assert!(run(vec!["-V".to_string()]).is_ok());
-    assert!(run(vec!["about".to_string()]).is_ok());
+    assert!(run_from(vec!["version".to_string()]).is_ok());
+    assert!(run_from(vec!["v".to_string()]).is_ok());
+    assert!(run_from(vec!["--version".to_string()]).is_ok());
+    assert!(run_from(vec!["-V".to_string()]).is_ok());
+    assert!(run_from(vec!["about".to_string()]).is_ok());
 }
 
 #[test]
 fn test_help_flags() {
-    assert!(run(vec!["help".to_string()]).is_ok());
-    assert!(run(vec!["-h".to_string()]).is_ok());
-    assert!(run(vec!["--help".to_string()]).is_ok());
+    assert!(run_from(vec!["help".to_string()]).is_ok());
+    assert!(run_from(vec!["-h".to_string()]).is_ok());
+    assert!(run_from(vec!["--help".to_string()]).is_ok());
 }
 
 #[test]
 fn test_reject_single_dash_long_options() {
-    assert!(run(vec!["-help".to_string()]).is_err());
-    assert!(run(vec!["-version".to_string()]).is_err());
+    assert!(run_from(vec!["-help".to_string()]).is_err());
+    assert!(run_from(vec!["-version".to_string()]).is_err());
 }

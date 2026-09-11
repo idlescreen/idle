@@ -44,6 +44,8 @@ landlock = "0.4.5"
 
 # Sprint 02: .idleplugin.toml manifest parsing (DECISION-MANIFEST-01)
 toml = "1.1"
+clap = { version = "4.5", features = ["derive"] }
+clap_complete = "4.5"
 serde = { version = "1", features = ["derive"] }
 
 [workspace.lints.rust]

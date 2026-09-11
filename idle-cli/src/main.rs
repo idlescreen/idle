@@ -8,14 +8,16 @@
 use std::process::ExitCode;
 
 use anyhow::{Context, Result, bail};
+use cli::Cmd;
 use commands::{
-    cmd_fps_overlay, cmd_inhibitors, cmd_list, cmd_preview, cmd_render_scale, cmd_saver,
-    cmd_status, cmd_timeout, print_version,
+    cmd_fps_overlay, cmd_inhibitors, cmd_list, cmd_preview, cmd_render_scale, cmd_status,
+    cmd_timeout, print_version,
 };
 use idle_dbus::{TranceClient, daemon_available};
 
 mod bug_report;
 mod clean;
+mod cli;
 mod commands;
 mod completion;
 mod config;
@@ -31,21 +33,37 @@ mod interactive_io;
 mod pkg_query;
 mod self_update;
 mod self_update_backend;
-mod usage;
 
+#[cfg(test)]
+mod cli_parse_tests;
 #[cfg(test)]
 mod tests;
 
 fn main() -> ExitCode {
     init_tracing();
-    match run(std::env::args().skip(1).collect()) {
+    match run() {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
+            if error.downcast_ref::<UsageError>().is_some() {
+                // clap already printed the usage text.
+                return ExitCode::from(2);
+            }
             tracing::error!("{error:#}");
             ExitCode::FAILURE
         }
     }
 }
+
+/// Marker: the command line itself was invalid (clap usage error → exit 2).
+#[derive(Debug)]
+struct UsageError;
+
+impl std::fmt::Display for UsageError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("usage error")
+    }
+}
+impl std::error::Error for UsageError {}
 
 fn init_tracing() {
     use tracing_subscriber::EnvFilter;
@@ -72,97 +90,110 @@ fn init_tracing() {
 }
 
 #[tracing::instrument(skip_all)]
-fn run(args: Vec<String>) -> Result<()> {
-    if args.is_empty() {
-        print_usage();
-        return Ok(());
-    }
-
-    let head = args[0].as_str();
-    let rest = &args[1..];
-
-    match head {
-        "-h" | "--help" => {
-            print_usage();
-            return Ok(());
-        }
-        "-V" | "--version" => {
-            print_version(false);
-            return Ok(());
-        }
-        "-help" => {
-            bail!("unknown option: -help (use --help or -h, or: idle help)");
-        }
-        "-version" => {
-            bail!("unknown option: -version (use --version or -V, or: idlescreen version)");
-        }
-        _ => {}
-    }
-
-    match head {
-        "help" => {
-            print_usage();
-            return Ok(());
-        }
-        "version" | "v" => {
-            print_version(false);
-            return Ok(());
-        }
-        "about" => {
-            print_version(true);
-            return Ok(());
-        }
-        "doctor" | "doc" => {
-            let fix = rest.iter().any(|a| a == "--fix" || a == "-f");
-            let json = rest.iter().any(|a| a == "--json" || a == "-j");
-            return doctor::run_doctor(fix, json);
-        }
-        "clean" => return clean::handle_clean(),
-        "completion" => return completion::handle_completion(rest),
-        "bug-report" => return bug_report::handle_bug_report(),
-        "self-update" | "update" | "upgrade" => return self_update::handle_self_update(),
-        "tui" => {
-            let mut cmd = std::process::Command::new("idle-tui");
-            cmd.args(rest);
-            let status = cmd.status().context("failed to execute idle-tui")?;
-            if status.success() {
-                return Ok(());
-            } else {
-                std::process::exit(status.code().unwrap_or(1));
-            }
-        }
-        _ => {}
-    }
-
-    let client = if daemon_available() {
-        TranceClient::connect().context("failed to connect to daemon")?
-    } else {
-        bail!("idle-daemon is not running; start it with: systemctl --user start idle-daemon");
-    };
-
-    match head {
-        "status" | "st" => cmd_status(&client, rest),
-        "config" | "cfg" => config::handle_config(&client, rest),
-        "interactive" | "i" => interactive::run_interactive(&client),
-        "enable" | "on" => client.enable().context("enabling idle screensaver"),
-        "disable" | "off" => client.disable().context("disabling idle screensaver"),
-        "timeout" | "t" => cmd_timeout(&client, rest),
-        "saver" => cmd_saver(&client, rest),
-        "list" | "ls" => cmd_list(&client),
-        "inhibitors" => cmd_inhibitors(&client),
-        "preview" | "p" => cmd_preview(&client, rest),
-        "stop" => client
-            .stop_preview()
-            .context("stopping preview or idle presentation"),
-        "fps-overlay" | "fps" => cmd_fps_overlay(&client, rest),
-        "render-scale" | "scale" => cmd_render_scale(&client, rest),
-        _ => {
-            print_usage();
-            Err(anyhow::anyhow!("unknown command: {head}"))
-        }
-    }
+fn run() -> Result<()> {
+    run_from(std::env::args().skip(1).collect())
 }
 
-fn print_usage() {
-    usage::print_usage();
+/// Parse + dispatch. Takes bare args (no argv[0]); test-injectable. clap's
+/// help/version "errors" print and exit by default — here they map to Ok.
+pub(crate) fn run_from(args: Vec<String>) -> Result<()> {
+    use clap::Parser;
+    use clap::error::ErrorKind;
+
+    // Reject single-dash long options (`-help`, `-version`) — clap would
+    // silently split them into short flags; users must write `--help`.
+    const SHORTS: &[char] = &['h', 'V', 'f', 'j', 't'];
+    for a in &args {
+        if let Some(rest) = a.strip_prefix('-')
+            && !rest.is_empty()
+            && !rest.starts_with('-')
+            && !rest.chars().all(|c| SHORTS.contains(&c))
+        {
+            eprintln!("error: invalid option '{a}' — long options use two dashes (try --{rest})");
+            return Err(UsageError.into());
+        }
+    }
+
+    let argv = std::iter::once("idlescreen".to_string()).chain(args);
+    let cli = match cli::Cli::try_parse_from(argv) {
+        Ok(c) => c,
+        Err(e) => match e.kind() {
+            ErrorKind::DisplayHelp
+            | ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand
+            | ErrorKind::DisplayVersion => {
+                let _ = e.print();
+                return Ok(());
+            }
+            _ => {
+                let _ = e.print();
+                return Err(UsageError.into());
+            }
+        },
+    };
+    let cmd = cli.cmd;
+
+    // Standalone commands dispatch without a daemon connection.
+    if !cmd.needs_daemon() {
+        return match cmd {
+            Cmd::Version { long } => {
+                print_version(long);
+                Ok(())
+            }
+            Cmd::About => {
+                print_version(true);
+                Ok(())
+            }
+            Cmd::Doctor { fix, json } => doctor::run_doctor(fix, json),
+            Cmd::Clean => clean::handle_clean(),
+            Cmd::Completion { shell } => completion::handle_completion(shell),
+            Cmd::BugReport => bug_report::handle_bug_report(),
+            Cmd::SelfUpdate => self_update::handle_self_update(),
+            Cmd::Tui { args } => {
+                let mut c = std::process::Command::new("idle-tui");
+                c.args(&args);
+                let status = c.status().context("failed to execute idle-tui")?;
+                if status.success() {
+                    Ok(())
+                } else {
+                    std::process::exit(status.code().unwrap_or(1));
+                }
+            }
+            other => bail!("internal error: {other:?} should not need daemon"),
+        };
+    }
+
+    if !daemon_available() {
+        bail!("idle-daemon is not running; start it with: systemctl --user start idle-daemon");
+    }
+    let client = TranceClient::connect().context("failed to connect to daemon")?;
+
+    match cmd {
+        Cmd::Status { json } => cmd_status(&client, json),
+        Cmd::Config { op } => config::handle_config(&client, op),
+        Cmd::Interactive => interactive::run_interactive(&client),
+        Cmd::Enable => client.enable().context("enabling idle screensaver"),
+        Cmd::Disable => client.disable().context("disabling idle screensaver"),
+        Cmd::Timeout { minutes } => cmd_timeout(&client, minutes),
+        Cmd::Saver { op } => match op {
+            None => commands::cmd_saver_show(&client),
+            Some(cli::SaverOp::Set { name }) => commands::cmd_saver_set(&client, &name),
+            Some(cli::SaverOp::List { json }) => cmd_list(&client, json),
+        },
+        Cmd::List { json } => cmd_list(&client, json),
+        Cmd::Inhibitors { json } => cmd_inhibitors(&client, json),
+        Cmd::Preview { name, timeout } => cmd_preview(&client, &name, timeout),
+        Cmd::Stop => client
+            .stop_preview()
+            .context("stopping preview or idle presentation"),
+        Cmd::FpsOverlay { state } => {
+            let s = state.map(|s| match s {
+                cli::OverlayState::On => "on",
+                cli::OverlayState::Off => "off",
+                cli::OverlayState::Status => "status",
+            });
+            cmd_fps_overlay(&client, s)
+        }
+        Cmd::RenderScale { value } => cmd_render_scale(&client, value.as_deref()),
+        other => bail!("internal error: {other:?} needs daemon but was dispatched early"),
+    }
 }

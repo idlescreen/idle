@@ -3,22 +3,13 @@
 use anyhow::{Context, Result, anyhow, bail};
 use idle_dbus::TranceClient;
 
-pub fn handle_config(client: &TranceClient, args: &[String]) -> Result<()> {
-    match args.first().map(String::as_str) {
-        Some("list") => cmd_config_list(client),
-        Some("get") => {
-            let key = args.get(1).ok_or_else(|| anyhow!("missing key"))?;
-            cmd_config_get(client, key)
-        }
-        Some("set") => {
-            let key = args.get(1).ok_or_else(|| anyhow!("missing key"))?;
-            let value = args.get(2).ok_or_else(|| anyhow!("missing value"))?;
-            cmd_config_set(client, key, value)
-        }
-        _ => {
-            print_config_usage();
-            Ok(())
-        }
+use crate::cli::ConfigOp;
+
+pub fn handle_config(client: &TranceClient, op: ConfigOp) -> Result<()> {
+    match op {
+        ConfigOp::List => cmd_config_list(client),
+        ConfigOp::Get { key } => cmd_config_get(client, &key),
+        ConfigOp::Set { key, value } => cmd_config_set(client, &key, &value),
     }
 }
 
@@ -168,8 +159,4 @@ fn set_render_scale(client: &TranceClient, val: &str) -> Result<()> {
         .set_render_scale(scale)
         .with_context(|| format!("setting render scale to {scale}"))?;
     Ok(())
-}
-
-fn print_config_usage() {
-    println!("usage: idle config get <key> | set <key> <val> | list");
 }

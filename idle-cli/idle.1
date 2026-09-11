@@ -33,23 +33,24 @@ Enable idle screensaver.
 .B off\fR, \fBdisable
 Disable idle screensaver.
 .TP
-.BI timeout " <minutes>"
-Set idle timeout (1–240 minutes).
+.BI timeout " [<minutes>]"
+Set idle timeout (1–240 minutes); bare shows current.
 .TP
 .B list\fR, \fBsaver list
-List installed savers.
+[\fB--json\fR] List installed savers.
 .TP
-.BI saver " set <name|random>"
-Choose active saver.
+.B saver
+[\fBset\fR \fI<name|random>\fR|\fBlist\fR]
+Show or change the active saver; bare shows current.
 .TP
-.BI preview " <saver>"
-Preview a saver now.
+.BI preview " <saver> [\fB-t\fR \fI<seconds>\fR]"
+Preview a saver now; \fB-t\fR auto-stops.
 .TP
 .B stop
 Stop preview or idle presentation.
 .TP
 .B inhibitors
-List active inhibitors.
+[\fB--json\fR] List active inhibitors.
 .TP
 .BI fps-overlay " on|off|status"
 FPS overlay control.
@@ -63,7 +64,17 @@ System diagnostics. \fB--fix\fR reloads/enables the user unit.
 .TP
 .B config
 \fBget\fR|\fBset\fR|\fBlist\fR
-Read or write daemon config keys.
+Read or write daemon config keys (live daemon state).
+.TP
+.B completion
+\fI<bash|zsh|fish|nushell|powershell|elvish>\fR
+Print a generated shell completion script.
+.TP
+.B clean
+Remove stale run state and log caches.
+.TP
+.B bug-report
+Print a sanitized diagnostics bundle.
 .TP
 .B self-update
 Check package updates (dnf/apt).

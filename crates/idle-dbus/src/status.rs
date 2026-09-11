@@ -25,7 +25,7 @@ pub struct DaemonStatus {
 impl DaemonStatus {
     pub fn to_map(&self) -> HashMap<String, OwnedValue> {
         // Fixed field count — reserve once to avoid rehash during insert.
-        let mut map = HashMap::with_capacity(13);
+        let mut map = HashMap::with_capacity(12);
         map.insert("running".into(), owned(self.running));
         map.insert("idle_enabled".into(), owned(self.idle_enabled));
         map.insert("idle_timeout_mins".into(), owned(self.idle_timeout_mins));

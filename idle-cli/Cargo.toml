@@ -21,6 +21,8 @@ journald = ["dep:tracing-journald"]
 
 [dependencies]
 idle-dbus = { workspace = true }
+clap = { workspace = true }
+clap_complete = { workspace = true }
 libc = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }

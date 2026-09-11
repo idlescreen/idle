@@ -6,70 +6,101 @@
 use anyhow::{Context, Result, bail};
 use idle_dbus::TranceClient;
 
-pub fn cmd_timeout(client: &TranceClient, args: &[String]) -> Result<()> {
-    let minutes = match args {
-        [value] => value
-            .parse::<u32>()
-            .context("timeout requires a number of minutes (1–240)")?,
-        _ => bail!("usage: idle timeout <minutes>"),
-    };
-    client.set_timeout(minutes).context("setting idle timeout")
-}
-
-pub fn cmd_saver(client: &TranceClient, args: &[String]) -> Result<()> {
-    match args {
-        [cmd, name] if cmd == "set" => {
-            let dbus_name = if name.is_empty()
-                || name.eq_ignore_ascii_case("random")
-                || name.eq_ignore_ascii_case("none")
-                || name.eq_ignore_ascii_case("shuffle")
-            {
-                ""
-            } else {
-                name.as_str()
-            };
-            client
-                .set_saver(dbus_name)
-                .context("setting active saver via d-bus")
+pub fn cmd_timeout(client: &TranceClient, minutes: Option<u32>) -> Result<()> {
+    match minutes {
+        Some(m) => client.set_timeout(m).context("setting idle timeout"),
+        None => {
+            let status = client.get_status().context("querying daemon status")?;
+            println!("idle timeout: {} min", status.idle_timeout_mins);
+            Ok(())
         }
-        [cmd] if cmd == "list" => cmd_list(client),
-        _ => bail!("usage: idlescreen saver set <name|random|none> | idlescreen saver list"),
     }
 }
 
-pub fn cmd_list(client: &TranceClient) -> Result<()> {
+pub fn cmd_saver_show(client: &TranceClient) -> Result<()> {
+    let status = client.get_status().context("querying daemon status")?;
+    println!(
+        "active saver: {}",
+        if status.active_saver.is_empty() {
+            "random"
+        } else {
+            &status.active_saver
+        }
+    );
+    Ok(())
+}
+
+pub fn cmd_saver_set(client: &TranceClient, name: &str) -> Result<()> {
+    let dbus_name = if name.is_empty()
+        || name.eq_ignore_ascii_case("random")
+        || name.eq_ignore_ascii_case("none")
+        || name.eq_ignore_ascii_case("shuffle")
+    {
+        ""
+    } else {
+        name
+    };
+    client
+        .set_saver(dbus_name)
+        .context("setting active saver via d-bus")
+}
+
+pub fn cmd_list(client: &TranceClient, json: bool) -> Result<()> {
     let savers = client
         .list_savers()
         .context("listing installed savers via d-bus")?;
-    for saver in savers {
-        println!("{saver}");
+    if json {
+        let items: Vec<String> = savers
+            .iter()
+            .map(|s| format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\"")))
+            .collect();
+        println!("[{}]", items.join(","));
+    } else {
+        for saver in savers {
+            println!("{saver}");
+        }
     }
     Ok(())
 }
 
-pub fn cmd_inhibitors(client: &TranceClient) -> Result<()> {
+pub fn cmd_inhibitors(client: &TranceClient, json: bool) -> Result<()> {
     use super::inhibitors_fmt::format_inhibitors_report;
     let inhibitors = client
         .list_inhibitors()
         .context("listing active inhibitors via d-bus")?;
     let status = client.get_status().context("querying daemon status")?;
-    print!(
-        "{}",
-        format_inhibitors_report(status.inhibited, &inhibitors)
-    );
+    if json {
+        fn esc(s: &str) -> String {
+            s.replace('\\', "\\\\").replace('"', "\\\"")
+        }
+        let items: Vec<String> = inhibitors
+            .iter()
+            .map(|(pid, who, why)| {
+                format!(
+                    "{{\"pid\":{},\"who\":\"{}\",\"why\":\"{}\"}}",
+                    pid,
+                    esc(who),
+                    esc(why)
+                )
+            })
+            .collect();
+        println!(
+            "{{\"inhibited\":{},\"inhibitors\":[{}]}}",
+            status.inhibited,
+            items.join(",")
+        );
+    } else {
+        print!(
+            "{}",
+            format_inhibitors_report(status.inhibited, &inhibitors)
+        );
+    }
     Ok(())
 }
 
-pub fn cmd_preview(client: &TranceClient, args: &[String]) -> Result<()> {
-    let name = args
-        .first()
-        .context("usage: idle preview <saver> [--timeout N]")?;
+pub fn cmd_preview(client: &TranceClient, name: &str, timeout: Option<u64>) -> Result<()> {
     client.preview(name).context("starting preview via d-bus")?;
-
-    if let Some(pos) = args.iter().position(|a| a == "--timeout" || a == "-t")
-        && let Some(sec_str) = args.get(pos + 1)
-        && let Ok(secs) = sec_str.parse::<u64>()
-    {
+    if let Some(secs) = timeout {
         println!("Preview started. Auto-stopping in {secs} seconds...");
         std::thread::sleep(std::time::Duration::from_secs(secs));
         let _ = client.stop_preview();
@@ -78,8 +109,8 @@ pub fn cmd_preview(client: &TranceClient, args: &[String]) -> Result<()> {
     Ok(())
 }
 
-pub fn cmd_fps_overlay(client: &TranceClient, args: &[String]) -> Result<()> {
-    match args.first().map(String::as_str) {
+pub fn cmd_fps_overlay(client: &TranceClient, state: Option<&str>) -> Result<()> {
+    match state {
         None | Some("status") => {
             let status = client.get_status().context("querying daemon status")?;
             println!(
@@ -110,8 +141,8 @@ fn parse_render_scale_value(value: &str) -> Result<f32> {
     Ok(scale)
 }
 
-pub fn cmd_render_scale(client: &TranceClient, args: &[String]) -> Result<()> {
-    match args.first().map(String::as_str) {
+pub fn cmd_render_scale(client: &TranceClient, value: Option<&str>) -> Result<()> {
+    match value {
         None | Some("status") => {
             let status = client.get_status().context("querying daemon status")?;
             println!(

@@ -8,7 +8,7 @@ mod inhibitors_fmt;
 mod status;
 
 pub use control::{
-    cmd_fps_overlay, cmd_inhibitors, cmd_list, cmd_preview, cmd_render_scale, cmd_saver,
-    cmd_timeout,
+    cmd_fps_overlay, cmd_inhibitors, cmd_list, cmd_preview, cmd_render_scale, cmd_saver_set,
+    cmd_saver_show, cmd_timeout,
 };
 pub use status::{cmd_status, print_version};
