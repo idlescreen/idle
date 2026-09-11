@@ -3,6 +3,7 @@
 //! Check whether a newer *system package* is available.
 
 use anyhow::Result;
+use std::path::Path;
 use std::process::Command;
 
 use super::self_update_backend::{
@@ -98,9 +99,17 @@ fn handle_dnf_update() -> Result<()> {
         }
         None => {
             println!(" [✔] Installed: {pkg}-{installed}");
-            println!(" [!] Could not query the latest package from the repo.");
-            println!("     -> Try: sudo dnf clean all && sudo dnf upgrade");
-            println!("     -> Confirm the idlescreen repo is in /etc/yum.repos.d/");
+            let repo_present = Path::new("/etc/yum.repos.d/idlescreen.repo").exists()
+                || Path::new("/etc/yum.repos.d/_copr:idlescreen.repo").exists();
+            if repo_present {
+                // Repo file exists but query failed — almost always a stale
+                // metadata cache, not a real problem.
+                println!(" [i] Repo configured; version check skipped (stale dnf metadata).");
+                println!("     -> Refresh: sudo dnf clean all && sudo dnf upgrade");
+            } else {
+                println!(" [!] Could not query the latest package from the repo.");
+                println!("     -> Confirm the idlescreen repo is in /etc/yum.repos.d/");
+            }
         }
     }
     Ok(())
