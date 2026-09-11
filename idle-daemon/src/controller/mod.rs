@@ -38,6 +38,10 @@ pub struct DaemonController {
     pub inhibitors: Arc<InhibitorState>,
     pub session_locked: Arc<AtomicBool>,
     pub shutdown: Arc<AtomicBool>,
+    /// Set when the render-loop watchdog forced the shutdown (vs. a clean
+    /// user/SIGTERM stop) — the daemon exits non-zero so Restart=on-failure
+    /// in the systemd unit actually restarts us.
+    pub watchdog_stalled: Arc<AtomicBool>,
     pub status_dirty: Arc<AtomicBool>,
     pub status_emit_tx: Mutex<Option<tokio::sync::mpsc::Sender<DaemonStatus>>>,
     dbus_connection: Mutex<Option<zbus::Connection>>,
@@ -68,6 +72,7 @@ impl DaemonController {
             inhibitors: Arc::new(InhibitorState::new()),
             session_locked: Arc::new(AtomicBool::new(false)),
             shutdown: Arc::new(AtomicBool::new(false)),
+            watchdog_stalled: Arc::new(AtomicBool::new(false)),
             status_dirty: Arc::new(AtomicBool::new(true)),
             status_emit_tx: Mutex::new(None),
             dbus_connection: Mutex::new(None),

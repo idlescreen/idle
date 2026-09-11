@@ -61,7 +61,13 @@ fn clone_shares_state() {
 fn spawn_monitor_does_not_panic_then_drops() {
     let wd = Watchdog::new();
     let flag = Arc::new(AtomicBool::new(false));
-    let handle = spawn_monitor(wd, 60_000, flag.clone(), std::thread::current());
+    let handle = spawn_monitor(
+        wd,
+        60_000,
+        flag.clone(),
+        flag.clone(),
+        std::thread::current(),
+    );
     std::thread::sleep(Duration::from_millis(50));
     // The spawned thread runs forever; we don't join — just confirm the
     // handle is movable and the watchdog keeps the thread alive. A long
@@ -75,7 +81,7 @@ fn spawn_monitor_escalates_shutdown_on_stall() {
     let wd = Watchdog::new();
     // Force the watchdog into a stalled state with a tiny timeout.
     let flag = Arc::new(AtomicBool::new(false));
-    let _handle = spawn_monitor(wd, 0, flag.clone(), std::thread::current());
+    let _handle = spawn_monitor(wd, 0, flag.clone(), flag.clone(), std::thread::current());
     // First monitor tick is the DEFAULT_MONITOR_INTERVAL sleep; the flag
     // must be raised within ~600ms (2 × default poll).
     let deadline = std::time::Instant::now() + Duration::from_secs(2);

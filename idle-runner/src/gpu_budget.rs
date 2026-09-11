@@ -123,7 +123,11 @@ impl GpuBudget {
             hard_multiplier,
             hard_streak,
             over_streak: 0,
-            last_sample: Instant::now() - DEFAULT_SAMPLE_INTERVAL,
+            // checked_sub: `Instant - Duration` panics when it would underflow
+            // the platform's Instant epoch (early-boot process start).
+            last_sample: Instant::now()
+                .checked_sub(DEFAULT_SAMPLE_INTERVAL)
+                .unwrap_or_else(Instant::now),
             last_usage_pct: 0,
             consecutive_failures: 0,
         }

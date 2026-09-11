@@ -21,6 +21,7 @@ pub fn tick_loop_until_shutdown(controller: Arc<DaemonController>) -> anyhow::Re
         watchdog.clone(),
         watchdog::configured_timeout_ms(),
         controller.shutdown.clone(),
+        controller.watchdog_stalled.clone(),
         std::thread::current(),
     );
 
@@ -37,5 +38,8 @@ pub fn tick_loop_until_shutdown(controller: Arc<DaemonController>) -> anyhow::Re
     }
 
     ooda_loop.shutdown(&overlay_presenter);
+    if controller.watchdog_stalled.load(Ordering::Relaxed) {
+        anyhow::bail!("render loop watchdog stall — exiting non-zero for systemd restart");
+    }
     Ok(())
 }
