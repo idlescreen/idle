@@ -6,7 +6,7 @@
 //! the plugin contract the host enforces.
 
 use super::plugin_session::PluginGuard;
-use super::plugin_session::loading::resolve_entry;
+use super::plugin_session::entry::resolve_entry;
 use libloading::Library;
 use std::path::PathBuf;
 use std::process::Command;

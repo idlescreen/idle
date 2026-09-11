@@ -8,7 +8,7 @@
 //! missing, stale, mismatched or over-reaching must not load.
 
 use crate::launcher::PluginError;
-use crate::plugin_session::loading::check_entry;
+use crate::plugin_session::entry::check_entry;
 use crate::plugin_session::manifest_gate::{check_capabilities, load_manifest_for};
 use idle_api::plugin_manifest::{self, Manifest};
 use std::fs;

@@ -8,6 +8,7 @@ use idle_api::{Screensaver, ScreensaverInstance, TerminalCell};
 use idle_upscaler::FrameUpscaler;
 use std::time::Duration;
 
+pub(crate) mod entry;
 pub(crate) mod loading;
 pub(crate) mod manifest_gate;
 mod reloading;

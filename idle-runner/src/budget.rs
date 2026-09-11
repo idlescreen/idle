@@ -15,7 +15,7 @@
 //! vendor-specific).
 
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::Instant;
 
 /// Default CPU quota as a fraction of one CPU: 50% of one core.
@@ -184,64 +184,6 @@ pub fn attach_for_path(path: &std::path::Path) -> io::Result<AttachOutcome> {
     })
 }
 
-/// Detect cgroup v2 root. `/sys/fs/cgroup/cgroup.controllers` is the v2 marker.
-fn cgroup_v2_root() -> Option<PathBuf> {
-    let p = PathBuf::from("/sys/fs/cgroup");
-    if p.join("cgroup.controllers").exists() {
-        Some(p)
-    } else {
-        None
-    }
-}
-
-/// Try to mkdir the child, write `cpu.max`, and attach the current thread.
-/// Any failure (no v2, no write perm, etc.) bubbles up so the caller falls
-/// back to in-process measurement only.
-fn try_attach_cgroup(plugin_id: &str, quota_us: u64, period_us: u64) -> io::Result<PathBuf> {
-    let root = cgroup_v2_root()
-        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "cgroup v2 not mounted"))?;
-    let dir = root.join("idle").join(plugin_id);
-    std::fs::create_dir_all(&dir)?;
-    // cpu.max format: "<quota> <period>" — "max <period>" disables the cap.
-    std::fs::write(dir.join("cpu.max"), format!("{quota_us} {period_us}"))?;
-    // Memory cap: best-effort — the memory controller is not always delegated
-    // to user cgroups. A runaway saver otherwise OOMs the runner; here the
-    // kernel kills only this cgroup's members.
-    let mem_bytes = std::env::var("IDLE_RUNNER_MEM_MB")
-        .ok()
-        .and_then(|v| v.parse::<u64>().ok())
-        .unwrap_or(2048)
-        * 1024
-        * 1024;
-    if let Err(e) = std::fs::write(dir.join("memory.max"), mem_bytes.to_string()) {
-        tracing::debug!("memory.max write skipped (controller not delegated?): {e}");
-    }
-    // Attach the current thread (id matches cgroup.procs; thread-id is valid
-    // when cgroup v2 is enabled with `cgroup.threads`).
-    let tid = format!("{}", unsafe { libc::syscall(libc::SYS_gettid) });
-    std::fs::write(dir.join("cgroup.threads"), tid.as_bytes())?;
-    // Also attach the process so the worker thread inherits the budget.
-    let pid = format!("{}", std::process::id());
-    std::fs::write(dir.join("cgroup.procs"), pid.as_bytes())?;
-    Ok(dir)
-}
-
-fn read_cgroup_usage_micros(dir: &Path) -> io::Result<u64> {
-    // cpu.stat format: key value lines; we want `usage_usec <N>`.
-    let text = std::fs::read_to_string(dir.join("cpu.stat"))?;
-    for line in text.lines() {
-        if let Some(rest) = line.strip_prefix("usage_usec ") {
-            return rest.trim().parse::<u64>().map_err(|e| {
-                io::Error::new(io::ErrorKind::InvalidData, format!("usage_usec parse: {e}"))
-            });
-        }
-    }
-    Err(io::Error::new(
-        io::ErrorKind::InvalidData,
-        "cpu.stat missing usage_usec",
-    ))
-}
-
 /// Read the current process's user + system CPU time in microseconds.
 /// `/proc/self/stat` field 14 (1-indexed) is `utime`; field 15 is `stime`;
 /// both are in clock ticks. Convert via `sysconf(_SC_CLK_TCK)`.
@@ -272,6 +214,10 @@ fn read_proc_cpu_micros() -> io::Result<u64> {
     let total_ticks = utime_ticks.saturating_add(stime_ticks);
     Ok((total_ticks as u128 * 1_000_000 / hz as u128) as u64)
 }
+
+#[path = "budget/cgroup.rs"]
+mod cgroup;
+use cgroup::{read_cgroup_usage_micros, try_attach_cgroup};
 
 #[cfg(test)]
 #[path = "budget_tests.rs"]

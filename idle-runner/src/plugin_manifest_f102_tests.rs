@@ -6,7 +6,7 @@
 //! Separated from plugin_manifest_tests.rs to enforce line lock (RULES §1.7).
 
 use crate::launcher::PluginError;
-use crate::plugin_session::loading::check_entry;
+use crate::plugin_session::entry::check_entry;
 
 use crate::ENV_LOCK;
 

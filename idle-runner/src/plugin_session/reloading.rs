@@ -48,10 +48,10 @@ impl PluginSession {
             let lib = Library::new(&self.plugin_path)?;
 
             if let Some(m) = manifest.as_deref() {
-                super::loading::check_entry(m, &self.plugin_path)?;
+                super::entry::check_entry(m, &self.plugin_path)?;
             }
 
-            let (raw_ptr, destroy) = super::loading::resolve_entry(&lib)?;
+            let (raw_ptr, destroy) = super::entry::resolve_entry(&lib)?;
 
             PluginGuard {
                 ptr: raw_ptr,
