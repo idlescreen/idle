@@ -13,11 +13,11 @@ path = "src/lib.rs"
 
 [[bin]]
 name = "idle-daemon"
-path = "src/main.rs"
+path = "src/bin/idle-daemon.rs"
 
 [[bin]]
 name = "idlescreen-daemon"
-path = "src/main.rs"
+path = "src/bin/idlescreen-daemon.rs"
 
 [lints]
 workspace = true
