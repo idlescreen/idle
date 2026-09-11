@@ -50,7 +50,6 @@ fn virtual_desktop_empty_layouts_is_unit() {
     assert_eq!(height, 1);
 }
 
-
 #[test]
 fn monitor_cell_bounds_full_extent() {
     let primary = layout(1, 0, 0, 3840, 1080);
@@ -153,7 +152,6 @@ fn monitor_cell_bounds_clamps_negative_relative_to_zero_cols() {
     assert_eq!(b.start_row, 0);
     assert!(!b.is_primary);
 }
-
 
 #[test]
 fn monitor_cell_bounds_end_not_before_start_on_tiny_grid() {

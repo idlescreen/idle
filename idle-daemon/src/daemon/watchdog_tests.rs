@@ -29,7 +29,10 @@ fn stalled_threshold_triggers() {
     let wd = Watchdog::new();
     // Fresh watchdog has near-zero age; advance with sleep then check.
     std::thread::sleep(Duration::from_millis(20));
-    assert!(wd.stalled(10), "after 20 ms with 10 ms threshold, must stall");
+    assert!(
+        wd.stalled(10),
+        "after 20 ms with 10 ms threshold, must stall"
+    );
 }
 
 #[test]

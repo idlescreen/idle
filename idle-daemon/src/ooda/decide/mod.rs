@@ -45,8 +45,8 @@ impl OodaDecisionEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
     use crate::config::DaemonConfig;
+    use std::sync::Arc;
 
     #[test]
     fn test_ooda_decision_engine_uses_live_current_saver() {
@@ -67,9 +67,9 @@ mod tests {
         let presentation = ActivePresentation::None;
         let overlay_presenter: Arc<dyn idle_api::OverlaySurface> =
             match idle_api::WaylandOverlay::new() {
-            Some(p) => Arc::new(p),
-            None => return,
-        };
+                Some(p) => Arc::new(p),
+                None => return,
+            };
 
         // When current_saver is "matrix" and previewing "beams", decide sees live "matrix" != "beams" -> Start "beams"
         let decision_start = engine.decide(
@@ -102,9 +102,9 @@ mod tests {
         let presentation = ActivePresentation::None;
         let overlay_presenter: Arc<dyn idle_api::OverlaySurface> =
             match idle_api::WaylandOverlay::new() {
-            Some(p) => Arc::new(p),
-            None => return,
-        };
+                Some(p) => Arc::new(p),
+                None => return,
+            };
 
         let decision = engine.decide(
             &situation,
@@ -135,9 +135,9 @@ mod tests {
         let presentation = ActivePresentation::None;
         let overlay_presenter: Arc<dyn idle_api::OverlaySurface> =
             match idle_api::WaylandOverlay::new() {
-            Some(p) => Arc::new(p),
-            None => return,
-        };
+                Some(p) => Arc::new(p),
+                None => return,
+            };
 
         let decision = engine.decide(
             &situation,
@@ -169,9 +169,9 @@ mod tests {
         let presentation = ActivePresentation::None;
         let overlay_presenter: Arc<dyn idle_api::OverlaySurface> =
             match idle_api::WaylandOverlay::new() {
-            Some(p) => Arc::new(p),
-            None => return,
-        };
+                Some(p) => Arc::new(p),
+                None => return,
+            };
 
         let decision = engine.decide(&situation, &presentation, &*overlay_presenter, None, "");
 

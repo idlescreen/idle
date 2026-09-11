@@ -15,8 +15,14 @@ fn stub_is_unavailable() {
 #[test]
 fn stub_construction_succeeds() {
     let s = StubIdleSource::new(Duration::from_secs(60)).expect("stub always constructs");
-    assert!(!s.is_idle(), "stub must report not-idle so the daemon refuses to present");
-    assert!(!s.is_alive(), "stub must report dead so the daemon fails fast");
+    assert!(
+        !s.is_idle(),
+        "stub must report not-idle so the daemon refuses to present"
+    );
+    assert!(
+        !s.is_alive(),
+        "stub must report dead so the daemon fails fast"
+    );
 }
 
 #[test]

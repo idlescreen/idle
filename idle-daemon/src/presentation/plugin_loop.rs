@@ -4,7 +4,7 @@ use std::sync::atomic::AtomicBool;
 use std::time::Duration;
 
 use super::ipc_session::IpcPluginSession;
-use idle_api::{OverlaySurface, clear_caption, clear_primary_bounds, OutputLayout};
+use idle_api::{OutputLayout, OverlaySurface, clear_caption, clear_primary_bounds};
 
 use super::frame_loop::ActiveSession;
 use super::frame_pacing::{FramePacing, log_run_startup};

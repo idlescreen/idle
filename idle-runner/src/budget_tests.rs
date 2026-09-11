@@ -17,14 +17,20 @@ fn attach_succeeds_when_cgroup_unwritable() {
     // module returns Unenforced without panicking or erroring.
     let b = CpuBudget::attach("budget-test-no-cgroup").expect("attach must not error");
     assert_eq!(b.status(), BudgetStatus::Unenforced);
-    assert!(b.usage_micros() < 1_000_000, "fresh budget should be near zero");
+    assert!(
+        b.usage_micros() < 1_000_000,
+        "fresh budget should be near zero"
+    );
 }
 
 #[test]
 fn hard_limit_not_exceeded_before_window() {
     let b = CpuBudget::attach("budget-test-no-cgroup").expect("attach");
     // Window is 5s — well under that, the limit is not enforced.
-    assert!(!b.exceeded_hard_limit(), "must not trip before the window elapses");
+    assert!(
+        !b.exceeded_hard_limit(),
+        "must not trip before the window elapses"
+    );
 }
 
 #[test]

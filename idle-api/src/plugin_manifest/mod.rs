@@ -24,7 +24,6 @@ use std::path::{Path, PathBuf};
 /// Manifest schema version understood by this host.
 pub const SCHEMA_VERSION: u32 = 1;
 
-
 /// Why a manifest was rejected. Every variant is fail-closed at the loader.
 #[derive(Debug, thiserror::Error)]
 pub enum ManifestError {
@@ -41,7 +40,9 @@ pub enum ManifestError {
     InvalidPluginId(PathBuf, String),
     #[error("manifest {1} invalid: {0}")]
     Invalid(String, PathBuf),
-    #[error("manifest signature required but missing: {0} (set IDLE_REQUIRE_MANIFEST_SIGNATURE=1 to enforce)")]
+    #[error(
+        "manifest signature required but missing: {0} (set IDLE_REQUIRE_MANIFEST_SIGNATURE=1 to enforce)"
+    )]
     SignatureMissing(String),
     #[error("manifest signature invalid: {0}")]
     SignatureInvalid(String),
@@ -104,8 +105,16 @@ pub fn validate(manifest: &Manifest) -> Result<(), ManifestError> {
     ) {
         return invalid("sandbox.profile is not a known profile");
     }
-    validate_capability_paths(&manifest.capabilities.filesystem_read, "filesystem_read", &invalid)?;
-    validate_capability_paths(&manifest.capabilities.filesystem_write, "filesystem_write", &invalid)?;
+    validate_capability_paths(
+        &manifest.capabilities.filesystem_read,
+        "filesystem_read",
+        &invalid,
+    )?;
+    validate_capability_paths(
+        &manifest.capabilities.filesystem_write,
+        "filesystem_write",
+        &invalid,
+    )?;
     Ok(())
 }
 

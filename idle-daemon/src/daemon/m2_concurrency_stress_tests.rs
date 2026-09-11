@@ -108,19 +108,19 @@ mod tests {
             match idle_api::WaylandOverlay::new() {
                 Some(p) => Arc::new(p),
                 None => {
-                let decision = PresentationDecision::Stop {
-                    clear_preview: true,
-                };
-                if clear_preview_from_decision(&decision) {
-                    preview_name = None;
+                    let decision = PresentationDecision::Stop {
+                        clear_preview: true,
+                    };
+                    if clear_preview_from_decision(&decision) {
+                        preview_name = None;
+                    }
+                    assert_eq!(
+                        preview_name, None,
+                        "Session lock did not clear sticky preview name"
+                    );
+                    return;
                 }
-                assert_eq!(
-                    preview_name, None,
-                    "Session lock did not clear sticky preview name"
-                );
-                return;
-            }
-        };
+            };
 
         // Fault Scenario 1: Non-existent saver binary execution failure
         let invalid_decision = PresentationDecision::Start {

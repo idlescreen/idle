@@ -198,9 +198,8 @@ fn cgroup_v2_root() -> Option<PathBuf> {
 /// Any failure (no v2, no write perm, etc.) bubbles up so the caller falls
 /// back to in-process measurement only.
 fn try_attach_cgroup(plugin_id: &str, quota_us: u64, period_us: u64) -> io::Result<PathBuf> {
-    let root = cgroup_v2_root().ok_or_else(|| {
-        io::Error::new(io::ErrorKind::NotFound, "cgroup v2 not mounted")
-    })?;
+    let root = cgroup_v2_root()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "cgroup v2 not mounted"))?;
     let dir = root.join("idle").join(plugin_id);
     std::fs::create_dir_all(&dir)?;
     // cpu.max format: "<quota> <period>" — "max <period>" disables the cap.
@@ -237,18 +236,20 @@ fn read_cgroup_usage_micros(dir: &Path) -> io::Result<u64> {
 fn read_proc_cpu_micros() -> io::Result<u64> {
     let text = std::fs::read_to_string("/proc/self/stat")?;
     // Field 1 is "comm (name)" which contains spaces — split from the right.
-    let close_paren = text.rfind(')').ok_or_else(|| {
-        io::Error::new(io::ErrorKind::InvalidData, "/proc/self/stat: no ')'")
-    })?;
+    let close_paren = text
+        .rfind(')')
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "/proc/self/stat: no ')'"))?;
     let after = &text[close_paren + 1..];
     let fields: Vec<&str> = after.split_whitespace().collect();
     // After the ')', field index resets: after[0] is field 3, after[13] is field 16.
-    let utime_ticks: u64 = fields.get(11).and_then(|s| s.parse().ok()).ok_or_else(|| {
-        io::Error::new(io::ErrorKind::InvalidData, "/proc/self/stat: utime")
-    })?;
-    let stime_ticks: u64 = fields.get(12).and_then(|s| s.parse().ok()).ok_or_else(|| {
-        io::Error::new(io::ErrorKind::InvalidData, "/proc/self/stat: stime")
-    })?;
+    let utime_ticks: u64 = fields
+        .get(11)
+        .and_then(|s| s.parse().ok())
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "/proc/self/stat: utime"))?;
+    let stime_ticks: u64 = fields
+        .get(12)
+        .and_then(|s| s.parse().ok())
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "/proc/self/stat: stime"))?;
     let hz = unsafe { libc::sysconf(libc::_SC_CLK_TCK) };
     if hz <= 0 {
         return Err(io::Error::new(

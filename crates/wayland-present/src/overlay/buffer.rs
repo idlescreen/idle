@@ -38,7 +38,6 @@ impl Drop for MappedBuffer {
 }
 
 impl MappedBuffer {
-
     pub fn write_pixels(&mut self, pixels: &[u8]) -> bool {
         let stride = self.width.saturating_mul(4);
         let length = stride.saturating_mul(self.height) as usize;

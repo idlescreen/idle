@@ -5,7 +5,7 @@
 use std::sync::atomic::AtomicBool;
 use std::time::{Duration, Instant};
 
-use idle_api::{OverlaySurface, OutputLayout};
+use idle_api::{OutputLayout, OverlaySurface};
 
 use super::frame_loop::{ActiveSession, run_frame_loop};
 use super::ipc_session::IpcPluginSession;

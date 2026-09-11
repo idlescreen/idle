@@ -115,7 +115,9 @@ impl PluginSession {
 
     #[tracing::instrument(skip_all)]
     pub fn tick(&mut self, frame_dt: Duration) {
-        if let Some(budget) = &self.cpu_budget && budget.exceeded_hard_limit() {
+        if let Some(budget) = &self.cpu_budget
+            && budget.exceeded_hard_limit()
+        {
             tracing::error!(
                 plugin = %self.plugin_path.display(),
                 usage_us = budget.usage_micros(),
@@ -123,10 +125,13 @@ impl PluginSession {
                 "CPU budget exceeded — dropping plugin session"
             );
             self.plugin = None; // Drop calls destroy_screensaver.
-            self.needs_reload.store(true, std::sync::atomic::Ordering::Release);
+            self.needs_reload
+                .store(true, std::sync::atomic::Ordering::Release);
             return;
         }
-        if let Some(budget) = &mut self.gpu_budget && budget.sample_due() {
+        if let Some(budget) = &mut self.gpu_budget
+            && budget.sample_due()
+        {
             match budget.sample() {
                 Ok(pct) if budget.exceeded() => {
                     tracing::error!(
@@ -137,7 +142,8 @@ impl PluginSession {
                         "GPU budget exceeded — dropping plugin session"
                     );
                     self.plugin = None;
-                    self.needs_reload.store(true, std::sync::atomic::Ordering::Release);
+                    self.needs_reload
+                        .store(true, std::sync::atomic::Ordering::Release);
                     return;
                 }
                 Ok(_) => {
@@ -190,7 +196,8 @@ impl PluginSession {
                         "plugin tick exceeded watchdog — dropping session"
                     );
                     self.plugin = None;
-                    self.needs_reload.store(true, std::sync::atomic::Ordering::Release);
+                    self.needs_reload
+                        .store(true, std::sync::atomic::Ordering::Release);
                     break;
                 }
             }

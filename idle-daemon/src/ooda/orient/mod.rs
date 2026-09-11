@@ -6,9 +6,9 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use idle_api::IdleSource;
+use idle_api::OverlaySurface;
 #[cfg(target_os = "linux")]
 use wayland_idle::IdleMonitor;
-use idle_api::OverlaySurface;
 
 use super::observe::RawObservation;
 use crate::config::DaemonConfig;
@@ -68,7 +68,8 @@ impl OodaOrientator {
                     current_saver.clear();
                 }
                 DaemonCommand::SetTimeout(minutes) => {
-                    idle_monitor.set_timeout(Duration::from_secs(minutes.saturating_mul(60) as u64));
+                    idle_monitor
+                        .set_timeout(Duration::from_secs(minutes.saturating_mul(60) as u64));
                 }
                 other => {
                     let _ = controller.apply_command(other);
@@ -100,9 +101,8 @@ impl OodaOrientator {
                 }
             }
             if plan.recreate_idle_monitor {
-                let dur = Duration::from_secs(
-                    raw.config.idle_timeout_mins.saturating_mul(60) as u64,
-                );
+                let dur =
+                    Duration::from_secs(raw.config.idle_timeout_mins.saturating_mul(60) as u64);
                 if let Some(m) = IdleMonitor::new_timeout(dur) {
                     *idle_monitor = Box::new(m);
                 }

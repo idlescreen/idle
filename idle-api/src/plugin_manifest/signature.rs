@@ -90,7 +90,9 @@ pub fn verify_signature(manifest_path: &Path) -> Result<(), ManifestError> {
         Ok(s) if s.success() => Ok(()),
         Ok(s) => Err(ManifestError::SignatureInvalid(format!(
             "gpg --verify exit {} for {}",
-            s.code().map(|c| c.to_string()).unwrap_or_else(|| "?".into()),
+            s.code()
+                .map(|c| c.to_string())
+                .unwrap_or_else(|| "?".into()),
             sig.display()
         ))),
         Err(e) => Err(ManifestError::SignatureInvalid(format!(

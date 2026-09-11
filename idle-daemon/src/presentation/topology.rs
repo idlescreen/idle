@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-use std::collections::HashMap;
 use idle_api::OutputLayout;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct MonitorTopology {

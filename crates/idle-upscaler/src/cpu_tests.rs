@@ -57,4 +57,3 @@ fn upscale_stretch_same_size_copies() {
     upscale_stretch_into(&mut dst, &src, 2, 1, 2, 1, &mut cache);
     assert_eq!(dst, src);
 }
-

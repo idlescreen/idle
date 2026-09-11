@@ -60,9 +60,12 @@ pub fn present_frame(state: &mut FrameLoopState) {
                     state.options.show_fps_overlay,
                     state.achieved_fps,
                 );
-state
-                .presenter
-                .submit_frame(OutputId(layout.id), Arc::new(pixels), target_w, target_h);
+                state.presenter.submit_frame(
+                    OutputId(layout.id),
+                    Arc::new(pixels),
+                    target_w,
+                    target_h,
+                );
             }
         }
     } else {

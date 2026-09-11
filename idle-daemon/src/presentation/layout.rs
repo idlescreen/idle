@@ -27,8 +27,6 @@ fn nonneg_usize(v: i32) -> usize {
     if v <= 0 { 0 } else { v as usize }
 }
 
-
-
 /// Caps span simulation cost: full virtual-desktop coverage with a bounded cell count.
 pub fn span_simulation_grid(
     session: &IpcPluginSession,

@@ -213,4 +213,3 @@ fn run_plugin_fullscreen_passes_gate_under_flag() {
         "B4: dlopen failure must produce a non-empty error message"
     );
 }
-

@@ -180,7 +180,8 @@ impl IpcPluginSession {
             let _ = child.kill();
             let _ = child.wait();
         }
-        self.expected_stop.store(true, std::sync::atomic::Ordering::Release);
+        self.expected_stop
+            .store(true, std::sync::atomic::Ordering::Release);
     }
 
     /// True when the saver subprocess has exited (either cleanly or after
@@ -192,5 +193,4 @@ impl IpcPluginSession {
             None => true,
         }
     }
-
 }

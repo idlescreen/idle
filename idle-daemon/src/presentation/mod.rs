@@ -17,12 +17,12 @@ mod ipc_session;
 mod ipc_session_methods;
 #[cfg(test)]
 mod ipc_session_tests;
-mod timeout;
 mod layout;
 mod overlays;
 mod plugin_loop;
 mod refresh;
 mod render;
+mod timeout;
 pub mod topology;
 
 use std::sync::Arc;
@@ -120,7 +120,9 @@ mod tests {
         visible_calls: AtomicUsize,
     }
     impl OverlaySurface for CountingSurface {
-        fn is_available() -> bool { true }
+        fn is_available() -> bool {
+            true
+        }
         fn new() -> Option<Self> {
             Some(Self {
                 alive_calls: AtomicUsize::new(0),
@@ -129,19 +131,27 @@ mod tests {
         }
         fn submit_frame(&self, _: idle_api::OutputId, _: std::sync::Arc<Vec<u8>>, _: u32, _: u32) {}
         fn is_alive(&self) -> bool {
-            self.alive_calls.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            self.alive_calls
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             true
         }
         fn is_visible(&self) -> bool {
-            self.visible_calls.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            self.visible_calls
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             true
         }
         fn show_blank(&self, _: idle_api::BlankAppearance) {}
         fn show_screensaver(&self) {}
         fn hide(&self) {}
-        fn supports_scaling(&self) -> bool { false }
-        fn output_layouts(&self) -> Vec<idle_api::OutputLayout> { Vec::new() }
-        fn get_frame_buffer(&self, size: usize) -> Vec<u8> { vec![0u8; size] }
+        fn supports_scaling(&self) -> bool {
+            false
+        }
+        fn output_layouts(&self) -> Vec<idle_api::OutputLayout> {
+            Vec::new()
+        }
+        fn get_frame_buffer(&self, size: usize) -> Vec<u8> {
+            vec![0u8; size]
+        }
     }
 
     /// `PluginPresentation::start` should call `is_alive()` at least once

@@ -58,6 +58,7 @@ pub use callbacks::{
 };
 pub use caption::{caption_text, clear_caption, publish_caption, with_caption};
 pub use color::{Theme, hsl_to_rgb, lerp, percentage, rgb_to_hsl};
+pub use idle_source::{IdleSource, StubIdleSource, platform_idle};
 pub use layout::{CenteredLogo, is_span_layout, place_centered_logo, span_reach_scale};
 pub use logo_block::render_logo_block;
 pub use monitor::{
@@ -65,19 +66,14 @@ pub use monitor::{
     clear_primary_bounds, get_primary_monitor_bounds, is_secondary_monitor, publish_primary_bounds,
 };
 pub use palette::ScreenPalette;
+pub use plugin_manifest::signature::{signature_path, signature_required, verify_signature};
 pub use rng::{LcgRng, SEED_ENV_KEYS, seed_from_env};
 pub use screensaver::{GpuSpotlight, Screensaver, ScreensaverInstance, ScreensaverState};
+pub use surface::{BlankAppearance, OutputId, OutputLayout, OverlaySurface, StubOverlay};
 pub use system_info::SystemInfo;
 pub use terminal_cell::TerminalCell;
-pub use idle_source::{IdleSource, StubIdleSource, platform_idle};
-pub use surface::{
-    BlankAppearance, OverlaySurface, OutputId, OutputLayout, StubOverlay,
-};
-pub use plugin_manifest::signature::{verify_signature, signature_path, signature_required};
 #[cfg(target_os = "linux")]
 pub use wayland_overlay::WaylandOverlay;
 
 /// `.idleplugin.toml` capability manifest (schema v1).
 pub mod plugin_manifest;
-
-

@@ -54,7 +54,10 @@ pub(crate) fn sample_intel() -> io::Result<u32> {
     let text = String::from_utf8_lossy(&out.stdout);
     let mut max_pct: u32 = 0;
     for token in text.split(|c: char| !c.is_ascii_digit()) {
-        if let Ok(n) = token.parse::<u32>() && n <= 100 && n > max_pct {
+        if let Ok(n) = token.parse::<u32>()
+            && n <= 100
+            && n > max_pct
+        {
             max_pct = n;
         }
     }
@@ -77,9 +80,7 @@ pub(crate) fn sample_intel() -> io::Result<u32> {
 /// will fail with `amdgpu_top exit (1)`. We surface that as an `io::Error`
 /// so the caller logs a debug line and continues — never silently OK.
 pub(crate) fn sample_amd() -> io::Result<u32> {
-    let out = Command::new("amdgpu_top")
-        .args(["-n", "1"])
-        .output()?;
+    let out = Command::new("amdgpu_top").args(["-n", "1"]).output()?;
     if !out.status.success() {
         return Err(io::Error::new(
             io::ErrorKind::Other,
@@ -93,7 +94,9 @@ pub(crate) fn sample_amd() -> io::Result<u32> {
             continue;
         }
         for token in line.split(|c: char| !c.is_ascii_digit()) {
-            if let Ok(n) = token.parse::<u32>() && n <= 100 {
+            if let Ok(n) = token.parse::<u32>()
+                && n <= 100
+            {
                 return Ok(n);
             }
         }

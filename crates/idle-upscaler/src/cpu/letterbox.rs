@@ -51,4 +51,3 @@ pub fn upscale_letterbox_into(
         }
     }
 }
-

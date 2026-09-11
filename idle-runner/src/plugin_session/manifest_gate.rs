@@ -5,7 +5,7 @@
 //! `ManifestError` or `PluginError::CapabilityMismatch` is a hard refusal.
 
 use crate::launcher::PluginError;
-use idle_api::plugin_manifest::{self, host, Manifest};
+use idle_api::plugin_manifest::{self, Manifest, host};
 use std::path::Path;
 use std::sync::Arc;
 

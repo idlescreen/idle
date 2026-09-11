@@ -81,9 +81,9 @@ mod tests {
         let mut actor = OodaActor::new();
         let overlay_presenter: Arc<dyn idle_api::OverlaySurface> =
             match idle_api::WaylandOverlay::new() {
-            Some(p) => Arc::new(p),
-            None => return,
-        };
+                Some(p) => Arc::new(p),
+                None => return,
+            };
         let mut presentation = ActivePresentation::None;
         let mut preview_name = Some("beams".to_string());
         let mut current_saver = String::new();
@@ -113,9 +113,9 @@ mod tests {
         let mut actor = OodaActor::new();
         let overlay_presenter: Arc<dyn idle_api::OverlaySurface> =
             match idle_api::WaylandOverlay::new() {
-            Some(p) => Arc::new(p),
-            None => return,
-        };
+                Some(p) => Arc::new(p),
+                None => return,
+            };
         let mut presentation = ActivePresentation::None;
         let mut preview_name = Some("matrix".to_string());
         let mut current_saver = "matrix".to_string();
@@ -142,9 +142,9 @@ mod tests {
         let mut actor = OodaActor::new();
         let overlay_presenter: Arc<dyn idle_api::OverlaySurface> =
             match idle_api::WaylandOverlay::new() {
-            Some(p) => Arc::new(p),
-            None => return,
-        };
+                Some(p) => Arc::new(p),
+                None => return,
+            };
         let mut presentation = ActivePresentation::None;
         let mut preview_name = Some("matrix".to_string());
         let mut current_saver = "matrix".to_string();
@@ -174,9 +174,9 @@ mod tests {
         let mut actor = OodaActor::new();
         let overlay_presenter: Arc<dyn idle_api::OverlaySurface> =
             match idle_api::WaylandOverlay::new() {
-            Some(p) => Arc::new(p),
-            None => return,
-        };
+                Some(p) => Arc::new(p),
+                None => return,
+            };
         let mut presentation = ActivePresentation::None;
         let mut preview_name = Some("nonexistent_invalid_saver_123".to_string());
         let mut current_saver = String::new();

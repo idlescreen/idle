@@ -9,7 +9,7 @@
 
 use std::sync::Arc;
 
-use crate::surface::{BlankAppearance, OverlaySurface, OutputId, OutputLayout};
+use crate::surface::{BlankAppearance, OutputId, OutputLayout, OverlaySurface};
 use wayland_present::OverlayPresenter;
 
 /// Newtype wrapper. We do not embed the presenter directly because the
@@ -51,13 +51,7 @@ impl OverlaySurface for WaylandOverlay {
         WaylandOverlay::new()
     }
 
-    fn submit_frame(
-        &self,
-        output: OutputId,
-        frame: Arc<Vec<u8>>,
-        width: u32,
-        height: u32,
-    ) {
+    fn submit_frame(&self, output: OutputId, frame: Arc<Vec<u8>>, width: u32, height: u32) {
         // Convert Arc<Vec<u8>> -> Vec<u8> at the boundary. The presenter
         // owns the buffer for one frame, so the cheap clone is bounded.
         let bytes = Arc::try_unwrap(frame).unwrap_or_else(|arc| (*arc).clone());
@@ -76,7 +70,11 @@ impl OverlaySurface for WaylandOverlay {
         // Translate the trait-level [u8; 4] RGBA into the presenter's
         // [u8; 3] RGB solid appearance. The alpha channel is composited
         // by the compositor, not the presenter.
-        let rgb = [appearance.color[0], appearance.color[1], appearance.color[2]];
+        let rgb = [
+            appearance.color[0],
+            appearance.color[1],
+            appearance.color[2],
+        ];
         self.presenter
             .show(wayland_present::OverlayAppearance::solid(rgb));
     }

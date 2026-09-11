@@ -61,7 +61,11 @@ fn default_off_with_forged_signature_passes_permissively() {
     let dir = tempfile::tempdir().unwrap();
     let m = make_manifest(dir.path());
     let s = signature_path(&m);
-    fs::write(&s, b"-----BEGIN PGP SIGNATURE-----\ndeadbeef\n-----END PGP SIGNATURE-----\n").unwrap();
+    fs::write(
+        &s,
+        b"-----BEGIN PGP SIGNATURE-----\ndeadbeef\n-----END PGP SIGNATURE-----\n",
+    )
+    .unwrap();
     assert!(
         verify_signature(&m).is_ok(),
         "default-off must accept forged sig (rollout safety); \

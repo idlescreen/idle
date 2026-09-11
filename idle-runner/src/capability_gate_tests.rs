@@ -54,9 +54,7 @@ fn parse(text: &str) -> Manifest {
 fn audio_capture_refused_without_opt_in() {
     let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     unsafe { std::env::remove_var("IDLE_PERMIT_AUDIO_CAPTURE") };
-    let m = parse(
-        &BASE.replace("audio_capture    = false", "audio_capture    = true"),
-    );
+    let m = parse(&BASE.replace("audio_capture    = false", "audio_capture    = true"));
     let err = check_capabilities(&m).unwrap_err();
     assert!(
         matches!(err, PluginError::CapabilityMismatch(ref s) if s.contains("audio_capture")),
@@ -68,9 +66,7 @@ fn audio_capture_refused_without_opt_in() {
 fn audio_capture_admitted_with_opt_in() {
     let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     unsafe { std::env::set_var("IDLE_PERMIT_AUDIO_CAPTURE", "1") };
-    let m = parse(
-        &BASE.replace("audio_capture    = false", "audio_capture    = true"),
-    );
+    let m = parse(&BASE.replace("audio_capture    = false", "audio_capture    = true"));
     let result = check_capabilities(&m);
     unsafe { std::env::remove_var("IDLE_PERMIT_AUDIO_CAPTURE") };
     assert!(
@@ -83,9 +79,7 @@ fn audio_capture_admitted_with_opt_in() {
 fn audio_output_refused_without_opt_in() {
     let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     unsafe { std::env::remove_var("IDLE_PERMIT_AUDIO_OUTPUT") };
-    let m = parse(
-        &BASE.replace("audio_output     = false", "audio_output     = true"),
-    );
+    let m = parse(&BASE.replace("audio_output     = false", "audio_output     = true"));
     let err = check_capabilities(&m).unwrap_err();
     assert!(
         matches!(err, PluginError::CapabilityMismatch(ref s) if s.contains("audio_output")),
@@ -153,10 +147,7 @@ fn filesystem_read_rejects_parent_traversal() {
 
 #[test]
 fn filesystem_read_rejects_empty_path() {
-    let text = BASE.replace(
-        "filesystem_read  = []",
-        r#"filesystem_read  = [""]"#,
-    );
+    let text = BASE.replace("filesystem_read  = []", r#"filesystem_read  = [""]"#);
     let m = parse(&text);
     let err = idle_api::plugin_manifest::validate(&m).unwrap_err();
     assert!(
@@ -180,10 +171,7 @@ fn filesystem_read_accepts_absolute_path() {
 
 #[test]
 fn filesystem_write_rejects_relative_path() {
-    let text = BASE.replace(
-        "filesystem_write = []",
-        r#"filesystem_write = ["./out"]"#,
-    );
+    let text = BASE.replace("filesystem_write = []", r#"filesystem_write = ["./out"]"#);
     let m = parse(&text);
     let err = idle_api::plugin_manifest::validate(&m).unwrap_err();
     assert!(

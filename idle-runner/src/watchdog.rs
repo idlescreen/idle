@@ -33,7 +33,10 @@ pub struct CallGuard {
 
 impl CallGuard {
     pub fn new(budget: Duration) -> Self {
-        Self { budget, started: Instant::now() }
+        Self {
+            budget,
+            started: Instant::now(),
+        }
     }
 
     pub fn elapsed(&self) -> Duration {

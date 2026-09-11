@@ -29,20 +29,16 @@ fn read_timeout_env_override_works() {
 
 #[test]
 fn read_timeout_default_when_env_unset() {
-    use super::timeout::{read_timeout, DEFAULT_IPC_READ_TIMEOUT};
+    use super::timeout::{DEFAULT_IPC_READ_TIMEOUT, read_timeout};
     unsafe { std::env::remove_var("IDLE_IPC_READ_TIMEOUT_MS") };
     assert_eq!(read_timeout(), DEFAULT_IPC_READ_TIMEOUT);
 }
 
 #[test]
 fn kill_child_is_idempotent_without_child() {
-    let mut s = IpcPluginSession::load_with_options(
-        "beams",
-        &LaunchMode::Daemon,
-        Some(false),
-        None,
-    )
-    .expect("load");
+    let mut s =
+        IpcPluginSession::load_with_options("beams", &LaunchMode::Daemon, Some(false), None)
+            .expect("load");
     // No child yet; kill must not panic.
     s.kill_child();
     s.kill_child();
@@ -50,41 +46,32 @@ fn kill_child_is_idempotent_without_child() {
 
 #[test]
 fn kill_child_clears_handle() {
-    let mut s = IpcPluginSession::load_with_options(
-        "beams",
-        &LaunchMode::Daemon,
-        Some(false),
-        None,
-    )
-    .expect("load");
+    let mut s =
+        IpcPluginSession::load_with_options("beams", &LaunchMode::Daemon, Some(false), None)
+            .expect("load");
     // Simulate a live child by inserting a dummy process handle would
     // require spawning; we instead assert that the kill path on a
     // `None` child clears state correctly (the slot stays None).
     s.kill_child();
-    assert!(s.child.is_none(), "kill on None must leave child slot empty");
+    assert!(
+        s.child.is_none(),
+        "kill on None must leave child slot empty"
+    );
 }
 
 #[test]
 fn child_is_dead_true_without_child() {
-    let mut s = IpcPluginSession::load_with_options(
-        "beams",
-        &LaunchMode::Daemon,
-        Some(false),
-        None,
-    )
-    .expect("load");
+    let mut s =
+        IpcPluginSession::load_with_options("beams", &LaunchMode::Daemon, Some(false), None)
+            .expect("load");
     assert!(s.child_is_dead(), "no child → reports dead");
 }
 
 #[test]
 fn expected_stop_is_set_after_kill() {
-    let mut s = IpcPluginSession::load_with_options(
-        "beams",
-        &LaunchMode::Daemon,
-        Some(false),
-        None,
-    )
-    .expect("load");
+    let mut s =
+        IpcPluginSession::load_with_options("beams", &LaunchMode::Daemon, Some(false), None)
+            .expect("load");
     s.kill_child();
     assert!(
         s.expected_stop.load(std::sync::atomic::Ordering::Acquire),
@@ -107,13 +94,9 @@ fn kill_child_reaps_real_process() {
     let pid = child.id() as i32;
     assert!(pid > 0, "spawn returned a real pid");
 
-    let mut s = IpcPluginSession::load_with_options(
-        "beams",
-        &LaunchMode::Daemon,
-        Some(false),
-        None,
-    )
-    .expect("load");
+    let mut s =
+        IpcPluginSession::load_with_options("beams", &LaunchMode::Daemon, Some(false), None)
+            .expect("load");
     s.child = Some(child);
 
     let before = unsafe { libc::kill(pid, 0) };
@@ -121,7 +104,10 @@ fn kill_child_reaps_real_process() {
 
     s.kill_child();
 
-    assert!(s.child.is_none(), "kill_child must consume the Child handle");
+    assert!(
+        s.child.is_none(),
+        "kill_child must consume the Child handle"
+    );
     let after = unsafe { libc::kill(pid, 0) };
     assert_ne!(
         after, 0,
@@ -131,7 +117,7 @@ fn kill_child_reaps_real_process() {
     if after == -1 {
         let err = std::io::Error::last_os_error().raw_os_error().unwrap_or(0);
         assert_eq!(
-            err, 3 /* ESRCH */,
+            err, 3, /* ESRCH */
             "kill(pid, 0) post-reap must return ESRCH"
         );
     }

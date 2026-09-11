@@ -17,7 +17,10 @@ fn stub_is_unavailable() {
 #[test]
 fn stub_constructs_but_is_dead() {
     let s = StubOverlay::new().expect("stub always constructs");
-    assert!(!s.is_alive(), "stub must report dead so the daemon refuses to present");
+    assert!(
+        !s.is_alive(),
+        "stub must report dead so the daemon refuses to present"
+    );
     assert!(!s.is_visible());
 }
 
@@ -37,7 +40,6 @@ fn stub_show_hide_scale_layouts_are_safe_noops() {
     assert!(!s.supports_scaling());
     assert!(s.output_layouts().is_empty());
 }
-
 
 #[test]
 fn output_id_is_hashable() {

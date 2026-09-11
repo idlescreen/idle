@@ -132,5 +132,3 @@ fn stretch_byte_rows(
         }
     }
 }
-
-

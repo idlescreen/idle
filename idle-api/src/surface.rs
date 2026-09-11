@@ -34,13 +34,7 @@ pub trait OverlaySurface: Send + Sync + 'static {
 
     /// Submit a per-output BGRA frame for presentation. Frame buffer is
     /// `width * height * 4` bytes; row-major, BGRA.
-    fn submit_frame(
-        &self,
-        output: OutputId,
-        frame: Arc<Vec<u8>>,
-        width: u32,
-        height: u32,
-    );
+    fn submit_frame(&self, output: OutputId, frame: Arc<Vec<u8>>, width: u32, height: u32);
 
     /// True when the surface is still attached and rendering. Returns
     /// `false` to signal the daemon that the surface is gone (compositor
@@ -87,7 +81,9 @@ pub struct BlankAppearance {
 
 impl Default for BlankAppearance {
     fn default() -> Self {
-        Self { color: [0, 0, 0, 255] }
+        Self {
+            color: [0, 0, 0, 255],
+        }
     }
 }
 
@@ -109,7 +105,6 @@ pub struct OutputLayout {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct OutputId(pub u32);
 
-
 /// Stub surface for non-Linux targets. Always reports dead so the daemon
 /// refuses to start until Sprint 05 lands real macOS / Windows impls.
 pub struct StubOverlay;
@@ -123,13 +118,7 @@ impl OverlaySurface for StubOverlay {
         Some(Self)
     }
 
-    fn submit_frame(
-        &self,
-        _output: OutputId,
-        _frame: Arc<Vec<u8>>,
-        _width: u32,
-        _height: u32,
-    ) {
+    fn submit_frame(&self, _output: OutputId, _frame: Arc<Vec<u8>>, _width: u32, _height: u32) {
         // No-op: the stub never presents. Real impls forward to the
         // platform's compositor / window system.
     }

@@ -3,7 +3,7 @@
 use std::thread;
 use std::time::{Duration, Instant};
 
-use idle_api::{OverlaySurface, OutputLayout};
+use idle_api::{OutputLayout, OverlaySurface};
 
 /// Presentation FPS target refresh rate.
 ///

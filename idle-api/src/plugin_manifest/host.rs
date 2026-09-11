@@ -78,7 +78,10 @@ pub struct CapabilityDecision {
 
 impl CapabilityDecision {
     fn empty() -> Self {
-        Self { permitted: Vec::new(), refused: Vec::new() }
+        Self {
+            permitted: Vec::new(),
+            refused: Vec::new(),
+        }
     }
     fn permit(mut self, cap: &'static str) -> Self {
         self.permitted.push(cap);

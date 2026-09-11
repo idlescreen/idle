@@ -24,7 +24,10 @@ fn wayland_overlay_lifecycle_smoke() {
     let backup = std::env::var("WAYLAND_DISPLAY").ok();
     unsafe { std::env::remove_var("WAYLAND_DISPLAY") };
     let w = WaylandOverlay::new();
-    assert!(w.is_none(), "without WAYLAND_DISPLAY the adapter must refuse");
+    assert!(
+        w.is_none(),
+        "without WAYLAND_DISPLAY the adapter must refuse"
+    );
     if let Some(v) = backup {
         unsafe { std::env::set_var("WAYLAND_DISPLAY", v) };
     }

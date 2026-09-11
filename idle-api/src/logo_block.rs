@@ -60,9 +60,7 @@ pub fn render_logo_block(text: &str, sub_text: Option<&str>) -> Vec<String> {
     {
         return entry.2.clone();
     }
-    let mut lock = CACHE
-        .write()
-        .unwrap_or_else(|p| p.into_inner());
+    let mut lock = CACHE.write().unwrap_or_else(|p| p.into_inner());
     if let Some(entry) = lock.as_ref()
         && entry.0 == text
         && entry.1.as_deref() == sub_text

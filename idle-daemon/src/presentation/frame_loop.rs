@@ -7,7 +7,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use super::ipc_session::IpcPluginSession;
-use idle_api::{OverlaySurface, OutputLayout};
+use idle_api::{OutputLayout, OverlaySurface};
 
 use super::render::present_frame;
 use crate::presentation::PresentationOptions;
@@ -169,16 +169,28 @@ mod tests {
     /// the empty-sessions early-return without a Wayland environment.
     struct TestStub;
     impl OverlaySurface for TestStub {
-        fn is_available() -> bool { false }
-        fn new() -> Option<Self> { Some(Self) }
+        fn is_available() -> bool {
+            false
+        }
+        fn new() -> Option<Self> {
+            Some(Self)
+        }
         fn submit_frame(&self, _: idle_api::OutputId, _: std::sync::Arc<Vec<u8>>, _: u32, _: u32) {}
-        fn is_alive(&self) -> bool { false }
-        fn is_visible(&self) -> bool { false }
+        fn is_alive(&self) -> bool {
+            false
+        }
+        fn is_visible(&self) -> bool {
+            false
+        }
         fn show_blank(&self, _: idle_api::BlankAppearance) {}
         fn show_screensaver(&self) {}
         fn hide(&self) {}
-        fn supports_scaling(&self) -> bool { false }
-        fn output_layouts(&self) -> Vec<OutputLayout> { Vec::new() }
+        fn supports_scaling(&self) -> bool {
+            false
+        }
+        fn output_layouts(&self) -> Vec<OutputLayout> {
+            Vec::new()
+        }
     }
 
     // Test negative selection: empty sessions slice securely returns error instead of panicking on [0]

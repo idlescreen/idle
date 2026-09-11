@@ -6,7 +6,7 @@
 //! Sandbox is applied **before** `Library::new` so ELF constructors fire
 //! under the policy. A failure at any step fails closed and refuses to load.
 
-use super::{manifest_gate, PluginGuard, PluginSession};
+use super::{PluginGuard, PluginSession, manifest_gate};
 use crate::budget::{self, AttachOutcome};
 use crate::cell_renderer::CellRenderer;
 use crate::launcher::{LaunchMode, PluginError, resolve_saver_binary};
@@ -162,8 +162,7 @@ impl PluginSession {
             // an `idle_api_version` symbol (added in this rotation); plugins
             // that don't are refused as `MissingVersion` so a malicious or
             // stale plugin cannot slip past the version check.
-            let ver_sym = lib
-                .get::<unsafe extern "C" fn() -> u32>(b"idle_api_version");
+            let ver_sym = lib.get::<unsafe extern "C" fn() -> u32>(b"idle_api_version");
             let ver_fn = match ver_sym {
                 Ok(f) => f,
                 Err(_) => {

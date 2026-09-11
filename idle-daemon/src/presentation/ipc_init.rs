@@ -117,7 +117,10 @@ pub fn initialize_ipc_session(
 
     for (label, res) in [
         ("blocking", socket.set_nonblocking(false)),
-        ("read timeout", socket.set_read_timeout(Some(read_timeout()))),
+        (
+            "read timeout",
+            socket.set_read_timeout(Some(read_timeout())),
+        ),
         (
             "write timeout",
             socket.set_write_timeout(Some(Duration::from_millis(500))),

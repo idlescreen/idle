@@ -98,8 +98,8 @@ impl OodaLoopController {
         // Handle dynamic config reload interval if due
         if let Some(timeout) = controller.reload_config_if_due(self.tick_counter) {
             idle_monitor
-            .as_mut()
-            .set_timeout(Duration::from_secs(timeout.saturating_mul(60) as u64));
+                .as_mut()
+                .set_timeout(Duration::from_secs(timeout.saturating_mul(60) as u64));
         }
 
         // 3. DECIDE: Evaluate pure policy matrix to determine presentation target
@@ -115,7 +115,7 @@ impl OodaLoopController {
         if overlay_presenter.is_alive() {
             self.actor.execute(
                 decision,
-overlay_presenter,
+                overlay_presenter,
                 &mut self.presentation,
                 &mut self.preview_name,
                 &mut self.current_saver,
