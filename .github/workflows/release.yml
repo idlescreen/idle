@@ -134,7 +134,7 @@ jobs:
             "${assets[@]}"
 
       - name: Trigger Packages Repository Update
-        if: steps.plan.outputs.daemon == 'build' || steps.plan.outputs.cli == 'build'
+        if: steps.plan.outputs.daemon == 'build' || steps.plan.outputs.cli == 'build' || steps.plan.outputs.meta == 'build'
         env:
           DISPATCH_TOKEN: ${{ secrets.IDLESCREEN_PACKAGES_DISPATCH_TOKEN }}
         run: |
