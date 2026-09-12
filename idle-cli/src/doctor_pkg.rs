@@ -87,16 +87,14 @@ pub fn check_package_install() -> CheckResult {
     // can call D-Bus methods the daemon lacks; different majors can drift
     // either way. Same major.minor, different patch is the normal state —
     // crates version independently inside a release train.
-    let daemon_mm = found
-        .iter()
-        .find(|f| f.starts_with("idle-daemon"))
-        .and_then(|e| extract_version(e))
-        .and_then(major_minor);
-    let cli_mm = found
-        .iter()
-        .find(|f| f.starts_with("idle-cli"))
-        .and_then(|e| extract_version(e))
-        .and_then(major_minor);
+    let mm_of = |prefix: &str| {
+        found
+            .iter()
+            .find(|f| f.starts_with(prefix))
+            .and_then(|e| extract_version(e))
+            .and_then(major_minor)
+    };
+    let (daemon_mm, cli_mm) = (mm_of("idle-daemon"), mm_of("idle-cli"));
     if let (Some(d), Some(c)) = (daemon_mm, cli_mm)
         && (d.0 != c.0 || c > d)
     {
