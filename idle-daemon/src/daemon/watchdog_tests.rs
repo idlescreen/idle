@@ -37,12 +37,18 @@ fn stalled_threshold_triggers() {
 
 #[test]
 fn configured_timeout_default_is_5s() {
+    let _g = crate::TEST_ENV_LOCK
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
     unsafe { std::env::remove_var("IDLE_HEARTBEAT_TIMEOUT_MS") };
     assert_eq!(configured_timeout_ms(), DEFAULT_HEARTBEAT_TIMEOUT_MS);
 }
 
 #[test]
 fn configured_timeout_env_override() {
+    let _g = crate::TEST_ENV_LOCK
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
     unsafe { std::env::set_var("IDLE_HEARTBEAT_TIMEOUT_MS", "1234") };
     let v = configured_timeout_ms();
     unsafe { std::env::remove_var("IDLE_HEARTBEAT_TIMEOUT_MS") };

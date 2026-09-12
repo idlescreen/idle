@@ -10,12 +10,11 @@
 //! would fail if the vulnerability still exists.
 //!
 //! These tests mutate the process-global `XDG_RUNTIME_DIR` env var and
-//! therefore **must run serially**. The [`SERIAL`] mutex enforces that.
+//! therefore **must run serially**. The crate-shared [`TEST_ENV_LOCK`] mutex enforces that.
 
 use super::*;
 
 static DIR_COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-static SERIAL: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 struct TempPidDir(PathBuf);
 
@@ -46,7 +45,9 @@ impl Drop for TempPidDir {
 /// Wrap the body in the global serial mutex so XDG-RUNTIME_DIR mutations
 /// don't race with siblings.
 fn run<F: FnOnce()>(f: F) {
-    let _guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = crate::TEST_ENV_LOCK
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
     f();
 }
 
@@ -55,7 +56,7 @@ fn run<F: FnOnce()>(f: F) {
 /// tests.
 fn with_xdg<F: FnOnce()>(dir: &Path, f: F) {
     let prev = std::env::var("XDG_RUNTIME_DIR").ok();
-    // SAFETY: test-only env mutation; serialized via SERIAL.
+    // SAFETY: test-only env mutation; serialized via TEST_ENV_LOCK.
     unsafe {
         std::env::set_var("XDG_RUNTIME_DIR", dir);
     }

@@ -25,3 +25,10 @@ pub mod lock_monitor;
 pub mod locks;
 pub mod ooda;
 pub mod presentation;
+
+/// Shared mutex for tests that mutate process env. Environment is
+/// process-global and the whole lib test suite runs in one process —
+/// file-local locks can't exclude siblings in other modules. Any test
+/// that sets/removes an env var must hold this for its full body.
+#[cfg(test)]
+pub(crate) static TEST_ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());

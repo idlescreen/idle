@@ -7,10 +7,6 @@ use crate::config::DaemonConfig;
 use crate::config_parse::{apply_config_line, merge_config_body};
 use std::collections::BTreeMap;
 
-/// Serializes tests that mutate `IDLE_CONFIG_DIR` — parallel test threads
-/// would otherwise bleed the override into each other's load/save.
-static CFG_ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
 fn fields() -> Vec<(&'static str, String)> {
     vec![
         ("idle_timeout_mins", "10".into()),
@@ -117,7 +113,7 @@ fn merge_empty_file_emits_template() {
 
 #[test]
 fn save_roundtrip_preserves_foreign_keys() {
-    let _env_guard = CFG_ENV_LOCK.lock().unwrap();
+    let _env_guard = crate::TEST_ENV_LOCK.lock().unwrap();
     let dir = std::env::temp_dir().join(format!("idle-cfg-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let file = dir.join("config.yaml");
@@ -145,7 +141,7 @@ fn save_roundtrip_preserves_foreign_keys() {
 
 #[test]
 fn save_writes_backup_of_prior_content() {
-    let _env_guard = CFG_ENV_LOCK.lock().unwrap();
+    let _env_guard = crate::TEST_ENV_LOCK.lock().unwrap();
     let dir = std::env::temp_dir().join(format!("idle-cfg-bak-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let file = dir.join("config.yaml");

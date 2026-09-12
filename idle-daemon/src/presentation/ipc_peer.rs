@@ -68,7 +68,11 @@ mod tests {
 
     #[test]
     fn runtime_socket_dir_requires_xdg() {
-        // SAFETY: test isolation
+        // XDG_RUNTIME_DIR is shared with pidfile tests — serialize.
+        let _guard = crate::TEST_ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        // SAFETY: test isolation; holds TEST_ENV_LOCK.
         unsafe {
             std::env::remove_var("XDG_RUNTIME_DIR");
         }

@@ -3,14 +3,12 @@
 use super::*;
 use crate::config::DaemonConfig;
 
-static TEST_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
 fn test_controller() -> (
     DaemonController,
     std::path::PathBuf,
     std::sync::MutexGuard<'static, ()>,
 ) {
-    let guard = TEST_MUTEX
+    let guard = crate::TEST_ENV_LOCK
         .lock()
         .unwrap_or_else(|p| crate::locks::poison_or_exit("lock", p));
     let temp = std::env::temp_dir().join(format!(
@@ -21,7 +19,7 @@ fn test_controller() -> (
             .unwrap_or(0)
     ));
     std::fs::create_dir_all(&temp).expect("create temp config dir for command tests");
-    // SAFETY: tests hold TEST_MUTEX; only this suite mutates XDG_CONFIG_HOME.
+    // SAFETY: tests hold crate::TEST_ENV_LOCK; only this suite mutates XDG_CONFIG_HOME.
     unsafe {
         std::env::set_var("XDG_CONFIG_HOME", &temp);
     }

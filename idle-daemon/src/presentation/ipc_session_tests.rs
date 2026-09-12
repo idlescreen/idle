@@ -21,6 +21,9 @@ fn is_timeout_classifies_timed_out_and_would_block() {
 #[test]
 fn read_timeout_env_override_works() {
     use super::timeout::read_timeout;
+    let _g = crate::TEST_ENV_LOCK
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
     unsafe { std::env::set_var("IDLE_IPC_READ_TIMEOUT_MS", "123") };
     let t = read_timeout();
     unsafe { std::env::remove_var("IDLE_IPC_READ_TIMEOUT_MS") };
@@ -30,6 +33,9 @@ fn read_timeout_env_override_works() {
 #[test]
 fn read_timeout_default_when_env_unset() {
     use super::timeout::{DEFAULT_IPC_READ_TIMEOUT, read_timeout};
+    let _g = crate::TEST_ENV_LOCK
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
     unsafe { std::env::remove_var("IDLE_IPC_READ_TIMEOUT_MS") };
     assert_eq!(read_timeout(), DEFAULT_IPC_READ_TIMEOUT);
 }

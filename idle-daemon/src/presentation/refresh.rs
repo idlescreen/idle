@@ -95,7 +95,9 @@ mod tests {
 
     #[test]
     fn multi_output_sync_policy_min_max_primary() {
-        // Sequential env mutations in one test avoid races with parallel test threads.
+        let _g = crate::TEST_ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         let layouts = vec![layout(1, 60), layout(2, 144)];
         let primary = layouts[1];
         let prior = std::env::var("IDLE_PRESENT_SYNC").ok();
