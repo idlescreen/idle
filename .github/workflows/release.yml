@@ -52,12 +52,46 @@ jobs:
       - name: Build release binaries
         run: cargo build --release
 
+      - name: Determine which packages to publish
+        id: plan
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # The packages pool is the source of truth for "already
+          # distributed". Rebuilding an unchanged version produces
+          # byte-different files that trip the importer's no-clobber
+          # guard — skip anything whose exact filenames already exist.
+          in_pool() {
+            gh api "repos/idlescreen/packages/contents/rpm/pool/$1" \
+              --jq .name >/dev/null 2>&1 || \
+            gh api "repos/idlescreen/packages/contents/apt/pool/main/$2" \
+              --jq .name >/dev/null 2>&1
+          }
+          ver() { grep -m1 '^version' "$1/Cargo.toml" | cut -d'"' -f2; }
+          daemon_v=$(ver idle-daemon)
+          cli_v=$(ver idle-cli)
+          if in_pool "idle-daemon-${daemon_v}-1.x86_64.rpm" "idle-daemon_${daemon_v}-1_amd64.deb"; then
+            echo "daemon=skip" >> "$GITHUB_OUTPUT"
+          else
+            echo "daemon=build" >> "$GITHUB_OUTPUT"
+          fi
+          if in_pool "idle-cli-${cli_v}-1.x86_64.rpm" "idle-cli_${cli_v}-1_amd64.deb"; then
+            echo "cli=skip" >> "$GITHUB_OUTPUT"
+          else
+            echo "cli=build" >> "$GITHUB_OUTPUT"
+          fi
+          cat "$GITHUB_OUTPUT"
+
       - name: Package crates
         run: |
-          cargo deb --no-build -p idle-daemon
-          cargo deb --no-build -p idle-cli
-          cargo generate-rpm -p idle-daemon
-          cargo generate-rpm -p idle-cli
+          if [ "${{ steps.plan.outputs.daemon }}" = "build" ]; then
+            cargo deb --no-build -p idle-daemon
+            cargo generate-rpm -p idle-daemon
+          fi
+          if [ "${{ steps.plan.outputs.cli }}" = "build" ]; then
+            cargo deb --no-build -p idle-cli
+            cargo generate-rpm -p idle-cli
+          fi
 
       - name: Install Cosign
         run: |
@@ -67,6 +101,7 @@ jobs:
 
       - name: Sign packages with Cosign
         run: |
+          shopt -s nullglob
           for file in target/debian/*.deb target/generate-rpm/*.rpm; do
             cosign sign-blob --yes --output-signature "${file}.sig" --output-certificate "${file}.pem" "$file"
           done
@@ -75,17 +110,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          shopt -s nullglob
+          assets=(target/debian/*.deb target/debian/*.sig target/debian/*.pem \
+                  target/generate-rpm/*.rpm target/generate-rpm/*.sig target/generate-rpm/*.pem)
+          if [ ${#assets[@]} -eq 0 ]; then
+            echo "::warning::all packages already in the pool — release has no assets"
+          fi
           gh release create "${{ github.ref_name }}" \
             --title "${{ github.ref_name }}" \
             --notes "Release ${{ github.ref_name }}" \
-            target/debian/*.deb \
-            target/debian/*.sig \
-            target/debian/*.pem \
-            target/generate-rpm/*.rpm \
-            target/generate-rpm/*.sig \
-            target/generate-rpm/*.pem
+            "${assets[@]}"
 
       - name: Trigger Packages Repository Update
+        if: steps.plan.outputs.daemon == 'build' || steps.plan.outputs.cli == 'build'
         env:
           DISPATCH_TOKEN: ${{ secrets.IDLESCREEN_PACKAGES_DISPATCH_TOKEN }}
         run: |
