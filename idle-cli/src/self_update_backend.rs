@@ -36,54 +36,44 @@ pub fn stdout_trim(cmd: &str, args: &[&str]) -> Option<String> {
 }
 
 pub fn detect_backend() -> Option<Backend> {
-    for pkg in PKG_CANDIDATES {
-        if command_ok("rpm", &["-q", pkg]) {
-            return Some(Backend::Dnf);
-        }
+    if PKG_CANDIDATES.iter().any(|p| command_ok("rpm", &["-q", p])) {
+        return Some(Backend::Dnf);
     }
-    for pkg in PKG_CANDIDATES {
-        if command_ok("dpkg-query", &["-W", "-f=${Status}", pkg])
-            || command_ok("dpkg", &["-s", pkg])
-        {
-            if let Some(status) = stdout_trim("dpkg-query", &["-W", "-f=${Status}", pkg]) {
-                if status.contains("install ok installed") {
-                    return Some(Backend::Apt);
-                }
-            } else {
-                return Some(Backend::Apt);
-            }
-        }
+    // Package counts as apt-installed when a status query succeeds and says
+    // "install ok installed", or when the query fails but `dpkg -s` knows it.
+    let apt_has = |p: &str| {
+        (command_ok("dpkg-query", &["-W", "-f=${Status}", p]) || command_ok("dpkg", &["-s", p]))
+            && stdout_trim("dpkg-query", &["-W", "-f=${Status}", p])
+                .map(|s| s.contains("install ok installed"))
+                .unwrap_or(true)
+    };
+    if PKG_CANDIDATES.iter().any(|p| apt_has(p)) {
+        return Some(Backend::Apt);
     }
 
     if let Ok(os) = std::fs::read_to_string("/etc/os-release") {
-        let id = os
-            .lines()
-            .find_map(|l| l.strip_prefix("ID="))
-            .unwrap_or("")
-            .trim_matches('"');
-        let like = os
-            .lines()
-            .find_map(|l| l.strip_prefix("ID_LIKE="))
-            .unwrap_or("")
-            .trim_matches('"');
-        if (id == "fedora"
-            || id == "rhel"
-            || id == "centos"
-            || id == "rocky"
-            || id == "almalinux"
-            || like
-                .split_whitespace()
-                .any(|t| matches!(t, "fedora" | "rhel" | "centos")))
+        let field = |key: &str| {
+            os.lines()
+                .find_map(|l| l.strip_prefix(key))
+                .unwrap_or("")
+                .trim_matches('"')
+                .to_string()
+        };
+        let (id, like) = (field("ID="), field("ID_LIKE="));
+        let like_has = |t: &str| like.split_whitespace().any(|x| x == t);
+        if (matches!(
+            id.as_str(),
+            "fedora" | "rhel" | "centos" | "rocky" | "almalinux"
+        ) || like_has("fedora")
+            || like_has("rhel")
+            || like_has("centos"))
             && (which("dnf") || which("rpm"))
         {
             return Some(Backend::Dnf);
         }
-        if (id == "debian"
-            || id == "ubuntu"
-            || id == "pop"
-            || like
-                .split_whitespace()
-                .any(|t| matches!(t, "debian" | "ubuntu")))
+        if (matches!(id.as_str(), "debian" | "ubuntu" | "pop")
+            || like_has("debian")
+            || like_has("ubuntu"))
             && (which("apt-cache") || which("apt"))
         {
             return Some(Backend::Apt);
