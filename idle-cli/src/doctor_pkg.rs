@@ -76,27 +76,86 @@ pub fn check_package_install() -> CheckResult {
         );
     }
 
-    let summary = found.join(", ");
-    // Version skew between core components — a mismatched CLI/daemon pair
-    // breaks D-Bus assumptions; savers follow their own major/minor line.
-    let daemon_v = found
+    // Render role labels, not raw NEVRAs: package names (idle-cli vs the
+    // idlescreen metapackage) confuse users; roles say what each thing is.
+    let summary = found
+        .iter()
+        .map(|e| display_entry(e))
+        .collect::<Vec<_>>()
+        .join(", ");
+    // Version skew that actually matters: a CLI *newer* than the daemon
+    // can call D-Bus methods the daemon lacks; different majors can drift
+    // either way. Same major.minor, different patch is the normal state —
+    // crates version independently inside a release train.
+    let daemon_mm = found
         .iter()
         .find(|f| f.starts_with("idle-daemon"))
-        .and_then(|e| extract_version(e));
-    let cli_v = found
+        .and_then(|e| extract_version(e))
+        .and_then(major_minor);
+    let cli_mm = found
         .iter()
         .find(|f| f.starts_with("idle-cli"))
-        .and_then(|e| extract_version(e));
-    if let (Some(d), Some(c)) = (daemon_v, cli_v)
-        && d != c
+        .and_then(|e| extract_version(e))
+        .and_then(major_minor);
+    if let (Some(d), Some(c)) = (daemon_mm, cli_mm)
+        && (d.0 != c.0 || c > d)
     {
         return warn(
             "Package",
-            format!("{summary} — version skew: daemon {d} vs cli {c}"),
+            format!(
+                "{summary} — version skew: daemon {}.{} vs cli {}.{}",
+                d.0, d.1, c.0, c.1
+            ),
         )
         .with_fix("idlescreen self-update to align component versions");
     }
     ok("Package", summary)
+}
+
+/// `idle-daemon-3.5.2-1.x86_64` → `daemon 3.5.2-1`. Labels map package
+/// names to user-facing roles — `idle-cli` is the `idlescreen` command,
+/// `idlescreen` is the metapackage — so the report reads as components.
+fn display_entry(nevra: &str) -> String {
+    let split = nevra
+        .match_indices('-')
+        .find(|(i, _)| {
+            nevra[i + 1..]
+                .chars()
+                .next()
+                .is_some_and(|c| c.is_ascii_digit())
+        })
+        .map(|(i, _)| i);
+    let Some(idx) = split else {
+        return nevra.to_string();
+    };
+    let (name, ver) = nevra.split_at(idx);
+    let ver = ver[1..]
+        .trim_end_matches(".x86_64")
+        .trim_end_matches(".noarch")
+        .trim_end_matches(".aarch64");
+    let label = match name {
+        "idle-daemon" => "daemon",
+        "idle-cli" => "cli (the 'idlescreen' command)",
+        "idle-savers" => "savers",
+        "idle-tui" => "tui",
+        "idle-cosmic" => "cosmic-applet",
+        "idle-studio" => "studio",
+        "idlescreen" => "metapackage",
+        n if n.starts_with("idle-saver-") => &n["idle-".len()..],
+        n => n,
+    };
+    format!("{label} {ver}")
+}
+
+/// `3.5.2-1` → `(3, 5)` — major.minor pair for skew checks.
+fn major_minor(version: &str) -> Option<(u64, u64)> {
+    let mut it = version
+        .split(|c: char| !c.is_ascii_digit())
+        .filter(|s| !s.is_empty());
+    Some((
+        it.next()?.parse().ok()?,
+        it.next().unwrap_or("0").parse().ok()?,
+    ))
 }
 
 /// `idle-daemon-3.4.0-1.x86_64` → `3.4.0` — the version is the first
@@ -197,17 +256,5 @@ fn binary_on_path(name: &str) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::package_rank;
-
-    #[test]
-    fn package_rank_prefers_core() {
-        assert!(
-            package_rank("idle-daemon-2.3.1-1.x86_64") < package_rank("idle-cli-2.3.1-1.x86_64")
-        );
-        assert!(package_rank("idle-cli-2.3.1-1.x86_64") < package_rank("idle-tui-2.2.0-1.x86_64"));
-        assert!(
-            package_rank("idle-savers-2.3.1-1.x86_64") < package_rank("idle-cosmic-2.1.2-1.x86_64")
-        );
-    }
-}
+#[path = "doctor_pkg_tests.rs"]
+mod tests;
