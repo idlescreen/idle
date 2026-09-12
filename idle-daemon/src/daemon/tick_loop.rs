@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
 use crate::controller::{DaemonController, MAIN_LOOP_INTERVAL};
-use crate::daemon::watchdog::{self, Watchdog};
+use crate::daemon::watchdog;
 use crate::ooda::OodaLoopController;
 
 pub fn tick_loop_until_shutdown(controller: Arc<DaemonController>) -> anyhow::Result<()> {
@@ -14,7 +14,10 @@ pub fn tick_loop_until_shutdown(controller: Arc<DaemonController>) -> anyhow::Re
         super::runtime::initialize_runtime(&controller)?;
 
     let mut ooda_loop = OodaLoopController::new();
-    let watchdog = Watchdog::new();
+    let watchdog = controller.watchdog.clone();
+    // The controller builds the watchdog at startup; re-baseline here so
+    // runtime init time doesn't read as a stall on the first check.
+    watchdog.heartbeat();
     // Watchdog raises `controller.shutdown` on stall — the loop exits and
     // the process supervisor (systemd) restarts us.
     let _monitor = watchdog::spawn_monitor(

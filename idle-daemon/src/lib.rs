@@ -25,6 +25,7 @@ pub mod lock_monitor;
 pub mod locks;
 pub mod ooda;
 pub mod presentation;
+pub mod sleep_monitor;
 
 /// Shared mutex for tests that mutate process env. Environment is
 /// process-global and the whole lib test suite runs in one process —

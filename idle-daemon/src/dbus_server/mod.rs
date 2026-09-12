@@ -20,7 +20,7 @@ use idle_dbus::{OBJECT_PATH, SERVICE_NAME};
 use zbus::fdo::RequestNameFlags;
 
 use crate::controller::DaemonController;
-use crate::lock_monitor;
+use crate::{lock_monitor, sleep_monitor};
 
 use service::TranceService;
 
@@ -81,6 +81,11 @@ async fn serve(controller: Arc<DaemonController>) -> anyhow::Result<()> {
 
     tokio::spawn(lock_monitor::watch_session_lock(
         controller.session_locked.clone(),
+        controller.shutdown.clone(),
+    ));
+
+    tokio::spawn(sleep_monitor::watch_prepare_for_sleep(
+        controller.watchdog.clone(),
         controller.shutdown.clone(),
     ));
 

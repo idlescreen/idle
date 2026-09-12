@@ -18,42 +18,78 @@ impl Dispatch<wl_registry::WlRegistry, ()> for SessionState {
         _: &Connection,
         queue: &QueueHandle<Self>,
     ) {
-        let wl_registry::Event::Global {
-            name,
-            interface,
-            version,
-        } = event
-        else {
-            return;
-        };
+        match event {
+            wl_registry::Event::Global {
+                name,
+                interface,
+                version,
+            } => state.bind_global(registry, name, &interface, version, queue),
+            wl_registry::Event::GlobalRemove { name } => state.remove_global(name),
+            _ => {}
+        }
+    }
+}
+
+impl SessionState {
+    fn bind_global(
+        &mut self,
+        registry: &wl_registry::WlRegistry,
+        name: u32,
+        interface: &str,
+        version: u32,
+        queue: &QueueHandle<Self>,
+    ) {
         tracing::debug!(%interface, name, "wl_registry global");
 
-        match interface.as_str() {
+        match interface {
             "wl_compositor" => {
-                state.compositor = Some(registry.bind(name, version.min(4), queue, ()));
+                self.compositor = Some(registry.bind(name, version.min(4), queue, ()));
             }
             "wl_shm" => {
-                state.shm = Some(registry.bind(name, version.min(1), queue, ()));
+                self.shm = Some(registry.bind(name, version.min(1), queue, ()));
             }
             "zwlr_layer_shell_v1" => {
-                state.layer_shell = Some(registry.bind(name, version.min(4), queue, ()));
+                self.layer_shell = Some(registry.bind(name, version.min(4), queue, ()));
             }
             "wp_viewporter" => {
-                state.viewporter = Some(registry.bind(name, version.min(1), queue, ()));
+                self.viewporter = Some(registry.bind(name, version.min(1), queue, ()));
             }
             "wl_output" => {
                 let output =
                     registry.bind::<wl_output::WlOutput, _, _>(name, version.min(4), queue, name);
-                state.outputs.push(OutputTarget { id: name, output });
+                self.outputs.push(OutputTarget { id: name, output });
+                // A monitor plugged in mid-presentation must be covered —
+                // otherwise it shows the unlocked desktop.
+                if self.visible.load(std::sync::atomic::Ordering::SeqCst) {
+                    self.create_overlay(name);
+                }
             }
-            "wl_seat" if state.seat.is_none() => {
+            "wl_seat" if self.seat.is_none() => {
                 let seat = registry.bind::<wl_seat::WlSeat, _, _>(name, version.min(7), queue, ());
-                state.pointer = Some(seat.get_pointer(queue, ()));
+                self.pointer = Some(seat.get_pointer(queue, ()));
                 seat.get_keyboard(queue, ());
-                state.seat = Some(seat);
+                self.seat = Some(seat);
             }
             _ => {}
         }
+    }
+
+    fn remove_global(&mut self, name: u32) {
+        let Some(position) = self.outputs.iter().position(|target| target.id == name) else {
+            return;
+        };
+        // wl_output.release() exists at v3+; we bind min(4).
+        self.outputs.remove(position).output.release();
+        self.remove_overlay(name);
+        self.output_origin.remove(&name);
+        self.output_scale.remove(&name);
+        self.output_mode_size.remove(&name);
+        self.output_refresh_hz.remove(&name);
+        self.output_registry.remove(name);
+        tracing::info!(
+            output_id = name,
+            "wayland-present: output removed (hot-unplug)"
+        );
     }
 }
 

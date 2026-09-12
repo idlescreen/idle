@@ -22,20 +22,24 @@ pub struct GpuCell {
     pub bold: u32,
 }
 
+// Field order is the drop order (Rust drops fields in declaration order):
+// device-owned resources first, `device`/`queue` last. Dropping the device
+// before its buffers/textures/pipeline risks driver teardown races — this
+// struct is dropped per presentation session, not just at process exit.
 pub struct GpuCellRenderer {
-    pub device: wgpu::Device,
-    pub queue: wgpu::Queue,
-    pub pipeline: wgpu::RenderPipeline,
-    pub bind_group_layout: wgpu::BindGroupLayout,
-    pub atlas_sampler: wgpu::Sampler,
-    pub target_width: u32,
-    pub target_height: u32,
+    pub bind_group: Option<wgpu::BindGroup>,
+    pub atlas_texture: Option<wgpu::Texture>,
     pub texture: Option<wgpu::Texture>,
     pub staging_buffer: Option<wgpu::Buffer>,
     pub uniform_buffer: Option<wgpu::Buffer>,
     pub cells_buffer: Option<wgpu::Buffer>,
-    pub bind_group: Option<wgpu::BindGroup>,
-    pub atlas_texture: Option<wgpu::Texture>,
+    pub pipeline: wgpu::RenderPipeline,
+    pub bind_group_layout: wgpu::BindGroupLayout,
+    pub atlas_sampler: wgpu::Sampler,
+    pub queue: wgpu::Queue,
+    pub device: wgpu::Device,
+    pub target_width: u32,
+    pub target_height: u32,
     pub atlas_width: usize,
     pub atlas_height: usize,
     /// Reused across frames to avoid allocating GpuCell vectors every draw.

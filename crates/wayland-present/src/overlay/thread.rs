@@ -39,7 +39,7 @@ pub fn spawn_event_thread(
     is_alive: Arc<AtomicBool>,
     supports_scaling: Arc<AtomicBool>,
     wake_rx: std::os::fd::OwnedFd,
-) {
+) -> thread::JoinHandle<()> {
     thread::spawn(move || {
         if let Err(message) = run_event_loop(
             ready_tx,
@@ -57,7 +57,7 @@ pub fn spawn_event_thread(
         }
         is_alive.store(false, Ordering::SeqCst);
         tracing::warn!("wayland-present: event thread stopped (is_alive=false)");
-    });
+    })
 }
 
 #[tracing::instrument(skip_all)]

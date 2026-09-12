@@ -32,6 +32,12 @@ impl OutputRegistry {
         }
     }
 
+    pub fn remove(&self, id: u32) {
+        if let Ok(mut guard) = self.0.lock() {
+            guard.retain(|entry| entry.id != id);
+        }
+    }
+
     pub fn clear(&self) {
         if let Ok(mut guard) = self.0.lock() {
             guard.clear();

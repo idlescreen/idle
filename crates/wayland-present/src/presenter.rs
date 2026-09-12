@@ -4,6 +4,7 @@ use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Sender, SyncSender};
 use std::sync::{Arc, Mutex};
+use std::thread::JoinHandle;
 use std::time::Duration;
 
 use crate::appearance::OverlayAppearance;
@@ -24,6 +25,10 @@ pub struct OverlayPresenter {
     /// queued commands are applied immediately rather than after the next
     /// compositor event (or the 100ms poll timeout).
     wake_fd: OwnedFd,
+    /// Joined in Drop so libwayland teardown finishes on the event thread
+    /// before the presenter (or the process) unwinds past it — a detached
+    /// thread racing process exit was the teardown SIGSEGV class.
+    event_thread: Option<JoinHandle<()>>,
 }
 
 impl OverlayPresenter {
@@ -55,7 +60,7 @@ impl OverlayPresenter {
             return None;
         };
 
-        spawn_event_thread(
+        let event_thread = spawn_event_thread(
             ready_tx,
             command_rx,
             visible.clone(),
@@ -77,8 +82,17 @@ impl OverlayPresenter {
                 is_alive,
                 supports_scaling,
                 wake_fd,
+                event_thread: Some(event_thread),
             }),
-            _ => None,
+            other => {
+                // Startup failed (thread reported Err, or the ready channel
+                // timed out/closed) — still join so the failed thread's
+                // teardown doesn't outlive the constructor.
+                shutdown.store(true, Ordering::Relaxed);
+                let _ = event_thread.join();
+                tracing::warn!("wayland-present: event thread init failed: {other:?}");
+                None
+            }
         }
     }
 
@@ -163,5 +177,21 @@ impl Drop for OverlayPresenter {
         // Bare wake so the event loop sees `shutdown` promptly even if the
         // command channel is already drained.
         self.wake();
+
+        // Bounded join: the poll loop turns over in ≤100ms, so teardown
+        // completes well under this bound on a healthy compositor. A
+        // bounded wait beats an unbounded join — a wedged event thread
+        // must not hang daemon shutdown forever; leaking the joiner is
+        // the lesser evil.
+        if let Some(handle) = self.event_thread.take() {
+            let (done_tx, done_rx) = mpsc::channel();
+            std::thread::spawn(move || {
+                let _ = handle.join();
+                let _ = done_tx.send(());
+            });
+            if done_rx.recv_timeout(Duration::from_secs(2)).is_err() {
+                tracing::warn!("wayland-present: event thread did not exit within 2s of shutdown");
+            }
+        }
     }
 }

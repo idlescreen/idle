@@ -44,6 +44,9 @@ pub struct DaemonController {
     /// user/SIGTERM stop) — the daemon exits non-zero so Restart=on-failure
     /// in the systemd unit actually restarts us.
     pub watchdog_stalled: Arc<AtomicBool>,
+    /// Render-loop heartbeat. Shared so the suspend/resume watcher can reset
+    /// the baseline on wake — suspend time would otherwise read as a stall.
+    pub watchdog: crate::daemon::watchdog::Watchdog,
     pub status_dirty: Arc<AtomicBool>,
     pub status_emit_tx: Mutex<Option<tokio::sync::mpsc::Sender<DaemonStatus>>>,
     dbus_connection: Mutex<Option<zbus::Connection>>,
@@ -75,6 +78,7 @@ impl DaemonController {
             session_locked: Arc::new(AtomicBool::new(false)),
             shutdown: Arc::new(AtomicBool::new(false)),
             watchdog_stalled: Arc::new(AtomicBool::new(false)),
+            watchdog: crate::daemon::watchdog::Watchdog::new(),
             status_dirty: Arc::new(AtomicBool::new(true)),
             status_emit_tx: Mutex::new(None),
             dbus_connection: Mutex::new(None),
