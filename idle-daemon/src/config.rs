@@ -54,6 +54,14 @@ fn is_safe_config_root(path: &str) -> bool {
 }
 
 impl DaemonConfig {
+    /// `IDLE_CONFIG_DIR` override (absolute, no `..`) for tests/debug.
+    fn config_dir_override() -> Option<PathBuf> {
+        std::env::var("IDLE_CONFIG_DIR")
+            .ok()
+            .filter(|d| is_safe_config_root(d))
+            .map(PathBuf::from)
+    }
+
     /// Config directory candidates: IdleScreen first, legacy `trance` second.
     pub fn config_dir_candidates() -> Vec<PathBuf> {
         let mut bases = Vec::new();
@@ -78,6 +86,9 @@ impl DaemonConfig {
 
     /// Path used for **writes** and new installs (`~/.config/idle/config.yaml`).
     pub fn get_config_path() -> Option<PathBuf> {
+        if let Some(dir) = Self::config_dir_override() {
+            return Some(dir.join("config.yaml"));
+        }
         Self::config_dir_candidates()
             .into_iter()
             .find(|d| d.ends_with("idle"))
@@ -86,6 +97,9 @@ impl DaemonConfig {
 
     /// Resolve existing config for **reads**: prefer IdleScreen, fall back to legacy.
     pub fn resolve_config_path() -> Option<PathBuf> {
+        if let Some(dir) = Self::config_dir_override() {
+            return Some(dir.join("config.yaml"));
+        }
         let candidates: Vec<PathBuf> = Self::config_dir_candidates()
             .into_iter()
             .map(|d| d.join("config.yaml"))
@@ -127,6 +141,27 @@ impl DaemonConfig {
         config
     }
 
+    /// Daemon-owned keys written to config.yaml. Everything else in the
+    /// file (accent_color, theme_idx, user comments, unknown keys) belongs
+    /// to other tools and is preserved verbatim by `save`.
+    fn rendered_fields(&self) -> Vec<(&'static str, String)> {
+        let active_str = self.active_saver.as_deref().unwrap_or("none");
+        vec![
+            ("idle_timeout_mins", self.idle_timeout_mins.to_string()),
+            ("active_saver", format!("\"{active_str}\"")),
+            ("idle_enabled", self.idle_enabled.to_string()),
+            ("show_fps_overlay", self.show_fps_overlay.to_string()),
+            (
+                "render_scale",
+                self.render_scale
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| "null".to_string()),
+            ),
+            ("theme", format!("\"{}\"", self.theme)),
+            ("strict_control", self.strict_control.to_string()),
+        ]
+    }
+
     pub fn save(&self) -> std::io::Result<()> {
         let Some(path) = Self::get_config_path() else {
             return Ok(());
@@ -135,37 +170,22 @@ impl DaemonConfig {
             .parent()
             .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "no parent dir"))?;
         fs::create_dir_all(parent)?;
-        let active_str = self.active_saver.as_deref().unwrap_or("none");
-        let mut content = format!(
-            "# IdleScreen themes and settings\n\
-             accent_color: \"#00BFFF\"\n\
-             # dark_mode is auto-detected from system\n\
-             idle_timeout_mins: {}\n\
-             theme_idx: 0\n\
-             active_saver: \"{}\"\n\
-             idle_enabled: {}\n\
-             show_fps_overlay: {}\n\
-             render_scale: {}\n\
-             theme: \"{}\"\n\
-             # strict_control: deny D-Bus control when peer exe unreadable (no comm fallback)\n\
-             strict_control: {}\n",
-            self.idle_timeout_mins,
-            active_str,
-            self.idle_enabled,
-            self.show_fps_overlay,
-            self.render_scale
-                .map(|s| s.to_string())
-                .unwrap_or_else(|| "null".to_string()),
-            self.theme,
-            self.strict_control,
+        // Serialize read-modify-write against other writers (applet, TUI)
+        // via a sidecar lock — unlocked by drop when the write finishes.
+        let lock = std::fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(false)
+            .open(parent.join("config.yaml.lock"))?;
+        lock.lock()?;
+        // Read-modify-write: only daemon-owned keys are rewritten; foreign
+        // keys and comments survive so co-writing tools cannot clobber them.
+        let existing = fs::read_to_string(&path).unwrap_or_default();
+        let content = crate::config_parse::merge_config_body(
+            &existing,
+            &mut self.rendered_fields(),
+            &self.saver_params,
         );
-
-        if !self.saver_params.is_empty() {
-            content.push_str("\n[saver]\n");
-            for (k, v) in &self.saver_params {
-                content.push_str(&format!("{}: {}\n", k, v));
-            }
-        }
         static TMP_COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
         let count = TMP_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let tmp_path = parent.join(format!("config.tmp.{}.{}", std::process::id(), count));

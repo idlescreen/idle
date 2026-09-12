@@ -95,3 +95,73 @@ pub(crate) fn apply_config_line(
         apply_config_key(config, key, val);
     }
 }
+
+/// Merge `fields` (daemon-owned `key: value` pairs) into existing config
+/// text, preserving every line it does not own — comments, applet keys like
+/// `accent_color`/`theme_idx`, unknown keys. `[saver]`/`[saver.*]` sections
+/// are rewritten from `saver_params` so removed params disappear.
+/// `fields` is drained: consumed entries are replaced in place, leftovers
+/// append at the end.
+pub(crate) fn merge_config_body(
+    existing: &str,
+    fields: &mut Vec<(&'static str, String)>,
+    saver_params: &std::collections::BTreeMap<String, String>,
+) -> String {
+    let mut body = String::new();
+    if existing.trim().is_empty() {
+        body.push_str(
+            "# IdleScreen themes and settings\n\
+             accent_color: \"#00BFFF\"\n\
+             # dark_mode is auto-detected from system\n\
+             theme_idx: 0\n\
+             # strict_control: deny D-Bus control when peer exe unreadable (no comm fallback)\n",
+        );
+    } else {
+        // `saver*` sections are rewritten from saver_params; keys inside any
+        // other section are preserved verbatim even if names collide.
+        let mut in_saver = false;
+        let mut in_section = false;
+        for line in existing.lines() {
+            let t = line.trim();
+            if let Some(sec) = t.strip_prefix('[').and_then(|s| s.strip_suffix(']')) {
+                in_saver = sec == "saver" || sec.starts_with("saver.");
+                in_section = true;
+                if !in_saver {
+                    body.push_str(line);
+                    body.push('\n');
+                }
+                continue;
+            }
+            if in_saver {
+                continue;
+            }
+            let owned = !in_section
+                && !t.is_empty()
+                && !t.starts_with('#')
+                && t.find(':').is_some_and(|idx| {
+                    let key = t[..idx].trim();
+                    if let Some(pos) = fields.iter().position(|(k, _)| *k == key) {
+                        let (k, v) = fields.remove(pos);
+                        body.push_str(&format!("{k}: {v}\n"));
+                        true
+                    } else {
+                        false
+                    }
+                });
+            if !owned {
+                body.push_str(line);
+                body.push('\n');
+            }
+        }
+    }
+    for (k, v) in fields.drain(..) {
+        body.push_str(&format!("{k}: {v}\n"));
+    }
+    if !saver_params.is_empty() {
+        body.push_str("\n[saver]\n");
+        for (k, v) in saver_params {
+            body.push_str(&format!("{k}: {v}\n"));
+        }
+    }
+    body
+}
