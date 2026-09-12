@@ -40,8 +40,15 @@ impl IpcPluginSession {
         _launch_mode: &LaunchMode,
         render_scale: Option<f32>,
         saver_params: std::collections::BTreeMap<String, String>,
+        want_gpu: bool,
     ) -> Result<Self, String> {
-        let renderer = CellRenderer::new().map_err(|e| e.to_string())?;
+        // The wgpu probe costs ~400MB of transient driver mappings; only pay
+        // it when the caller expects the raster load to justify it.
+        let renderer = if want_gpu {
+            CellRenderer::new_with_gpu().map_err(|e| e.to_string())?
+        } else {
+            CellRenderer::new().map_err(|e| e.to_string())?
+        };
         let render_scale = resolve_render_scale(render_scale);
         let upscaler = FrameUpscaler::new(FilterMode::from_env());
 

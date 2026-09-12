@@ -179,14 +179,28 @@ fn vm_peak_kb() -> u64 {
 
 #[test]
 fn cell_renderer_init_memory() {
+    // CPU constructor must never probe wgpu — the ~400MB driver-mapping
+    // transient is what made daemon MemoryPeak spike at presentation start.
     let before = vm_peak_kb();
-    let renderer = crate::cell_renderer::CellRenderer::new();
-    let after = vm_peak_kb();
+    let cpu = crate::cell_renderer::CellRenderer::new().expect("cpu renderer");
+    let after_cpu = vm_peak_kb();
+    assert!(
+        !cpu.gpu_active(),
+        "CellRenderer::new must stay CPU-only (GPU is opt-in)"
+    );
+    assert!(
+        after_cpu.saturating_sub(before) < 64 * 1024,
+        "CellRenderer::new spiked VmPeak by {} KB — wgpu probe must not run here",
+        after_cpu - before
+    );
+    eprintln!("CellRenderer::new: VmPeak delta {} KB", after_cpu - before);
+
+    let gpu = crate::cell_renderer::CellRenderer::new_with_gpu().expect("gpu renderer");
     eprintln!(
-        "CellRenderer::new: VmPeak {} KB -> {} KB (delta {} KB, gpu={})",
-        before,
-        after,
-        after.saturating_sub(before),
-        renderer.as_ref().map(|r| r.gpu_active()).unwrap_or(false)
+        "CellRenderer::new_with_gpu: VmPeak {} KB -> {} KB (delta {} KB, gpu={})",
+        after_cpu,
+        vm_peak_kb(),
+        vm_peak_kb().saturating_sub(after_cpu),
+        gpu.gpu_active()
     );
 }

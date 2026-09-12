@@ -102,6 +102,17 @@ fn build_sessions(
     topology: &super::topology::DisplayTopologyMap,
     options: &PresentationOptions,
 ) -> Result<Vec<ActiveSession>, String> {
+    // GPU cell raster only pays for itself on large canvases — CPU raster
+    // is ~1.8µs/cell, so a single ~1080p grid (~4k cells) fits the 16.6ms
+    // frame budget with room to spare. Past ~2.6MP of output (1440p, or
+    // multi-monitor spans/independent sessions) per-frame CPU raster starts
+    // crowding the budget, so the wgpu probe's ~400MB transient is worth it.
+    let total_px: u64 = layouts
+        .iter()
+        .map(|l| l.width as u64 * l.height as u64)
+        .sum();
+    let want_gpu = total_px > 2_600_000;
+
     let mut sessions = Vec::new();
     if topology.independent_rendering {
         for layout in layouts {
@@ -110,6 +121,7 @@ fn build_sessions(
                 &options.launch_mode,
                 options.render_scale,
                 options.saver_params.clone(),
+                want_gpu,
             )?;
             let (cols, rows) = session.grid_for_pixels(layout.width, layout.height);
             session.init(cols, rows)?;
@@ -126,6 +138,7 @@ fn build_sessions(
             &options.launch_mode,
             options.render_scale,
             options.saver_params.clone(),
+            want_gpu,
         )?;
         let (_min_x, _min_y, total_w, total_h) = virtual_desktop(layouts);
         let (virtual_cols, virtual_rows) = span_simulation_grid(&session, total_w, total_h);

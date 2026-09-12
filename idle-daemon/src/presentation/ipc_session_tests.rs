@@ -41,6 +41,7 @@ fn kill_child_is_idempotent_without_child() {
         &LaunchMode::Daemon,
         None,
         std::collections::BTreeMap::new(),
+        false,
     )
     .expect("load");
     // No child yet; kill must not panic.
@@ -55,6 +56,7 @@ fn kill_child_clears_handle() {
         &LaunchMode::Daemon,
         None,
         std::collections::BTreeMap::new(),
+        false,
     )
     .expect("load");
     // Simulate a live child by inserting a dummy process handle would
@@ -74,6 +76,7 @@ fn child_is_dead_true_without_child() {
         &LaunchMode::Daemon,
         None,
         std::collections::BTreeMap::new(),
+        false,
     )
     .expect("load");
     assert!(s.child_is_dead(), "no child → reports dead");
@@ -86,6 +89,7 @@ fn expected_stop_is_set_after_kill() {
         &LaunchMode::Daemon,
         None,
         std::collections::BTreeMap::new(),
+        false,
     )
     .expect("load");
     s.kill_child();
@@ -115,6 +119,7 @@ fn kill_child_reaps_real_process() {
         &LaunchMode::Daemon,
         None,
         std::collections::BTreeMap::new(),
+        false,
     )
     .expect("load");
     s.child = Some(child);

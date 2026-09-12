@@ -47,6 +47,9 @@ pub struct CellRenderer {
 }
 
 impl CellRenderer {
+    /// CPU-only rasterizer. The wgpu probe maps ~400MB of driver libraries
+    /// transiently at construction, so callers opt in explicitly via
+    /// [`Self::new_with_gpu`] only when the raster load justifies it.
     pub fn new() -> Result<Self, String> {
         let font_bytes = font::load_monospace_font()?;
         let font = Font::from_bytes(font_bytes, fontdue::FontSettings::default())
@@ -70,27 +73,29 @@ impl CellRenderer {
             gpu_renderer: None,
         };
         renderer.prepopulate_atlas();
+        Ok(renderer)
+    }
 
-        // wgpu probing maps hundreds of MB of driver libraries transiently;
-        // IDLE_DISABLE_CELL_GPU skips it entirely for memory-tight systems.
-        renderer.gpu_renderer = if std::env::var_os("IDLE_DISABLE_CELL_GPU").is_some() {
+    /// CPU rasterizer + wgpu cell path when probing succeeds. Skipped
+    /// entirely under `IDLE_DISABLE_CELL_GPU` (zero probe cost).
+    pub fn new_with_gpu() -> Result<Self, String> {
+        let mut renderer = Self::new()?;
+        if std::env::var_os("IDLE_DISABLE_CELL_GPU").is_some() {
             tracing::info!("IDLE_DISABLE_CELL_GPU set — CPU cell rasterizer");
-            None
-        } else {
-            match gpu_init::GpuCellRenderer::new() {
-                Ok(gpu) => {
-                    tracing::info!("wgpu cell renderer initialized successfully");
-                    Some(gpu)
-                }
-                Err(error) => {
-                    tracing::warn!(
-                        "wgpu cell renderer initialization failed, falling back to CPU: {error}"
-                    );
-                    None
-                }
+            return Ok(renderer);
+        }
+        renderer.gpu_renderer = match gpu_init::GpuCellRenderer::new() {
+            Ok(gpu) => {
+                tracing::info!("wgpu cell renderer initialized successfully");
+                Some(gpu)
+            }
+            Err(error) => {
+                tracing::warn!(
+                    "wgpu cell renderer initialization failed, falling back to CPU: {error}"
+                );
+                None
             }
         };
-
         Ok(renderer)
     }
 
