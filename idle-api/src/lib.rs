@@ -51,7 +51,10 @@ mod surface;
 #[cfg(target_os = "linux")]
 mod wayland_overlay;
 
-pub use env_dual::{env_is_set, env_truthy, env_var_first, set_env};
+pub use env_dual::{
+    SAVER_PARAM_ENV_PREFIX, env_is_set, env_truthy, env_var_first, param, param_f32,
+    saver_param_env_key, set_env,
+};
 mod system_info;
 mod terminal_cell;
 

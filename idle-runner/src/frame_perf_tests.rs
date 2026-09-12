@@ -164,3 +164,29 @@ fn frame_pipeline_timing() {
     #[cfg(not(debug_assertions))]
     assert!(total < 33.0, "frame pipeline {total:.2}ms exceeds 33ms");
 }
+
+fn vm_peak_kb() -> u64 {
+    std::fs::read_to_string("/proc/self/status")
+        .ok()
+        .and_then(|s| {
+            s.lines()
+                .find(|l| l.starts_with("VmPeak"))
+                .map(str::to_string)
+        })
+        .and_then(|l| l.split_whitespace().nth(1)?.parse().ok())
+        .unwrap_or(0)
+}
+
+#[test]
+fn cell_renderer_init_memory() {
+    let before = vm_peak_kb();
+    let renderer = crate::cell_renderer::CellRenderer::new();
+    let after = vm_peak_kb();
+    eprintln!(
+        "CellRenderer::new: VmPeak {} KB -> {} KB (delta {} KB, gpu={})",
+        before,
+        after,
+        after.saturating_sub(before),
+        renderer.as_ref().map(|r| r.gpu_active()).unwrap_or(false)
+    );
+}

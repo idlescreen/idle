@@ -35,6 +35,7 @@ pub fn initialize_ipc_session(
     cols: usize,
     rows: usize,
     render_scale: f32,
+    saver_params: &std::collections::BTreeMap<String, String>,
 ) -> Result<SessionInitResult, String> {
     validate_grid_dims(cols, rows).map_err(|e| e.to_string())?;
     if !render_scale.is_finite() || !(0.0..=1.0).contains(&render_scale) {
@@ -73,6 +74,10 @@ pub fn initialize_ipc_session(
         std::env::current_exe().map_err(|e| format!("failed to get current exe path: {}", e))?;
     let scale_str = format!("{:.6}", render_scale);
 
+    // `[saver]` params → `IDLE_SAVER_PARAM_*` env on the runner so plugins
+    // read them via `idle_api::param*` without an IPC/ABI change.
+    let param_env = saver_param_env(saver_params);
+
     let mut child = Command::new(current_exe)
         .arg("run-ipc-runner")
         .arg(saver_name)
@@ -81,6 +86,7 @@ pub fn initialize_ipc_session(
         .arg(cols.to_string())
         .arg(rows.to_string())
         .arg(&scale_str)
+        .envs(param_env.iter().map(|(k, v)| (k.as_str(), v.as_str())))
         .spawn()
         .map_err(|e| format!("failed to spawn runner process: {}", e))?;
 
@@ -170,6 +176,17 @@ pub fn initialize_ipc_session(
         shm,
         socket_path,
     })
+}
+
+/// Map `[saver]` params to `IDLE_SAVER_PARAM_*` env pairs for the runner
+/// spawn. Keys are sanitized to `[A-Z0-9_]`; unsanitizable keys are dropped.
+pub(crate) fn saver_param_env(
+    params: &std::collections::BTreeMap<String, String>,
+) -> Vec<(String, String)> {
+    params
+        .iter()
+        .filter_map(|(k, v)| idle_api::saver_param_env_key(k).map(|n| (n, v.clone())))
+        .collect()
 }
 
 #[cfg(test)]

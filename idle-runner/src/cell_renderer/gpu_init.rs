@@ -52,7 +52,10 @@ fn block_on_future<F: std::future::Future>(future: F) -> F::Output {
 
 impl GpuCellRenderer {
     pub fn new() -> Result<Self, String> {
-        let instance = wgpu::Instance::default();
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::VULKAN,
+            ..Default::default()
+        });
         let adapter = block_on_future(instance.request_adapter(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::HighPerformance,
             compatible_surface: None,

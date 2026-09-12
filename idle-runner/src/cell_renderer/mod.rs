@@ -71,20 +71,32 @@ impl CellRenderer {
         };
         renderer.prepopulate_atlas();
 
-        renderer.gpu_renderer = match gpu_init::GpuCellRenderer::new() {
-            Ok(gpu) => {
-                tracing::info!("wgpu cell renderer initialized successfully");
-                Some(gpu)
-            }
-            Err(error) => {
-                tracing::warn!(
-                    "wgpu cell renderer initialization failed, falling back to CPU: {error}"
-                );
-                None
+        // wgpu probing maps hundreds of MB of driver libraries transiently;
+        // IDLE_DISABLE_CELL_GPU skips it entirely for memory-tight systems.
+        renderer.gpu_renderer = if std::env::var_os("IDLE_DISABLE_CELL_GPU").is_some() {
+            tracing::info!("IDLE_DISABLE_CELL_GPU set — CPU cell rasterizer");
+            None
+        } else {
+            match gpu_init::GpuCellRenderer::new() {
+                Ok(gpu) => {
+                    tracing::info!("wgpu cell renderer initialized successfully");
+                    Some(gpu)
+                }
+                Err(error) => {
+                    tracing::warn!(
+                        "wgpu cell renderer initialization failed, falling back to CPU: {error}"
+                    );
+                    None
+                }
             }
         };
 
         Ok(renderer)
+    }
+
+    /// Whether the wgpu cell path initialized (false → CPU rasterizer).
+    pub fn gpu_active(&self) -> bool {
+        self.gpu_renderer.is_some()
     }
 
     fn glyph_for(&mut self, ch: char) -> (Metrics, Arc<[u8]>) {

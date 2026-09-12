@@ -227,6 +227,7 @@ mod tests {
                 show_fps_overlay: false,
                 render_scale: None,
                 launch_mode: idle_runner::launcher::LaunchMode::Daemon,
+                saver_params: std::collections::BTreeMap::new(),
             },
             60.0,
             60.0,

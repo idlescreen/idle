@@ -70,3 +70,15 @@ fn kill_and_reap_tolerates_missing_socket_file() {
     kill_and_reap(&mut child, &socket_path);
     assert!(!socket_path.exists());
 }
+
+#[test]
+fn saver_param_env_maps_and_sanitizes() {
+    let mut params = std::collections::BTreeMap::new();
+    params.insert("hearth.fire_size".to_string(), "1.5".to_string());
+    params.insert("glow".to_string(), "0.8".to_string());
+    params.insert("...".to_string(), "dropped".to_string());
+    let env = super::saver_param_env(&params);
+    assert!(env.contains(&("IDLE_SAVER_PARAM_HEARTH_FIRE_SIZE".into(), "1.5".into())));
+    assert!(env.contains(&("IDLE_SAVER_PARAM_GLOW".into(), "0.8".into())));
+    assert_eq!(env.len(), 2, "unsanitizable key must be dropped: {env:?}");
+}

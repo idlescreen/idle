@@ -39,6 +39,9 @@ pub struct PresentationOptions {
     pub show_fps_overlay: bool,
     pub render_scale: Option<f32>,
     pub launch_mode: LaunchMode,
+    /// `[saver]`/`[saver.*]` config params; delivered to runners as
+    /// `IDLE_SAVER_PARAM_*` env vars (see `idle_api::param`).
+    pub saver_params: std::collections::BTreeMap<String, String>,
 }
 
 pub struct PluginPresentation {
@@ -101,6 +104,7 @@ mod tests {
             show_fps_overlay: false,
             render_scale: None,
             launch_mode: LaunchMode::Preview,
+            saver_params: std::collections::BTreeMap::new(),
         };
         let result = PluginPresentation::start(
             presenter,
@@ -162,6 +166,7 @@ mod tests {
             show_fps_overlay: false,
             render_scale: None,
             launch_mode: LaunchMode::Preview,
+            saver_params: std::collections::BTreeMap::new(),
         };
         // Invalid saver — the call should fail closed at the saver gate,
         // but the surface dispatch path must still be reachable without

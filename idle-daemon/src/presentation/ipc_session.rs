@@ -18,6 +18,7 @@ use super::timeout::is_timeout;
 pub struct IpcPluginSession {
     pub(crate) saver_name: String,
     pub(crate) render_scale: f32,
+    pub(crate) saver_params: std::collections::BTreeMap<String, String>,
     pub(crate) renderer: CellRenderer,
     pub(crate) upscaler: FrameUpscaler,
     pub(crate) grid: Vec<TerminalCell>,
@@ -38,6 +39,7 @@ impl IpcPluginSession {
         saver_name: &str,
         _launch_mode: &LaunchMode,
         render_scale: Option<f32>,
+        saver_params: std::collections::BTreeMap<String, String>,
     ) -> Result<Self, String> {
         let renderer = CellRenderer::new().map_err(|e| e.to_string())?;
         let render_scale = resolve_render_scale(render_scale);
@@ -46,6 +48,7 @@ impl IpcPluginSession {
         Ok(Self {
             saver_name: saver_name.to_string(),
             render_scale,
+            saver_params,
             renderer,
             upscaler,
             grid: Vec::new(),
@@ -99,7 +102,13 @@ impl IpcPluginSession {
             let _ = std::fs::remove_file(path);
         }
 
-        let init_res = initialize_ipc_session(&self.saver_name, cols, rows, self.render_scale)?;
+        let init_res = initialize_ipc_session(
+            &self.saver_name,
+            cols,
+            rows,
+            self.render_scale,
+            &self.saver_params,
+        )?;
 
         self.child = Some(init_res.child);
         self.socket = Some(init_res.socket);
