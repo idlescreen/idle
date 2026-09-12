@@ -17,6 +17,7 @@ fn dnf_available_version(pkg: &str) -> Option<String> {
         &[
             "-y",
             "repoquery",
+            "--refresh",
             "--available",
             "--latest-limit=1",
             "--qf",
@@ -90,8 +91,13 @@ pub fn handle_dnf_update() -> Result<Option<(String, String)>> {
         Some(cand) if versions_equalish(&installed, &cand) => {
             println!(" [✔] {pkg} is up to date (version {installed}).");
         }
-        Some(cand) => {
+        Some(cand) if version_cmp(&installed, &cand).is_lt() => {
             println!(" [!] Update available: {pkg} {installed} → {cand}");
+        }
+        Some(cand) => {
+            // installed > candidate: repo metadata is behind the local
+            // install (fresh release not yet mirrored, or stale cache).
+            println!(" [i] Installed {installed} is newer than repo candidate {cand}.");
         }
         None => {
             println!(" [✔] Installed: {pkg}-{installed}");
@@ -156,8 +162,10 @@ pub fn handle_apt_update() -> Result<Option<(String, String)>> {
                     "     -> curl -fsSL https://idlescreen.github.io/packages/install.sh | sh"
                 );
                 return Ok(None);
-            } else if !versions_equalish(&inst, &cand) {
+            } else if version_cmp(&inst, &cand).is_lt() {
                 println!(" [!] Update available: {inst} → {cand}");
+            } else if version_cmp(&inst, &cand).is_gt() {
+                println!(" [i] Installed {inst} is newer than repo candidate {cand}.");
             } else {
                 println!(" [✔] IdleScreen is up to date.");
             }
@@ -180,19 +188,50 @@ pub fn handle_apt_update() -> Result<Option<(String, String)>> {
     }
 }
 
-/// Compare versions ignoring arch suffixes and an RPM epoch prefix — DNF
-/// reports `0:3.5.1-1` while `rpm -q` answers `3.5.1-1`.
+/// Strip RPM epoch prefix and arch suffix — DNF reports `0:3.5.1-1`
+/// while `rpm -q` answers `3.5.1-1`.
+fn norm_version(s: &str) -> String {
+    s.trim()
+        .rsplit(':')
+        .next()
+        .unwrap_or("")
+        .trim_end_matches(".x86_64")
+        .trim_end_matches(".noarch")
+        .to_string()
+}
+
 pub fn versions_equalish(a: &str, b: &str) -> bool {
-    let norm = |s: &str| {
-        s.trim()
-            .rsplit(':')
-            .next()
-            .unwrap_or("")
-            .trim_end_matches(".x86_64")
-            .trim_end_matches(".noarch")
-            .to_string()
+    norm_version(a) == norm_version(b)
+}
+
+/// Ordering on `X.Y.Z-R`-style versions: split on non-alphanumerics,
+/// compare numeric segments numerically, missing segments as zero.
+/// Enough for IdleScreen's `N.N.N-N` package versions — not full rpmvercmp.
+pub fn version_cmp(a: &str, b: &str) -> std::cmp::Ordering {
+    use std::cmp::Ordering;
+    // split into alphanumeric runs, e.g. "3.5.1-2" -> [3,5,1,2]
+    let seg = |s: &str| -> Vec<String> {
+        norm_version(s)
+            .split(|c: char| !c.is_ascii_alphanumeric())
+            .filter(|p| !p.is_empty())
+            .map(str::to_string)
+            .collect()
     };
-    norm(a) == norm(b)
+    let (pa, pb) = (seg(a), seg(b));
+    for i in 0..pa.len().max(pb.len()) {
+        let (x, y) = (
+            pa.get(i).map_or("0", String::as_str),
+            pb.get(i).map_or("0", String::as_str),
+        );
+        let ord = match (x.parse::<u64>(), y.parse::<u64>()) {
+            (Ok(nx), Ok(ny)) => nx.cmp(&ny),
+            _ => x.cmp(y),
+        };
+        if ord != Ordering::Equal {
+            return ord;
+        }
+    }
+    Ordering::Equal
 }
 
 #[cfg(test)]

@@ -23,6 +23,17 @@ idle-daemon.x86_64 2.5.0-1 idlescreen
 }
 
 #[test]
+fn version_cmp_orders_release_and_downgrade() {
+    use std::cmp::Ordering::*;
+    assert_eq!(version_cmp("3.5.1-1", "3.5.3-1"), Less);
+    assert_eq!(version_cmp("3.5.3-1", "3.5.1-1"), Greater); // stale-candidate case
+    assert_eq!(version_cmp("3.5.1-1", "3.5.1-2"), Less); // same version, newer release
+    assert_eq!(version_cmp("0:3.5.1-1", "3.5.1-1"), Equal); // epoch ignored
+    assert_eq!(version_cmp("3.5.1-1.x86_64", "3.5.1-1"), Equal);
+    assert_eq!(version_cmp("3.10.0-1", "3.9.9-9"), Greater); // not lexical
+}
+
+#[test]
 fn versions_equalish_ignores_arch() {
     assert!(versions_equalish("2.5.0-1", "2.5.0-1"));
     assert!(versions_equalish("2.5.0-1.x86_64", "2.5.0-1"));
