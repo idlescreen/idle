@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-use super::{display_entry, major_minor, package_rank};
+use super::package_rank;
+use crate::doctor_pkg_fmt::{display_entry, major_minor};
 
 #[test]
 fn major_minor_parses_release_versions() {
