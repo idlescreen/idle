@@ -111,46 +111,14 @@ pub struct GpuCell {
 
 pub struct FrameUpscaler {
     filter: FilterMode,
-    stretch_buf: Vec<u8>,
-    stretch_dims: (u32, u32, u32, u32),
     stretch_cache: cpu::StretchCache,
-    letterbox_buf: Vec<u8>,
-    letterbox_dims: (u32, u32, u32, u32),
 }
 
 impl FrameUpscaler {
     pub fn new(filter: FilterMode) -> Self {
         Self {
             filter,
-            stretch_buf: Vec::new(),
-            stretch_dims: (0, 0, 0, 0),
             stretch_cache: cpu::StretchCache::new(),
-            letterbox_buf: Vec::new(),
-            letterbox_dims: (0, 0, 0, 0),
-        }
-    }
-
-    fn ensure_stretch_buf(&mut self, src_w: u32, src_h: u32, dst_w: u32, dst_h: u32) {
-        let dims = (src_w, src_h, dst_w, dst_h);
-        let needed = (dst_w as usize)
-            .checked_mul(dst_h as usize)
-            .and_then(|p| p.checked_mul(4))
-            .unwrap_or(0);
-        if self.stretch_dims != dims || self.stretch_buf.len() != needed {
-            self.stretch_buf.resize(needed, 0);
-            self.stretch_dims = dims;
-        }
-    }
-
-    fn ensure_letterbox_buf(&mut self, src_w: u32, src_h: u32, dst_w: u32, dst_h: u32) {
-        let dims = (src_w, src_h, dst_w, dst_h);
-        let needed = (dst_w as usize)
-            .checked_mul(dst_h as usize)
-            .and_then(|p| p.checked_mul(4))
-            .unwrap_or(0);
-        if self.letterbox_dims != dims || self.letterbox_buf.len() != needed {
-            self.letterbox_buf.resize(needed, 0);
-            self.letterbox_dims = dims;
         }
     }
 
@@ -172,18 +140,12 @@ impl FrameUpscaler {
         dst_h: u32,
         out: &mut Vec<u8>,
     ) {
-        self.ensure_letterbox_buf(src_w, src_h, dst_w, dst_h);
-        cpu::upscale_letterbox_into(
-            &mut self.letterbox_buf,
-            src,
-            src_w,
-            src_h,
-            dst_w,
-            dst_h,
-            self.filter,
-        );
-        out.resize(self.letterbox_buf.len(), 0);
-        out.copy_from_slice(&self.letterbox_buf);
+        let needed = (dst_w as usize)
+            .checked_mul(dst_h as usize)
+            .and_then(|p| p.checked_mul(4))
+            .unwrap_or(0);
+        out.resize(needed, 0);
+        cpu::upscale_letterbox_into(out, src, src_w, src_h, dst_w, dst_h, self.filter);
     }
 
     /// Stretch source to fill the destination (fullscreen presentation path).
@@ -197,9 +159,13 @@ impl FrameUpscaler {
         dst_h: u32,
         out: &mut Vec<u8>,
     ) {
-        self.ensure_stretch_buf(src_w, src_h, dst_w, dst_h);
+        let needed = (dst_w as usize)
+            .checked_mul(dst_h as usize)
+            .and_then(|p| p.checked_mul(4))
+            .unwrap_or(0);
+        out.resize(needed, 0);
         cpu::upscale_stretch_into(
-            &mut self.stretch_buf,
+            out,
             src,
             src_w,
             src_h,
@@ -207,8 +173,6 @@ impl FrameUpscaler {
             dst_h,
             &mut self.stretch_cache,
         );
-        out.resize(self.stretch_buf.len(), 0);
-        out.copy_from_slice(&self.stretch_buf);
     }
 }
 

@@ -38,6 +38,7 @@ pub fn spawn_event_thread(
     outputs: OutputRegistry,
     is_alive: Arc<AtomicBool>,
     supports_scaling: Arc<AtomicBool>,
+    wake_rx: std::os::fd::OwnedFd,
 ) {
     thread::spawn(move || {
         if let Err(message) = run_event_loop(
@@ -47,6 +48,7 @@ pub fn spawn_event_thread(
             shutdown,
             outputs,
             supports_scaling,
+            wake_rx,
         ) {
             tracing::error!(
                 fault = message,
@@ -67,6 +69,7 @@ fn run_event_loop(
     shutdown: Arc<AtomicBool>,
     outputs: OutputRegistry,
     supports_scaling: Arc<AtomicBool>,
+    wake_rx: std::os::fd::OwnedFd,
 ) -> Result<(), &'static str> {
     let connection = match Connection::connect_to_env() {
         Ok(conn) => conn,
@@ -123,15 +126,25 @@ fn run_event_loop(
     let _ = ready_tx.send(Ok(()));
 
     let fd = connection.as_fd().as_raw_fd();
-    let mut poll_fd = libc::pollfd {
-        fd,
-        events: libc::POLLIN,
-        revents: 0,
-    };
+    // Index 0: Wayland socket. Index 1: self-wake eventfd — `submit_frame`
+    // and friends write it so commands commit immediately instead of
+    // waiting on the poll timeout or the next compositor event.
+    let mut poll_fds = [
+        libc::pollfd {
+            fd,
+            events: libc::POLLIN,
+            revents: 0,
+        },
+        libc::pollfd {
+            fd: wake_rx.as_raw_fd(),
+            events: libc::POLLIN,
+            revents: 0,
+        },
+    ];
 
     while !shutdown.load(Ordering::Relaxed) {
         let _ = connection.flush();
-        dispatch_pending_events(&connection, &mut event_queue, &mut state, &mut poll_fd)?;
+        dispatch_pending_events(&connection, &mut event_queue, &mut state, &mut poll_fds)?;
         apply_commands(&mut state, &command_rx);
     }
 
@@ -144,15 +157,23 @@ fn dispatch_pending_events(
     connection: &Connection,
     event_queue: &mut wayland_client::EventQueue<SessionState>,
     state: &mut SessionState,
-    poll_fd: &mut libc::pollfd,
+    poll_fds: &mut [libc::pollfd; 2],
 ) -> Result<(), &'static str> {
     if let Some(guard) = event_queue.prepare_read() {
         let _ = connection.flush();
 
-        // SAFETY: `poll_fd` points to one valid `pollfd` for the Wayland socket.
-        let poll_result = unsafe { libc::poll(poll_fd, 1, 100) };
+        // SAFETY: `poll_fds` points to two valid `pollfd`s (wayland + wake).
+        let poll_result = unsafe { libc::poll(poll_fds.as_mut_ptr(), 2, 100) };
         if poll_result > 0 {
-            if poll_fd.revents & libc::POLLIN != 0 {
+            if poll_fds[1].revents & libc::POLLIN != 0 {
+                // Drain the self-wake counter; a pending wake is enough.
+                let mut buf = [0u8; 8];
+                while unsafe {
+                    libc::read(poll_fds[1].fd, buf.as_mut_ptr().cast::<libc::c_void>(), 8)
+                } == 8
+                {}
+            }
+            if poll_fds[0].revents & libc::POLLIN != 0 {
                 match guard.read() {
                     Ok(_) => {}
                     Err(e) if is_wayland_would_block(&e) => {
@@ -166,7 +187,7 @@ fn dispatch_pending_events(
                     Err(e) => {
                         tracing::error!(
                             error = %e,
-                            revents = poll_fd.revents,
+                            revents = poll_fds[0].revents,
                             "wayland-present: failed to read Wayland events (compositor may have closed the connection; often a protocol error on the previous commit)"
                         );
                         return Err("failed to read Wayland events");
@@ -178,7 +199,9 @@ fn dispatch_pending_events(
                 }
             }
 
-            if poll_fd.revents & (libc::POLLHUP | libc::POLLERR | libc::POLLNVAL) != 0 {
+            if poll_fds[0].revents & (libc::POLLHUP | libc::POLLERR | libc::POLLNVAL) != 0
+                || poll_fds[1].revents & (libc::POLLERR | libc::POLLNVAL) != 0
+            {
                 return Err("Wayland connection closed");
             }
         } else if poll_result < 0 {

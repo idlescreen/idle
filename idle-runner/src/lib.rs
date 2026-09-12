@@ -54,6 +54,10 @@ pub(crate) static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 mod abi_version_tests;
 
 #[cfg(test)]
+#[path = "frame_perf_tests.rs"]
+mod frame_perf_tests;
+
+#[cfg(test)]
 #[path = "plugin_manifest_tests.rs"]
 mod plugin_manifest_tests;
 

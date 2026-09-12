@@ -163,8 +163,9 @@ impl CellRenderer {
         let content_w = self.content_width(cols);
         let content_h = self.content_height(rows);
         let byte_len = (content_w * content_h * 4) as usize;
+        // No pre-clear: every pixel belongs to a cell whose bg fill_rect
+        // overwrites it — zeroing 2MB here would be dead work.
         out.resize(byte_len, 0);
-        out.fill(0);
 
         for row in 0..rows {
             for col in 0..cols {

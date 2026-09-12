@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Sender, SyncSender};
 use std::sync::{Arc, Mutex};
@@ -19,6 +20,10 @@ pub struct OverlayPresenter {
     outputs: OutputRegistry,
     is_alive: Arc<AtomicBool>,
     supports_scaling: Arc<AtomicBool>,
+    /// Self-wake for the event thread: writing makes its `poll()` return so
+    /// queued commands are applied immediately rather than after the next
+    /// compositor event (or the 100ms poll timeout).
+    wake_fd: OwnedFd,
 }
 
 impl OverlayPresenter {
@@ -37,6 +42,19 @@ impl OverlayPresenter {
         let is_alive = Arc::new(AtomicBool::new(true));
         let supports_scaling = Arc::new(AtomicBool::new(false));
 
+        // SAFETY: fresh eventfd; NONBLOCK so a wake write never stalls the
+        // render loop when a wake is already pending. CLOEXEC keeps it out
+        // of plugin child processes.
+        let wake_fd = unsafe { libc::eventfd(0, libc::EFD_NONBLOCK | libc::EFD_CLOEXEC) };
+        if wake_fd < 0 {
+            return None;
+        }
+        // SAFETY: `wake_fd` is a valid owned descriptor from eventfd above.
+        let wake_fd = unsafe { OwnedFd::from_raw_fd(wake_fd) };
+        let Ok(wake_rx) = wake_fd.try_clone() else {
+            return None;
+        };
+
         spawn_event_thread(
             ready_tx,
             command_rx,
@@ -45,6 +63,7 @@ impl OverlayPresenter {
             outputs.clone(),
             is_alive.clone(),
             supports_scaling.clone(),
+            wake_rx,
         );
 
         match ready_rx.recv_timeout(Duration::from_secs(5)) {
@@ -57,6 +76,7 @@ impl OverlayPresenter {
                 outputs,
                 is_alive,
                 supports_scaling,
+                wake_fd,
             }),
             _ => None,
         }
@@ -84,18 +104,35 @@ impl OverlayPresenter {
         self.outputs.layouts()
     }
 
+    /// Wake the event thread out of poll() so queued commands are applied
+    /// now. NONBLOCK fd: EAGAIN just means a wake is already pending.
+    fn wake(&self) {
+        let one: u64 = 1;
+        // SAFETY: wake_fd is a live eventfd; we write a full u64.
+        unsafe {
+            libc::write(
+                self.wake_fd.as_raw_fd(),
+                std::ptr::from_ref(&one).cast::<libc::c_void>(),
+                8,
+            );
+        }
+    }
+
+    fn send_cmd(&self, cmd: PresenterCommand) {
+        let _ = self.command_tx.send(cmd);
+        self.wake();
+    }
+
     pub fn show(&self, appearance: OverlayAppearance) {
-        let _ = self
-            .command_tx
-            .send(PresenterCommand::ShowSolid(appearance));
+        self.send_cmd(PresenterCommand::ShowSolid(appearance));
     }
 
     pub fn show_screensaver(&self) {
-        let _ = self.command_tx.send(PresenterCommand::ShowScreensaver);
+        self.send_cmd(PresenterCommand::ShowScreensaver);
     }
 
     pub fn submit_frame(&self, output_id: u32, width: u32, height: u32, pixels: Vec<u8>) {
-        let _ = self.command_tx.send(PresenterCommand::UpdateFrame {
+        self.send_cmd(PresenterCommand::UpdateFrame {
             output_id,
             width,
             height,
@@ -115,13 +152,16 @@ impl OverlayPresenter {
     }
 
     pub fn hide(&self) {
-        let _ = self.command_tx.send(PresenterCommand::Hide);
+        self.send_cmd(PresenterCommand::Hide);
     }
 }
 
 impl Drop for OverlayPresenter {
     fn drop(&mut self) {
-        let _ = self.command_tx.send(PresenterCommand::Hide);
+        self.send_cmd(PresenterCommand::Hide);
         self.shutdown.store(true, Ordering::Relaxed);
+        // Bare wake so the event loop sees `shutdown` promptly even if the
+        // command channel is already drained.
+        self.wake();
     }
 }

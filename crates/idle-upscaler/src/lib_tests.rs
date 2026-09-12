@@ -1,5 +1,9 @@
 use super::*;
 
+/// Serializes tests that mutate process env vars — parallel test threads
+/// otherwise race and flake (observed: simulation_tick_hz clamp test).
+static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 #[test]
 fn resolve_render_scale_clamps_high() {
     let s = resolve_render_scale(Some(2.0));
@@ -57,6 +61,7 @@ fn filter_mode_from_name_unknown_falls_back_to_linear() {
 
 #[test]
 fn max_fps_zero_when_unset() {
+    let _env_guard = ENV_LOCK.lock().unwrap();
     let prior = std::env::var("IDLE_MAX_FPS").ok();
     unsafe {
         std::env::remove_var("IDLE_MAX_FPS");
@@ -71,6 +76,7 @@ fn max_fps_zero_when_unset() {
 
 #[test]
 fn simulation_tick_hz_default_in_range() {
+    let _env_guard = ENV_LOCK.lock().unwrap();
     let prior = std::env::var("IDLE_TICK_HZ").ok();
     unsafe {
         std::env::remove_var("IDLE_TICK_HZ");
@@ -86,6 +92,7 @@ fn simulation_tick_hz_default_in_range() {
 
 #[test]
 fn target_fps_matches_detected_when_unset() {
+    let _env_guard = ENV_LOCK.lock().unwrap();
     let detected = 144;
     let prior = std::env::var("IDLE_MAX_FPS").ok();
     unsafe {
@@ -102,6 +109,7 @@ fn target_fps_matches_detected_when_unset() {
 
 #[test]
 fn target_fps_floors_detected_at_60() {
+    let _env_guard = ENV_LOCK.lock().unwrap();
     let prior = std::env::var("IDLE_MAX_FPS").ok();
     unsafe {
         std::env::remove_var("IDLE_MAX_FPS");
@@ -114,6 +122,7 @@ fn target_fps_floors_detected_at_60() {
 
 #[test]
 fn target_fps_respects_max_cap() {
+    let _env_guard = ENV_LOCK.lock().unwrap();
     let prior = std::env::var("IDLE_MAX_FPS").ok();
     unsafe {
         std::env::set_var("IDLE_MAX_FPS", "90");
@@ -125,6 +134,7 @@ fn target_fps_respects_max_cap() {
 
 #[test]
 fn simulation_tick_hz_clamps_env_outliers() {
+    let _env_guard = ENV_LOCK.lock().unwrap();
     let prior = std::env::var("IDLE_TICK_HZ").ok();
     unsafe {
         std::env::set_var("IDLE_TICK_HZ", "1");
