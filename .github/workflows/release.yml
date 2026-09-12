@@ -80,6 +80,14 @@ jobs:
           else
             echo "cli=build" >> "$GITHUB_OUTPUT"
           fi
+          # idle-plugins-all packages as "idle-savers"; version comes from
+          # the crate version like the other crates.
+          meta_v=$(ver idle-plugins-all)
+          if in_pool "idle-savers-${meta_v}-1.x86_64.rpm" "idle-savers_${meta_v}-1_amd64.deb"; then
+            echo "meta=skip" >> "$GITHUB_OUTPUT"
+          else
+            echo "meta=build" >> "$GITHUB_OUTPUT"
+          fi
           cat "$GITHUB_OUTPUT"
 
       - name: Package crates
@@ -91,6 +99,10 @@ jobs:
           if [ "${{ steps.plan.outputs.cli }}" = "build" ]; then
             cargo deb --no-build -p idle-cli
             cargo generate-rpm -p idle-cli
+          fi
+          if [ "${{ steps.plan.outputs.meta }}" = "build" ]; then
+            cargo deb --no-build -p idle-plugins-all
+            cargo generate-rpm -p idle-plugins-all
           fi
 
       - name: Install Cosign

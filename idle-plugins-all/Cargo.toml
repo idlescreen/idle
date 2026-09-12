@@ -1,8 +1,8 @@
 [package]
 authors = ["idlescreen developers"]
-repository = "https://github.com/idlescreen/idlescreen"
+repository = "https://github.com/idlescreen/idle"
 name = "idle-plugins-all"
-version = "3.2.0"
+version = "3.3.0"
 edition = "2024"
 description = "Meta package that hard-depends on all official IdleScreen saver plugins"
 license = "Apache-2.0"
@@ -19,7 +19,7 @@ changelog = "debian/changelog"
 copyright = "2026 IdleScreen"
 maintainer = "IdleScreen <jerydleuck@gmail.com>"
 extended-description = "Installs every official IdleScreen screensaver plugin (saver-*). Pulled in by idle-cosmic (not installed alone by end users)."
-depends = "idle-daemon, idle-saver-beams, idle-saver-bursts, idle-saver-chaos, idle-saver-cosmos, idle-saver-glyphs, idle-saver-gnats, idle-saver-radar, idle-saver-storm, idle-saver-hearth, idle-saver-ripple"
+depends = "idle-daemon, idle-saver-aurora, idle-saver-beams, idle-saver-bursts, idle-saver-chaos, idle-saver-cosmos, idle-saver-glyphs, idle-saver-gnats, idle-saver-radar, idle-saver-storm, idle-saver-hearth, idle-saver-ripple"
 provides = "idlescreen-savers, idle-plugins-all"
 replaces = "idlescreen-savers, idle-plugins-all"
 conflicts = "idle-plugins-all (<< 2.0.0)"
@@ -38,6 +38,7 @@ assets = []
 
 [package.metadata.generate-rpm.requires]
 idle-daemon = "*"
+idle-saver-aurora = "*"
 idle-saver-beams = "*"
 idle-saver-bursts = "*"
 idle-saver-chaos = "*"

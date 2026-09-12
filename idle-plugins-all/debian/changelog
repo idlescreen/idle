@@ -1,3 +1,10 @@
+idle-savers (3.3.0-1) unstable; urgency=medium
+
+  * Add idle-saver-aurora (aurora borealis curtains over starfield).
+  * Fix repository URL (idlescreen/idlescreen -> idlescreen/idle).
+
+ -- IdleScreen <jerydleuck@gmail.com>  Sat, 12 Sep 2026 18:45:00 +0000
+
 idle-savers (2.4.0-1) unstable; urgency=medium
 
   * All savers rebuilt against idle-api 3.2.0 flat exports.
