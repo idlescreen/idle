@@ -84,3 +84,47 @@ jobs:
         echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
     - name: cargo test
       run: cargo test --workspace --no-fail-fast
+
+  # Blast-radius gate: every downstream repo path-deps on idle-api /
+  # idle-runner / idle-dbus. Build them against THIS commit so a breaking
+  # API change fails here instead of going red in five repos later.
+  downstream:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        repo: [idle-savers, render, idle-studio, idle-tui, idle-cosmic]
+    steps:
+    - name: Checkout idle (this commit)
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        path: idle
+    - name: Checkout ${{ matrix.repo }}
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        repository: idlescreen/${{ matrix.repo }}
+        path: downstream
+    - name: Checkout render (idle-studio engine dep)
+      if: matrix.repo == 'idle-studio'
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        repository: idlescreen/render
+        path: downstream/render
+    - name: System deps
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libdbus-1-dev libwayland-dev libxkbcommon-dev libssl-dev pkg-config libudev-dev
+    - name: rustup
+      run: |
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
+        echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+        (cd downstream && rustup show)
+    - name: Wire path-dep layout
+      run: |
+        if [ "${{ matrix.repo }}" = "idle-studio" ]; then
+          ln -s ../../idle downstream/render/idle
+        else
+          ln -s ../idle downstream/idle
+        fi
+    - name: cargo check downstream
+      run: cd downstream && cargo check --workspace --all-targets
