@@ -92,6 +92,9 @@ Remove stale run state and log caches; \fB-n\fR previews only.
 .B self-update
 [\fB-c\fR|\fB--check\fR] (\fBupdate\fR, \fBupgrade\fR)
 Check and apply package updates (dnf/apt); \fB-c\fR reports only.
+Runs a pre-flight check and skips the sudo prompt entirely when every
+IdleScreen package is already current; when updates exist it lists only
+the pending packages and verifies each one reached its candidate version.
 .TP
 .B interactive
 Simple console menu.

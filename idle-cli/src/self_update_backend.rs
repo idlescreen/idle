@@ -143,6 +143,111 @@ pub fn parse_installed_lines(text: &str) -> Vec<String> {
         .collect()
 }
 
+/// Parse `dnf check-update` output: `name.arch version repo` rows.
+/// Only rows whose name matches an installed IdleScreen package count;
+/// a package listed by several repos is reported once.
+pub fn parse_dnf_check_update(text: &str, installed: &[String]) -> Vec<(String, String)> {
+    let mut seen = std::collections::HashSet::new();
+    text.lines()
+        .filter_map(|l| {
+            let mut parts = l.split_whitespace();
+            let token = parts.next()?;
+            let name = token.rsplit_once('.').map(|(n, _)| n).unwrap_or(token);
+            let ver = parts.next()?;
+            (installed.iter().any(|p| p == name) && seen.insert(name.to_string()))
+                .then(|| (name.to_string(), ver.to_string()))
+        })
+        .collect()
+}
+
+/// Parse `apt list --upgradable`: `name/repo ver arch [upgradable from: x]`.
+/// A package listed by several suites is reported once.
+pub fn parse_apt_upgradable(text: &str, installed: &[String]) -> Vec<(String, String)> {
+    let mut seen = std::collections::HashSet::new();
+    text.lines()
+        .filter_map(|l| {
+            let mut parts = l.split_whitespace();
+            let name = parts.next()?.split('/').next()?;
+            let ver = parts.next()?;
+            (installed.iter().any(|p| p == name) && seen.insert(name.to_string()))
+                .then(|| (name.to_string(), ver.to_string()))
+        })
+        .collect()
+}
+
+/// Which of `installed` have a pending upgrade, per the package manager's
+/// cached view. `None` = could not determine; caller should still attempt
+/// the upgrade (fail-open — the package manager is authoritative anyway).
+pub fn upgradable_packages(
+    backend: Backend,
+    installed: &[String],
+) -> Option<Vec<(String, String)>> {
+    if installed.is_empty() {
+        return Some(Vec::new());
+    }
+    match backend {
+        Backend::Dnf => {
+            // check-update exits 100 when updates exist, 0 when current.
+            // `-y` auto-accepts repo key imports into the per-user keyring —
+            // without it a repo_gpgcheck repo never loads for a non-root
+            // user and exit 0 falsely reports "no updates". Belt-and-braces:
+            // if a repo still failed to load, treat the result as unknown.
+            let out = Command::new("dnf")
+                .arg("-y")
+                .arg("check-update")
+                .args(installed)
+                .output()
+                .ok()?;
+            if dnf_repo_load_failed(&out) {
+                return None;
+            }
+            match out.status.code() {
+                Some(0) => Some(Vec::new()),
+                Some(100) => Some(parse_dnf_check_update(
+                    &String::from_utf8_lossy(&out.stdout),
+                    installed,
+                )),
+                _ => None,
+            }
+        }
+        Backend::Apt => {
+            let out = Command::new("apt")
+                .args(["list", "--upgradable"])
+                .output()
+                .ok()?;
+            out.status
+                .success()
+                .then(|| parse_apt_upgradable(&String::from_utf8_lossy(&out.stdout), installed))
+        }
+    }
+}
+
+/// True when dnf reported that a repo's metadata could not be verified or
+/// downloaded — in which case a "no updates" answer cannot be trusted.
+fn dnf_repo_load_failed(out: &std::process::Output) -> bool {
+    let all = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    [
+        "verification error",
+        "Signing key not found",
+        "Failed to download metadata",
+        "Cannot download repomd",
+    ]
+    .iter()
+    .any(|m| all.contains(m))
+}
+
+/// Currently installed version of the given package (None = not installed).
+pub fn installed_version(backend: Backend, pkg: &str) -> Option<String> {
+    match backend {
+        Backend::Dnf => stdout_trim("rpm", &["-q", pkg, "--qf", "%{VERSION}-%{RELEASE}"]),
+        Backend::Apt => stdout_trim("dpkg-query", &["-W", "-f=${Version}", pkg]),
+    }
+}
+
 /// Run `argv` as root: directly when euid==0, via sudo otherwise.
 /// Returns Err only when the command could not be spawned at all.
 pub fn run_privileged(argv: &[&str]) -> Result<std::process::ExitStatus, String> {

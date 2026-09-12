@@ -35,6 +35,7 @@ mod interactive_io;
 mod pkg_query;
 mod self_update;
 mod self_update_backend;
+mod self_update_check;
 mod service;
 
 #[cfg(test)]

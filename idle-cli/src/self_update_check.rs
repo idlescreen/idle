@@ -1,0 +1,200 @@
+// SPDX-License-Identifier: MIT
+
+//! Version-check/report half of `self-update`: query installed + repo
+//! candidate versions and print the status block before any upgrade runs.
+
+use anyhow::Result;
+use std::path::Path;
+use std::process::Command;
+
+use super::self_update_backend::{Backend, PKG_CANDIDATES, installed_version, stdout_trim};
+
+fn dnf_available_version(pkg: &str) -> Option<String> {
+    // `-y` auto-accepts repo key imports; without it repo_gpgcheck repos
+    // can't load for a non-root user and every query comes back empty.
+    stdout_trim(
+        "dnf",
+        &[
+            "-y",
+            "repoquery",
+            "--available",
+            "--latest-limit=1",
+            "--qf",
+            "%{version}-%{release}",
+            pkg,
+        ],
+    )
+    .or_else(|| {
+        let out = Command::new("dnf")
+            .args(["-y", "list", "--available", pkg])
+            .output()
+            .ok()?;
+        let text = String::from_utf8_lossy(&out.stdout);
+        parse_dnf_list_version(&text, true)
+    })
+}
+
+fn parse_dnf_list_version(text: &str, want_available: bool) -> Option<String> {
+    let mut section = "";
+    let mut last = None;
+    for line in text.lines() {
+        let line = line.trim();
+        if line.contains("Installed Packages") || line == "Installed packages" {
+            section = "installed";
+            continue;
+        }
+        if line.contains("Available Packages") || line == "Available packages" {
+            section = "available";
+            continue;
+        }
+        let looks_like_pkg = PKG_CANDIDATES
+            .iter()
+            .any(|p| line.starts_with(&format!("{p}.")) || line.starts_with(&format!("{p} ")));
+        if !looks_like_pkg {
+            continue;
+        }
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() < 2 {
+            continue;
+        }
+        let ver = parts[1].to_string();
+        if (want_available && (section == "available" || section.is_empty()))
+            || (!want_available && section == "installed")
+        {
+            last = Some(ver);
+        }
+    }
+    last
+}
+
+fn first_installed(backend: Backend) -> Option<(String, String)> {
+    for pkg in PKG_CANDIDATES {
+        if let Some(ver) = installed_version(backend, pkg) {
+            return Some((pkg.to_string(), ver));
+        }
+    }
+    None
+}
+
+pub fn handle_dnf_update() -> Result<Option<(String, String)>> {
+    println!("Checking for updates with DNF/RPM...");
+
+    let Some((pkg, installed)) = first_installed(Backend::Dnf) else {
+        println!(" [!] No IdleScreen RPM packages detected (idle-cli / idle-daemon).");
+        println!("     -> curl -fsSL https://idlescreen.github.io/packages/install.sh | sh");
+        return Ok(None);
+    };
+    let available = dnf_available_version(&pkg);
+
+    match available {
+        Some(cand) if versions_equalish(&installed, &cand) => {
+            println!(" [✔] {pkg} is up to date (version {installed}).");
+        }
+        Some(cand) => {
+            println!(" [!] Update available: {pkg} {installed} → {cand}");
+        }
+        None => {
+            println!(" [✔] Installed: {pkg}-{installed}");
+            let repo_present = Path::new("/etc/yum.repos.d/idlescreen.repo").exists()
+                || Path::new("/etc/yum.repos.d/_copr:idlescreen.repo").exists();
+            if repo_present {
+                println!(" [i] Could not query repo for candidate version.");
+                println!("     -> Refresh metadata: sudo dnf clean all && sudo dnf upgrade");
+            } else {
+                println!(" [!] Could not query the latest package from the repo.");
+                println!("     -> Confirm the idlescreen repo is in /etc/yum.repos.d/");
+            }
+        }
+    }
+    Ok(Some((pkg, installed)))
+}
+
+fn apt_policy_versions(pkg: &str) -> Option<(String, String)> {
+    let out = stdout_trim("apt-cache", &["policy", pkg])?;
+    parse_apt_policy(&out)
+}
+
+fn parse_apt_policy(out: &str) -> Option<(String, String)> {
+    let mut inst = None;
+    let mut cand = None;
+    for line in out.lines() {
+        let line = line.trim();
+        if let Some(rest) = line.strip_prefix("Installed:") {
+            inst = Some(rest.trim().to_string());
+        } else if let Some(rest) = line.strip_prefix("Candidate:") {
+            cand = Some(rest.trim().to_string());
+        }
+    }
+    match (inst, cand) {
+        // Keep a "(none)" Installed value — the caller renders it as
+        // "package not installed" rather than "status unknown".
+        (Some(i), Some(c)) if c != "(none)" => Some((i, c)),
+        (None, Some(c)) if c != "(none)" => Some(("(none)".to_string(), c)),
+        _ => None,
+    }
+}
+
+pub fn handle_apt_update() -> Result<Option<(String, String)>> {
+    let pkg = PKG_CANDIDATES
+        .iter()
+        .find(|p| {
+            stdout_trim("dpkg-query", &["-W", "-f=${Version}", p]).is_some()
+                || apt_policy_versions(p).is_some()
+        })
+        .copied()
+        .unwrap_or("idle-cli");
+
+    println!(" Checking APT package status for '{pkg}'...");
+    match apt_policy_versions(pkg) {
+        Some((inst, cand)) => {
+            println!(" [✔] Installed version: {inst}");
+            println!(" [✔] Repository version: {cand}");
+
+            if inst == "(none)" {
+                println!(" [!] Package is not currently installed.");
+                println!(
+                    "     -> curl -fsSL https://idlescreen.github.io/packages/install.sh | sh"
+                );
+                return Ok(None);
+            } else if !versions_equalish(&inst, &cand) {
+                println!(" [!] Update available: {inst} → {cand}");
+            } else {
+                println!(" [✔] IdleScreen is up to date.");
+            }
+            Ok(Some((pkg.to_string(), inst)))
+        }
+        None => {
+            if let Some(inst) = stdout_trim("dpkg-query", &["-W", "-f=${Version}", pkg]) {
+                println!(" [✔] Installed version: {inst}");
+                println!(" [!] Could not read APT candidate (is the idlescreen repo configured?).");
+                println!("     -> sudo apt update && sudo apt upgrade");
+                Ok(Some((pkg.to_string(), inst)))
+            } else {
+                println!(" [!] Could not determine package status.");
+                println!(
+                    "     -> curl -fsSL https://idlescreen.github.io/packages/install.sh | sh"
+                );
+                Ok(None)
+            }
+        }
+    }
+}
+
+/// Compare versions ignoring arch suffixes and an RPM epoch prefix — DNF
+/// reports `0:3.5.1-1` while `rpm -q` answers `3.5.1-1`.
+pub fn versions_equalish(a: &str, b: &str) -> bool {
+    let norm = |s: &str| {
+        s.trim()
+            .rsplit(':')
+            .next()
+            .unwrap_or("")
+            .trim_end_matches(".x86_64")
+            .trim_end_matches(".noarch")
+            .to_string()
+    };
+    norm(a) == norm(b)
+}
+
+#[cfg(test)]
+#[path = "self_update_check_tests.rs"]
+mod tests;
