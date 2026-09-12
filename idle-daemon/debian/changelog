@@ -1,3 +1,10 @@
+idle-daemon (3.5.9-1) unstable; urgency=medium
+
+  * Add idle-saver-aurora to deb Recommends and rpm Recommends so
+    bare-daemon installs pull the aurora saver too.
+
+ -- IdleScreen <jerydleuck@gmail.com>  Sat, 12 Sep 2026 19:30:00 +0000
+
 idle-daemon (3.5.8-1) unstable; urgency=medium
 
   * Add aurora to the trusted saver allowlist (ALLOWED_SAVERS) so
