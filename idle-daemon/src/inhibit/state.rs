@@ -14,9 +14,7 @@ use super::merge::merge_inhibitor_rows;
 #[derive(Debug, Clone)]
 pub struct Inhibitor {
     pub cookie: u32,
-    #[allow(dead_code)]
     pub application_name: String,
-    #[allow(dead_code)]
     pub reason: String,
     pub client: UniqueName<'static>,
 }

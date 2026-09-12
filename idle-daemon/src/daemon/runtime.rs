@@ -82,12 +82,7 @@ pub fn initialize_runtime(
     #[cfg(not(target_os = "linux"))]
     let idle_monitor: Box<dyn IdleSource> =
         idle_api::platform_idle(Duration::from_secs(idle_timeout.saturating_mul(60) as u64))
-            .ok_or_else(|| {
-                anyhow!(
-                    "DEGRADED: idle source unavailable on this platform. Sprint 05 will land \
-             macOS / Windows impls; see SPRINT.md."
-                )
-            })?;
+            .ok_or_else(|| anyhow!("DEGRADED: idle source unavailable on this platform."))?;
 
     tracing::info!("using platform idle source");
     if !idle_monitor.is_alive() {

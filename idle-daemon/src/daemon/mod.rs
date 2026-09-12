@@ -7,7 +7,6 @@
 
 pub mod battery;
 pub(crate) mod idle_decision;
-pub(crate) mod idle_logic;
 #[cfg(test)]
 mod liveness_validation_tests;
 #[cfg(test)]

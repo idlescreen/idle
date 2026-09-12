@@ -45,7 +45,6 @@ and unknown keys survive saves, and `.bak` snapshots precede every write.
 ## Process kit
 
 Root `*.md` files are the working kit, not user docs — load together:
-`DESIGN.md` (product contract), `PM.md` (status), `SPRINT.md` (planning),
-`RULES.md` (axioms), `PROBE.md` (adversarial audit), `OODA.md` +
-`SWARM.md` (rotation ops). `DEPLOYMENT.md` covers packaging/release ops.
-Hygiene, chaos, QA, and publish-gate scripts live in `scripts/`.
+`DESIGN.md` (product contract), `RULES.md` (axioms).
+`DEPLOYMENT.md` covers packaging/release ops.
+Hygiene, chaos, and QA scripts live in `scripts/`.

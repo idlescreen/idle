@@ -11,7 +11,6 @@ pub struct MonitorTopology {
     pub width: u32,
     pub height: u32,
     pub scale: i32,
-    #[allow(dead_code)]
     pub refresh_mhz: u32,
 }
 

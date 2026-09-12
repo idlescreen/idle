@@ -87,8 +87,8 @@ fn manifest_unsupported_runtime_fails_closed() {
     let m = parse(&BASE.replace(r#"runtime = "native""#, r#"runtime = "wasm""#));
     let err = check_entry(&m, &PathBuf::from("libscreensaver_beams.so")).unwrap_err();
     assert!(
-        matches!(err, PluginError::ManifestUnsupported(ref s) if s.contains("DECISION-WASM-01")),
-        "wasm must be refused with the decision reference, got {err:?}"
+        matches!(err, PluginError::ManifestUnsupported(ref s) if s.contains("not built")),
+        "wasm must be refused, got {err:?}"
     );
 }
 
@@ -187,7 +187,7 @@ fn run_plugin_fullscreen_passes_gate_under_flag() {
     unsafe { std::env::remove_var("IDLE_ALLOW_UNSIGNED_PLUGINS") };
     let err = result.expect_err("fake .so must fail somewhere; the point is *where*");
     let msg = err.to_string();
-    // B4 (PROBE.md) — the gate passed; the dlopen() must fail closed at
+    // B4 — the gate passed; the dlopen() must fail closed at
     // the Library::new step. A regression that flipped the order (e.g.
     // dlopen before the manifest check) would silently accept a bogus
     // binary; a regression that swallowed the dlopen error entirely

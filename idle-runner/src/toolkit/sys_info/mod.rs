@@ -1,9 +1,7 @@
 //! Host system information. Vendored and slimmed from `runner::toolkit::sys_info`.
 //!
-//! Public API: `get_system_info`, `query_dark_mode`, `query_local_ip`,
+//! Public API: `get_system_info`, `query_dark_mode`,
 //! `query_disk_drives` (delegated to `linux_queries`), `query_current_palette`.
-
-#![allow(dead_code)]
 
 mod monitors;
 mod theme;
@@ -189,13 +187,6 @@ pub fn query_power_status() -> Option<PowerStatus> {
     {
         None
     }
-}
-
-/// Find the host's primary outbound IP by opening a UDP socket to 8.8.8.8.
-pub fn query_local_ip() -> Option<String> {
-    let socket = std::net::UdpSocket::bind("0.0.0.0:0").ok()?;
-    socket.connect("8.8.8.8:80").ok()?;
-    socket.local_addr().ok().map(|addr| addr.ip().to_string())
 }
 
 #[cfg(test)]

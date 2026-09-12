@@ -4,7 +4,6 @@
 **Scope:** Any codebase.  
 **Purpose:** Always-on **first principles** of how we work. Not product scripts. Not DESIGN.
 
-**Siblings:** `~/OODA.md` (rotation) · `~/PROBE.md` (assumption hunt).  
 **Product docs** (`ROOT/DESIGN.md`, `ROOT/TOOLS.md`) are **inputs** — they never replace this file.
 
 ---
@@ -101,7 +100,7 @@ Repos may extend \(S\) in **ROOT/TOOLS.md** (product-only terms).
 
 | Domain | Idea | Axiom / place |
 |--------|------|----------------|
-| Control / OODA | Short loops | OODA.md |
+| Control / OODA | Short loops | ooda/ module |
 | Flight / energy | Act, don’t only plan | E-M |
 | Thermo | Trust-surface disorder | Reverse entropy / \(S\) |
 | Pareto / math | Few items dominate | Power law ≤5 |
@@ -139,4 +138,4 @@ No language mandating, no product binary lists, no smoke inventories. Those are 
 
 ---
 
-*Process kit: **RULES** · **OODA** · **PROBE**.*
+*Process kit: **RULES**.*

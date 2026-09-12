@@ -102,5 +102,4 @@ install, not user-configured.
 
 - `RULES.md` — always-on philosophy + hygiene bundle (used while
   coding)
-- `PM.md` — current state of every item above (status dashboard)
-- `SPRINT.md` — active work-in-flight (empty when shipped & happy)
+

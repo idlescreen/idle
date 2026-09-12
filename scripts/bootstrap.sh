@@ -10,7 +10,7 @@
 #   3. Symlink ../idle if the repo's path deps expect it.
 #   4. Print the verified next-step (cargo test --workspace).
 #
-# Per SWARM §1 this is the *light-tier* local helper for hygiene; it never
+# This is the *light-tier* local helper for hygiene; it never
 # touches the network beyond `rustup`/`cargo install`.
 
 set -euo pipefail

@@ -15,7 +15,7 @@ use crate::launcher::PluginError;
 pub(crate) fn check_entry(manifest: &Manifest, resolved: &Path) -> Result<(), PluginError> {
     if !manifest.is_native() {
         return Err(PluginError::ManifestUnsupported(
-            "wasm runtime not built in this build; see DECISION-WASM-01 in PM.md".to_string(),
+            "wasm runtime not built in this build".to_string(),
         ));
     }
     if !manifest.library_matches(resolved) {

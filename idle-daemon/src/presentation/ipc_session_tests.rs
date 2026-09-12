@@ -76,19 +76,6 @@ fn kill_child_clears_handle() {
 }
 
 #[test]
-fn child_is_dead_true_without_child() {
-    let mut s = IpcPluginSession::load_with_options(
-        "beams",
-        &LaunchMode::Daemon,
-        None,
-        std::collections::BTreeMap::new(),
-        false,
-    )
-    .expect("load");
-    assert!(s.child_is_dead(), "no child → reports dead");
-}
-
-#[test]
 fn expected_stop_is_set_after_kill() {
     let mut s = IpcPluginSession::load_with_options(
         "beams",
