@@ -1,3 +1,10 @@
+idle-cli (3.5.7-1) unstable; urgency=medium
+
+  * Add aurora to the trusted saver allowlist (shared idle-runner) so
+    `idlescreen saver aurora` / `preview aurora` resolve it.
+
+ -- IdleScreen <jerydleuck@gmail.com>  Sat, 12 Sep 2026 19:00:00 +0000
+
 idle-cli (3.4.0-1) unstable; urgency=medium
 
   * Remove dead gpu_enabled flag end-to-end (GPU upscaler deleted in 2026;
