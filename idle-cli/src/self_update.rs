@@ -9,7 +9,9 @@ use super::self_update_backend::{
     Backend, detect_backend, installed_packages, installed_version, run_privileged,
     upgradable_packages,
 };
-use super::self_update_check::{handle_apt_update, handle_dnf_update, versions_equalish};
+use super::self_update_check::{
+    handle_apt_update, handle_dnf_update, version_cmp, versions_equalish,
+};
 
 /// `update`/`upgrade`/`self-update` all do the same thing: upgrade every
 /// installed IdleScreen package (`idle-*` / `idlescreen*`) via the system
@@ -68,8 +70,11 @@ pub fn handle_self_update(check_only: bool) -> Result<()> {
         Some(v) => v.iter().map(|(n, _)| n.as_str()).collect(),
         None => pkgs.iter().map(String::as_str).collect(),
     };
+    // --refresh on the privileged side: root's dnf metadata cache is
+    // separate from the user's and can be older — without this the
+    // upgrade sees nothing while the preflight just saw a candidate.
     let mut step: Vec<&str> = match backend {
-        Backend::Dnf => vec!["dnf", "upgrade", "-y"],
+        Backend::Dnf => vec!["dnf", "upgrade", "-y", "--refresh"],
         Backend::Apt => vec!["apt-get", "install", "--only-upgrade", "-y"],
     };
     step.extend(&names);
@@ -81,7 +86,10 @@ pub fn handle_self_update(check_only: bool) -> Result<()> {
             let mut missed = 0usize;
             for (name, cand) in v {
                 match installed_version(backend, name) {
-                    Some(after) if versions_equalish(&after, cand) => {
+                    // after >= cand: a newer build may have been published
+                    // between the preflight check and the upgrade — that
+                    // is success, not a miss.
+                    Some(after) if !version_cmp(&after, cand).is_lt() => {
                         println!(" [✔] {name} → {after}");
                     }
                     other => {

@@ -12,12 +12,15 @@ use super::self_update_backend::{Backend, PKG_CANDIDATES, installed_version, std
 fn dnf_available_version(pkg: &str) -> Option<String> {
     // `-y` auto-accepts repo key imports; without it repo_gpgcheck repos
     // can't load for a non-root user and every query comes back empty.
+    // Scoped to the idlescreen repo: refreshes ~4KB of our metadata, not
+    // every enabled Fedora repo, and it's the only repo that carries us.
     stdout_trim(
         "dnf",
         &[
             "-y",
             "repoquery",
             "--refresh",
+            "--repo=idlescreen",
             "--available",
             "--latest-limit=1",
             "--qf",
@@ -27,7 +30,7 @@ fn dnf_available_version(pkg: &str) -> Option<String> {
     )
     .or_else(|| {
         let out = Command::new("dnf")
-            .args(["-y", "list", "--available", pkg])
+            .args(["-y", "--repo=idlescreen", "list", "--available", pkg])
             .output()
             .ok()?;
         let text = String::from_utf8_lossy(&out.stdout);

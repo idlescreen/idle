@@ -183,8 +183,7 @@ pub fn upgradable_packages(
             // user and exit 0 falsely reports "no updates". Belt-and-braces:
             // if a repo still failed to load, treat the result as unknown.
             let out = Command::new("dnf")
-                .arg("-y")
-                .arg("check-update")
+                .args(["-y", "check-update", "--refresh", "--repo=idlescreen"])
                 .args(installed)
                 .output()
                 .ok()?;
