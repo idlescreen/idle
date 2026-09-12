@@ -80,7 +80,10 @@ pub(crate) fn apply_config_line(
         return;
     }
 
-    let Some(idx) = line.find(':') else {
+    // `key: value` is canonical, but accept `key = value` too — hand-edited
+    // files commonly use `=`, and silently ignoring (or worse, dropping on
+    // merge) a line the user meant as a setting is a config-loss bug.
+    let Some(idx) = line.find([':', '=']) else {
         return;
     };
     let key = line[..idx].trim();
@@ -99,7 +102,8 @@ pub(crate) fn apply_config_line(
 /// Merge `fields` (daemon-owned `key: value` pairs) into existing config
 /// text, preserving every line it does not own — comments, applet keys like
 /// `accent_color`/`theme_idx`, unknown keys. `[saver]`/`[saver.*]` sections
-/// are rewritten from `saver_params` so removed params disappear.
+/// are rewritten from `saver_params` so removed params disappear; comment,
+/// blank, and unparseable lines inside them are kept verbatim.
 /// `fields` is drained: consumed entries are replaced in place, leftovers
 /// append at the end.
 pub(crate) fn merge_config_body(
@@ -108,6 +112,8 @@ pub(crate) fn merge_config_body(
     saver_params: &std::collections::BTreeMap<String, String>,
 ) -> String {
     let mut body = String::new();
+    // Non-kv lines collected from `saver*` sections — re-emitted verbatim.
+    let mut saver_extras: Vec<&str> = Vec::new();
     if existing.trim().is_empty() {
         body.push_str(
             "# IdleScreen themes and settings\n\
@@ -118,7 +124,9 @@ pub(crate) fn merge_config_body(
         );
     } else {
         // `saver*` sections are rewritten from saver_params; keys inside any
-        // other section are preserved verbatim even if names collide.
+        // other section are preserved verbatim even if names collide. Inside
+        // saver sections, non-key lines (comments, blanks, unparseable text)
+        // are kept and re-emitted — silently dropping them loses user data.
         let mut in_saver = false;
         let mut in_section = false;
         for line in existing.lines() {
@@ -133,12 +141,15 @@ pub(crate) fn merge_config_body(
                 continue;
             }
             if in_saver {
+                if t.find([':', '=']).is_none() {
+                    saver_extras.push(line);
+                }
                 continue;
             }
             let owned = !in_section
                 && !t.is_empty()
                 && !t.starts_with('#')
-                && t.find(':').is_some_and(|idx| {
+                && t.find([':', '=']).is_some_and(|idx| {
                     let key = t[..idx].trim();
                     if let Some(pos) = fields.iter().position(|(k, _)| *k == key) {
                         let (k, v) = fields.remove(pos);
@@ -157,8 +168,12 @@ pub(crate) fn merge_config_body(
     for (k, v) in fields.drain(..) {
         body.push_str(&format!("{k}: {v}\n"));
     }
-    if !saver_params.is_empty() {
+    if !saver_params.is_empty() || !saver_extras.is_empty() {
         body.push_str("\n[saver]\n");
+        for line in &saver_extras {
+            body.push_str(line);
+            body.push('\n');
+        }
         for (k, v) in saver_params {
             body.push_str(&format!("{k}: {v}\n"));
         }

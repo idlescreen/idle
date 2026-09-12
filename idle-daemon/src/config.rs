@@ -180,7 +180,18 @@ impl DaemonConfig {
         lock.lock()?;
         // Read-modify-write: only daemon-owned keys are rewritten; foreign
         // keys and comments survive so co-writing tools cannot clobber them.
-        let existing = fs::read_to_string(&path).unwrap_or_default();
+        let mut existing = fs::read_to_string(&path).unwrap_or_default();
+        if existing.trim().is_empty() && path.is_file() {
+            // A non-atomic co-writer's O_TRUNC window can yield a momentary
+            // empty read — retry once before trusting it, otherwise the
+            // empty-file template would stamp defaults over real settings.
+            std::thread::sleep(std::time::Duration::from_millis(25));
+            existing = fs::read_to_string(&path).unwrap_or_default();
+        }
+        if !existing.is_empty() {
+            // Last-known-good snapshot so a bad write is recoverable.
+            let _ = fs::write(parent.join("config.yaml.bak"), &existing);
+        }
         let content = crate::config_parse::merge_config_body(
             &existing,
             &mut self.rendered_fields(),

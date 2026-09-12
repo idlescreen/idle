@@ -12,6 +12,8 @@ pub mod config_parse;
 pub mod cli_main;
 #[cfg(test)]
 mod config_fuzz_tests;
+#[cfg(test)]
+mod config_merge_tests;
 pub mod config_watcher;
 pub mod controller;
 pub mod daemon;
