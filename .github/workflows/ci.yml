@@ -93,7 +93,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        repo: [idle-savers, render, idle-studio, idle-tui, idle-cosmic]
+        repo: [idle-savers, render, idle-tui, idle-cosmic]
     steps:
     - name: Checkout idle (this commit)
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -104,12 +104,6 @@ jobs:
       with:
         repository: idlescreen/${{ matrix.repo }}
         path: downstream
-    - name: Checkout render (idle-studio engine dep)
-      if: matrix.repo == 'idle-studio'
-      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      with:
-        repository: idlescreen/render
-        path: downstream/render
     - name: System deps
       run: |
         sudo apt-get update
@@ -120,11 +114,6 @@ jobs:
         echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
         (cd downstream && rustup show)
     - name: Wire path-dep layout
-      run: |
-        if [ "${{ matrix.repo }}" = "idle-studio" ]; then
-          ln -s ../../idle downstream/render/idle
-        else
-          ln -s ../idle downstream/idle
-        fi
+      run: ln -s ../idle downstream/idle
     - name: cargo check downstream
       run: cd downstream && cargo check --workspace --all-targets
