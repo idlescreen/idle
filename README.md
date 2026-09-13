@@ -1,15 +1,11 @@
-# idle — the IdleScreen engine
+# runtime
 
-A Wayland screensaver for Linux. We don't lock, dim, or authenticate — we
-render content while you're idle and yield back cleanly on input.
+The engine — idle daemon, sandboxed plugin host, D-Bus API, and the saver
+ABI every plugin builds against. Part of
+[IdleScreen](https://idlescreen.github.io) — modular Wayland screensavers
+for Linux.
 
-**Website:** [idlescreen.github.io](https://idlescreen.github.io) ·
-**Packages:** signed APT/RPM channel via the
-[`packages`](https://github.com/idlescreen/packages) repo
-
-## What's in this repo
-
-This is the runtime workspace — the engine, daemon, and plugin host.
+## What's inside
 
 | Path | Role |
 |---|---|
@@ -22,29 +18,29 @@ This is the runtime workspace — the engine, daemon, and plugin host.
 | `crates/idle-ipc` | Daemon↔runner wire protocol |
 | `crates/idle-upscaler` | CPU frame upscaler |
 
-The CLI lives in [`cli`](https://github.com/idlescreen/cli), the router in
-[`idlescreen`](https://github.com/idlescreen/idlescreen), savers in
-[`savers`](https://github.com/idlescreen/savers), the TUI in `tui`, the
-COSMIC applet in `cosmic`, and the render engine + studio TUI in
-[`studio`](https://github.com/idlescreen/studio).
+## Use
 
-## Using it
+Installed as `idle-daemon` — managed by `systemctl --user`. Drive it from
+the [`idlescreen`](https://github.com/idlescreen/idlescreen) router:
 
 ```sh
 idlescreen status          # daemon state, active saver, inhibitors
 idlescreen preview hearth  # fullscreen preview
 idlescreen saver set beams # pick a saver
 idlescreen timeout 10      # idle timeout in minutes
-idlescreen tui             # interactive console
 idlescreen doctor          # diagnostics
 ```
 
-Config lives at `~/.config/idle/config.yaml` — edits hot-reload, comments
-and unknown keys survive saves, and `.bak` snapshots precede every write.
+## Develop
 
-## Process kit
+Standalone workspace — no sibling checkouts needed.
 
-Root `*.md` files are the working kit, not user docs — load together:
-`DESIGN.md` (product contract), `RULES.md` (axioms).
-`DEPLOYMENT.md` covers packaging/release ops.
-Hygiene, chaos, and QA scripts live in `scripts/`.
+```sh
+sudo dnf install libdbus-1-devel wayland-devel libxkbcommon-devel \
+    openssl-devel libudev-devel pkgconf-pkg-config   # apt: -dev names
+cargo build --workspace && cargo test --workspace
+```
+
+## License
+
+Apache-2.0 · © 2026 IdleScreen
