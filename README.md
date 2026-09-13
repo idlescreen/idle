@@ -31,11 +31,10 @@ The daemon runs as `idle-daemon` under `systemctl --user`.
 Driven through the `idlescreen` router:
 
 ```sh
-idlescreen status           # daemon state, active saver, inhibitors
-idlescreen preview hearth   # fullscreen preview
-idlescreen saver set beams  # pick a saver
-idlescreen timeout 10       # idle timeout in minutes
-idlescreen doctor           # diagnostics
+idlescreen doctor --fix   # diagnose + repair the daemon
+idlescreen preview storm  # fullscreen preview
+idlescreen update         # upgrade packages
+idlescreen tui            # runtime configuration
 ```
 
 ## License
