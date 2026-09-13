@@ -86,7 +86,7 @@ if [[ "${GATE_SAVERS:-1}" != "0" ]]; then
       echo ">>> $name"
       (
         cd "$dir"
-        [[ -e idle ]] || ln -sfn ../idle idle
+        [[ -e runtime ]] || ln -sfn ../runtime runtime
         cargo test --quiet
       ) || failed_s=$((failed_s + 1))
     done

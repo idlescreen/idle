@@ -1,6 +1,6 @@
 [package]
 authors = ["idlescreen developers"]
-repository = "https://github.com/idlescreen/idle"
+repository = "https://github.com/idlescreen/savers"
 name = "idle-plugins-all"
 version = "3.3.0"
 edition = "2024"

@@ -121,7 +121,7 @@ pub fn print_version(verbose: bool, json: bool) {
     }
     println!("IdleScreen screensaver control CLI");
     println!("License: Apache-2.0");
-    println!("Home:    https://github.com/idlescreen/idle");
+    println!("Home:    https://github.com/idlescreen/idlescreen");
     if let Some(pkg) = package_version_hint() {
         println!("Package: {pkg}");
     }

@@ -7,7 +7,7 @@
 # idle-saver-*). It will:
 #   1. Ensure rustup + the pinned toolchain (rust-toolchain.toml).
 #   2. Install cargo-audit / cargo-deny if missing.
-#   3. Symlink ../idle if the repo's path deps expect it.
+#   3. Symlink ../runtime if the repo's path deps expect it.
 #   4. Print the verified next-step (cargo test --workspace).
 #
 # This is the *light-tier* local helper for hygiene; it never
@@ -46,13 +46,13 @@ for bin in cargo-audit cargo-deny; do
 done
 
 # 3. sibling idle/ symlink if a path dep expects it.
-if [ ! -e idle ] && grep -qE 'path *= *"\./?idle/' Cargo.toml 2>/dev/null; then
-    if [ -d ../idle ]; then
-        log "symlinking idle/ -> ../idle"
-        ln -sfn ../idle idle
+if [ ! -e runtime ] && grep -qE 'path *= *"./?runtime/' Cargo.toml 2>/dev/null; then
+    if [ -d ../runtime ]; then
+        log "symlinking runtime/ -> ../runtime"
+        ln -sfn ../runtime runtime
     else
-        log "NOTE: idle/ missing and ../idle not present."
-        log "      Either clone idlescreen/idle as a sibling or run"
+        log "NOTE: runtime/ missing and ../runtime not present."
+        log "      Either clone idlescreen/runtime as a sibling or run"
         log "      'git submodule update --init' if this repo uses submodules."
     fi
 fi

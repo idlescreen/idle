@@ -207,10 +207,10 @@ fn trusted_control_peers_exact_set() {
 fn cargo_target_bin_dirs_are_recognized() {
     use super::auth_peer::is_cargo_target_bin_dir;
     assert!(is_cargo_target_bin_dir(
-        "/home/jeryd/Projects/idlescreen/idle/target/release"
+        "/home/jeryd/Projects/idlescreen/runtime/target/release"
     ));
     assert!(is_cargo_target_bin_dir(
-        "/home/jeryd/Projects/idlescreen/idle/target/debug"
+        "/home/jeryd/Projects/idlescreen/runtime/target/debug"
     ));
     assert!(!is_cargo_target_bin_dir("/usr/bin"));
     assert!(!is_cargo_target_bin_dir("/tmp/idlescreen"));

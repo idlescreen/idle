@@ -98,7 +98,7 @@ jobs:
     - name: Checkout idle (this commit)
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
-        path: idle
+        path: runtime
     - name: Checkout ${{ matrix.repo }}
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
@@ -114,6 +114,6 @@ jobs:
         echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
         (cd downstream && rustup show)
     - name: Wire path-dep layout
-      run: ln -s ../idle downstream/idle
+      run: ln -s ../runtime downstream/runtime
     - name: cargo check downstream
       run: cd downstream && cargo check --workspace --all-targets
