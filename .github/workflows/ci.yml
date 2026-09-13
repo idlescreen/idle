@@ -93,7 +93,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        repo: [idle-savers, render, idle-tui, idle-cosmic]
+        repo: [savers, render, idle-tui, idle-cosmic]
     steps:
     - name: Checkout idle (this commit)
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
