@@ -5,8 +5,6 @@ ABI every plugin builds against. Part of
 [IdleScreen](https://idlescreen.github.io) — modular Wayland screensavers
 for Linux.
 
-## What's inside
-
 | Path | Role |
 |---|---|
 | `idle-daemon/` | The service: idle monitoring, presentation sessions, config, D-Bus API, plugin orchestration |
@@ -18,27 +16,26 @@ for Linux.
 | `crates/idle-ipc` | Daemon↔runner wire protocol |
 | `crates/idle-upscaler` | CPU frame upscaler |
 
-## Use
+## Install
 
-Installed as `idle-daemon` — managed by `systemctl --user`. Drive it from
-the [`idlescreen`](https://github.com/idlescreen/idlescreen) router:
+Ships with the `idlescreen` product package. On its own:
 
 ```sh
-idlescreen status          # daemon state, active saver, inhibitors
-idlescreen preview hearth  # fullscreen preview
-idlescreen saver set beams # pick a saver
-idlescreen timeout 10      # idle timeout in minutes
-idlescreen doctor          # diagnostics
+idlescreen install runtime
 ```
 
-## Develop
+The daemon runs as `idle-daemon` under `systemctl --user`.
 
-Standalone workspace — no sibling checkouts needed.
+## Commands
+
+Driven through the `idlescreen` router:
 
 ```sh
-sudo dnf install libdbus-1-devel wayland-devel libxkbcommon-devel \
-    openssl-devel libudev-devel pkgconf-pkg-config   # apt: -dev names
-cargo build --workspace && cargo test --workspace
+idlescreen status           # daemon state, active saver, inhibitors
+idlescreen preview hearth   # fullscreen preview
+idlescreen saver set beams  # pick a saver
+idlescreen timeout 10       # idle timeout in minutes
+idlescreen doctor           # diagnostics
 ```
 
 ## License
