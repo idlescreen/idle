@@ -807,10 +807,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "idle-plugins-all"
-version = "3.3.0"
-
-[[package]]
 name = "idle-runner"
 version = "3.5.0"
 dependencies = [

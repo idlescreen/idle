@@ -10,7 +10,6 @@ members = [
     "idle-runner",
     "idle-daemon",
     "idle-cli",
-    "idle-plugins-all",
 ]
 
 [profile.release]

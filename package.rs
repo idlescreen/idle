@@ -128,11 +128,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         run_cmd(Command::new("cargo").args(["deb", "--no-build", "-p", crate_name]))?;
 
         // Deb/RPM metadata package names (may differ from crate name).
-        let pkg_name = if *crate_name == "idle-plugins-all" {
-            "idle-savers"
-        } else {
-            crate_name
-        };
+        let pkg_name = crate_name;
 
         // Find built .deb file
         let deb_dir = Path::new("target/debian");
