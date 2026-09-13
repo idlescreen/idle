@@ -1,4 +1,4 @@
-idle-daemon (3.5.11-1) unstable; urgency=medium
+idle-daemon (3.5.15-1) unstable; urgency=medium
 
   * Trust idle-cli in D-Bus control auth: after the cli repo split the
     CLI binary is /usr/bin/idle-cli, so control methods (preview, config,
