@@ -46,6 +46,7 @@ fn strict_control_denies_comm_fallback_when_exe_unreadable() {
 #[test]
 fn trusted_peer_names_are_fixed() {
     assert!(TRUSTED_CONTROL_PEERS.contains(&"idlescreen"));
+    assert!(TRUSTED_CONTROL_PEERS.contains(&"idle-cli"));
     assert!(TRUSTED_CONTROL_PEERS.contains(&"idle-tui"));
     assert!(TRUSTED_CONTROL_PEERS.contains(&"idlescreen-applet"));
     // /usr/bin/idle is python3-idle on Fedora — must not be trusted for D-Bus control.
@@ -196,9 +197,10 @@ fn untrusted_basename_never_matches_comm_policy() {
 
 #[test]
 fn trusted_control_peers_exact_set() {
-    // Package-gate contract: only these three control clients.
-    assert_eq!(TRUSTED_CONTROL_PEERS.len(), 3);
+    // Package-gate contract: only these four control clients.
+    assert_eq!(TRUSTED_CONTROL_PEERS.len(), 4);
     assert!(TRUSTED_CONTROL_PEERS.contains(&"idlescreen"));
+    assert!(TRUSTED_CONTROL_PEERS.contains(&"idle-cli"));
     assert!(TRUSTED_CONTROL_PEERS.contains(&"idle-tui"));
     assert!(TRUSTED_CONTROL_PEERS.contains(&"idlescreen-applet"));
 }

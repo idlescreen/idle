@@ -6,6 +6,7 @@
 pub(super) const TRUSTED_CONTROL_PEERS: &[&str] = &[
     // Never trust basename "idle" — that is Fedora's python3-idle IDE binary.
     "idlescreen",
+    "idle-cli",
     "idle-tui",
     "idlescreen-applet",
 ];

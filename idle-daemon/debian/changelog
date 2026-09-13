@@ -1,3 +1,11 @@
+idle-daemon (3.5.10-1) unstable; urgency=medium
+
+  * Trust idle-cli in D-Bus control auth: after the cli repo split the
+    CLI binary is /usr/bin/idle-cli, so control methods (preview, config,
+    saver set) were rejected with AccessDenied for every caller.
+
+ -- IdleScreen <jerydleuck@gmail.com>  Sun, 13 Sep 2026 12:15:00 +0000
+
 idle-daemon (3.5.9-1) unstable; urgency=medium
 
   * Add idle-saver-aurora to deb Recommends and rpm Recommends so
