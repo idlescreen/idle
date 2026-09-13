@@ -9,7 +9,6 @@ members = [
     "idle-api",
     "idle-runner",
     "idle-daemon",
-    "idle-cli",
 ]
 
 [profile.release]

@@ -93,9 +93,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        repo: [savers, studio, idle-tui, idle-cosmic]
+        repo: [savers, studio, tui, cosmic, cli]
     steps:
-    - name: Checkout idle (this commit)
+    - name: Checkout runtime (this commit)
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         path: runtime

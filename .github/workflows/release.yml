@@ -69,16 +69,10 @@ jobs:
           }
           ver() { grep -m1 '^version' "$1/Cargo.toml" | cut -d'"' -f2; }
           daemon_v=$(ver idle-daemon)
-          cli_v=$(ver idle-cli)
           if in_pool "idle-daemon-${daemon_v}-1.x86_64.rpm" "idle-daemon_${daemon_v}-1_amd64.deb"; then
             echo "daemon=skip" >> "$GITHUB_OUTPUT"
           else
             echo "daemon=build" >> "$GITHUB_OUTPUT"
-          fi
-          if in_pool "idle-cli-${cli_v}-1.x86_64.rpm" "idle-cli_${cli_v}-1_amd64.deb"; then
-            echo "cli=skip" >> "$GITHUB_OUTPUT"
-          else
-            echo "cli=build" >> "$GITHUB_OUTPUT"
           fi
           cat "$GITHUB_OUTPUT"
 
@@ -87,10 +81,6 @@ jobs:
           if [ "${{ steps.plan.outputs.daemon }}" = "build" ]; then
             cargo deb --no-build -p idle-daemon
             cargo generate-rpm -p idle-daemon
-          fi
-          if [ "${{ steps.plan.outputs.cli }}" = "build" ]; then
-            cargo deb --no-build -p idle-cli
-            cargo generate-rpm -p idle-cli
           fi
 
       - name: Install Cosign

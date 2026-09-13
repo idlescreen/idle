@@ -8,10 +8,7 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::process::Command;
 
-const CRATES: &[&str] = &[
-    "idle-daemon",
-    "idle-cli",
-];
+const CRATES: &[&str] = &["idle-daemon"];
 
 fn run_cmd(cmd: &mut Command) -> Result<(), String> {
     let status = cmd.status().map_err(|e| e.to_string())?;
@@ -62,8 +59,6 @@ fn run_qa_unit_gate() -> Result<(), String> {
     println!("QA gate fallback: core host crates");
     run_cmd(Command::new("cargo").args([
         "test",
-        "-p",
-        "idle-cli",
         "-p",
         "idle-daemon",
         "-p",

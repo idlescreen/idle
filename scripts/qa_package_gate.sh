@@ -29,7 +29,6 @@ echo ""
 # Crates that ship in or under the host stack and have pure/unit tests.
 # Do NOT include anything that requires a live Wayland session or root.
 PACKAGES=(
-  idle-cli
   idle-daemon
   idle-ipc
   idle-dbus
@@ -53,7 +52,7 @@ echo ""
 # Named regression filters — fail closed on the bugs we already fixed.
 # Keeps the gate honest even if a new untested module is added elsewhere.
 echo ">>> cargo test (named host/preview regressions)"
-cargo test -p idle-cli -p idle-daemon -p idle-ipc -p idle-dbus -p wayland-present -- \
+cargo test -p idle-daemon -p idle-ipc -p idle-dbus -p wayland-present -- \
   doctor_rules inhibitors_fmt ignore_logind merge_drops merge_includes \
   recovery_plan present_cooldown thrash hold_idle exit_process \
   preview_starts idle_decision path_safety hw_scaling \

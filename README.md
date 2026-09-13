@@ -9,24 +9,24 @@ render content while you're idle and yield back cleanly on input.
 
 ## What's in this repo
 
-This is the product workspace — the engine, daemon, CLI, and plugin host.
+This is the runtime workspace — the engine, daemon, and plugin host.
 
 | Path | Role |
 |---|---|
 | `idle-daemon/` | The service: idle monitoring, presentation sessions, config, D-Bus API, plugin orchestration |
-| `idle-cli/` | `idlescreen` — status, config, preview, inhibitors, doctor, self-update |
 | `idle-runner/` | Sandboxed plugin host: manifest + signature verification, capability gates, watchdog, cell/GPU raster |
 | `idle-api/` | Plugin ABI: savers link against this (`param()`, palette/system-info callbacks) |
-| `idle-plugins-all/` | Bundled saver builds |
 | `crates/wayland-idle` | `ext-idle-notify` idle detection |
 | `crates/wayland-present` | `zwlr_layer_shell` presentation, output topology, overlays |
-| `crates/idle-dbus` | D-Bus client helpers |
+| `crates/idle-dbus` | D-Bus client helpers + systemd service lifecycle |
 | `crates/idle-ipc` | Daemon↔runner wire protocol |
 | `crates/idle-upscaler` | CPU frame upscaler |
 
-Savers live in separate `idle-saver-*` repos; the TUI in `idle-tui`; the
-COSMIC applet in `idle-cosmic`; offline rendering in `idle-studio` +
-`render`.
+The CLI lives in [`cli`](https://github.com/idlescreen/cli), the router in
+[`idlescreen`](https://github.com/idlescreen/idlescreen), savers in
+[`savers`](https://github.com/idlescreen/savers), the TUI in `tui`, the
+COSMIC applet in `cosmic`, and the render engine + studio TUI in
+[`studio`](https://github.com/idlescreen/studio).
 
 ## Using it
 
