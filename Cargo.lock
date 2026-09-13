@@ -792,6 +792,7 @@ dependencies = [
 name = "idle-dbus"
 version = "0.7.0"
 dependencies = [
+ "libc",
  "tracing",
  "zbus",
 ]

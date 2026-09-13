@@ -11,6 +11,7 @@
 
 pub mod client;
 pub mod locks;
+pub mod service;
 pub mod status;
 pub mod status_contract;
 
