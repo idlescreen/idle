@@ -40,12 +40,19 @@ impl LcgRng {
     }
 
     pub fn new_random() -> Self {
-        use std::time::SystemTime;
-        let seed = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .map(|d| d.as_nanos() as u64)
-            .unwrap_or(1);
-        Self::new(seed)
+        // wasm32-unknown-unknown has no clock — a fixed seed keeps the
+        // generator deterministic instead of panicking.
+        #[cfg(target_arch = "wasm32")]
+        return Self::new(0x9E37_79B9_7F4A_7C15);
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            use std::time::SystemTime;
+            let seed = SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .map(|d| d.as_nanos() as u64)
+                .unwrap_or(1);
+            Self::new(seed)
+        }
     }
 
     /// Prefer `RENDER_SEED` / `IDLE_RENDER_SEED` / `IDLE_SEED` (decimal or 0x-hex); else random.
